@@ -89,7 +89,7 @@ c_fileProgCheckWindows	= oo.fsrc("check_windows.py")
 oo.pipe(c_fileInputGenes, c_fileCleanGenes, c_fileProgCheckSeqs )
 oo.ex( c_fileCleanGenes, c_fileCountClean, "grep", outpipe = True,e=">", c="",verbose = True )
 oo.ex( c_fileCleanGenes, c_fileClustGenes, "usearch6", id = c_floatClustID, cluster_fast =  c_fileCleanGenes, 
-		centroids = c_fileClustGenes, verbose = True)
+		centroids = c_fileClustGenes, verbose = True, uc= clustermap.uc)
 		
 #############################################################################################
 #Make blastdb's of clustered input genes.
