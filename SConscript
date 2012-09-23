@@ -76,11 +76,11 @@ c_fileCountClean		= oo.ftmp("count_clean.txt" )
 c_fileWinCheck			= oo.ftmp("wincheck.txt")
 
 # Programs
-c_fileProgCheckSeqs		= oo.fsrc("check_sequences.py")
-c_fileProgXRegions 		= oo.fsrc("process_blast_int.py")
-c_fileProgMakeWindows 	= oo.fsrc("make_windows.py")
-c_fileProgFastq2Fasta	= oo.fsrc("fastq2fasta.py")
-c_fileProgCheckWindows	= oo.fsrc("check_windows.py")
+c_fileProgCheckSeqs		= oo.fsrc("shortbred" + os.sep + "src" + os.sep + "check_sequences.py")
+c_fileProgXRegions 		= oo.fsrc("shortbred" + os.sep + "src" + os.sep +"process_blast_int.py")
+c_fileProgMakeWindows 	= oo.fsrc("shortbred" + os.sep + "src" + os.sep +"make_windows.py")
+c_fileProgFastq2Fasta	= oo.fsrc("shortbred" + os.sep + "src" + os.sep +"fastq2fasta.py")
+c_fileProgCheckWindows	= oo.fsrc("shortbred" + os.sep + "src" + os.sep +"check_windows.py")
 
 #############################################################################################
 #Clean input sequences, then cluster. 
