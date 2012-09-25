@@ -42,7 +42,10 @@ Add a log file
 -Number of genes that lost more than 90% of data
 
 """             
-             
+
+
+print(sys.version)
+
 dIDcutoff = args.dID * 100
 dLengthcutoff = args.dL
 
