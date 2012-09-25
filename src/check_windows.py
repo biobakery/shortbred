@@ -24,6 +24,8 @@ parser.add_argument('--cf', type=file, dest='fClusteredFile', help='Enter the cl
 parser.add_argument('--list', type=bool,default=False, dest='bList', help='Set to \'True\' if you want the gene names.')
 args = parser.parse_args()
 
+print "Python version:"
+print(sys.version)
 
 def getSeqs(fileFasta):
 

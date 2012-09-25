@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+
 
 #This is a modified version of process_blast.py. That program used "bool" values
 #to determine if an amino acid was X'ed out. This program instead records the count
