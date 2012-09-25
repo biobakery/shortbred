@@ -6,7 +6,10 @@ from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO
 
-import collections
+#test for Nicola
+from collections import OrderedDict
+#from collections import defaultdict
+
 
 
 import re
