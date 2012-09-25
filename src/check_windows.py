@@ -8,9 +8,9 @@ from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO
 
-#test for Nicola
-from collections import OrderedDict
-#from collections import defaultdict
+
+from collections import Counter
+
 
 
 

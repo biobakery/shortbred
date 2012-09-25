@@ -43,7 +43,7 @@ Add a log file
 
 """             
 
-
+print "Python version:"
 print(sys.version)
 
 dIDcutoff = args.dID * 100
