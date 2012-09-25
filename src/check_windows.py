@@ -6,6 +6,7 @@ from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO
 
+import collections
 from collections import Counter
 
 import re
