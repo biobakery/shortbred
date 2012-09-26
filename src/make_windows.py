@@ -9,12 +9,13 @@ import sys
 import re
 import argparse
 
+"""
 parser = argparse.ArgumentParser(description='Takes a fasta file with conserved regions X\'ed out, and makes windows.')
 parser.add_argument('-WinLength', default = 20, type=int, dest='iMinWinLength', help='Enter the minimum length for individual windows. Default is 30')
 parser.add_argument('-TotLength', default = 200, type=int, dest='iTotLength', help='Enter the maximum length for the combined windows for a gene. Default is 200')
 args = parser.parse_args()
 
-"""
+
 This program takes a fasta file with regions X'ed out and produces windows.
 """
 ###########################################################
@@ -46,8 +47,10 @@ def getGeneWindows ( fileFasta):
 #Split windows with X's into new windows
 #Split windows longer than the maximum length into smaller windows
 
-def splitGenes(dictGeneData):
+def splitGenes(dictGeneData, iTot):
     astrNewWindows = []
+    
+    
     
     for strName in dictGeneData.keys():
         astrNewWindows = []
@@ -61,10 +64,10 @@ def splitGenes(dictGeneData):
         #Cut windows over TotLength into smaller windows
         astrNewWindows = []        
         for strWindow in dictGeneData[strName]:
-            while (len(strWindow)>args.iTotLength):
-                strNewWindow = strWindow[:args.iTotLength]
+            while (len(strWindow)>iTot):
+                strNewWindow = strWindow[:iTot]
                 astrNewWindows.append(strNewWindow)
-                strWindow = strWindow[args.iTotLength:]
+                strWindow = strWindow[iTot]
             astrNewWindows.append(strWindow)
         dictGeneData[strName] = astrNewWindows        
                 
@@ -79,20 +82,22 @@ def splitGenes(dictGeneData):
 #       Add suffix indicating window number _#01, _#02
 
 
-def printWindows(dictGeneData):
+def printWindows(dictGeneData, sOut, iMin, iTot):
+    fOut = open(sOut, 'w')        
+    
     for strName in dictGeneData.keys():
         iCounter = 0
         iLength = 0
         for strWindow in dictGeneData[strName]:
-                if  (len(strWindow) >= args.iMinWinLength) and ((iLength + len(strWindow)) <=  args.iTotLength):
+                if  (len(strWindow) >= iMin) and ((iLength + len(strWindow)) <= iTot):
                      iCounter = iCounter +1
-                     print ">" + strName + "_#" + str(iCounter).zfill(2)
-                     print re.sub("(.{80})","\\1\n",strWindow,re.DOTALL)
+                     fOut.write(">" + strName + "_#" + str(iCounter).zfill(2) + '\n')
+                     fOut.write( re.sub("(.{80})","\\1\n",strWindow,re.DOTALL) + '\n')
                      iLength = iLength + len(strWindow)
     return                    
                     
 ##############################################################
-dictGeneWindows = getGeneWindows (sys.stdin)
-dictSplitWindows = splitGenes(dictGeneWindows)
-printWindows(dictSplitWindows)
+#dictGeneWindows = getGeneWindows (sys.stdin)
+#dictSplitWindows = splitGenes(dictGeneWindows)
+#printWindows(dictSplitWindows)
 
