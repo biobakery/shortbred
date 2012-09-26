@@ -24,8 +24,7 @@ parser.add_argument('--cf', type=file, dest='fClusteredFile', help='Enter the cl
 parser.add_argument('--list', type=bool,default=False, dest='bList', help='Set to \'True\' if you want the gene names.')
 args = parser.parse_args()
 
-print "Python version:"
-print(sys.version)
+
 
 def getSeqs(fileFasta):
 
@@ -42,10 +41,24 @@ agWindowSeqs = getSeqs(sys.stdin)
 ##############################################################################
 #Prep Data
 
+setHasTM = set()
+setHasQM = set()
+iTM = 0
+iQM = 0
+
+
 astrWindowNames = []
 for i in agWindowSeqs:
     mtchName = re.search(r'(.*)(\_[TCQ]M[0-9]*)(\_\#[0-9]*)',i.id)
     strName = mtchName.group(1)
+    strMarkerType = mtchName.group(2)
+    if strMarkerType == "_TM":
+        setHasTM.add(strName)
+        iTM+=1
+    if strMarkerType == "_QM":
+        setHasQM.add(strName)
+        iQM+=1
+    
     astrWindowNames.append(strName)
     
 astrClustNames = []
@@ -61,6 +74,10 @@ for tup in atupCounts:
 
 #######################################################
 #Tabs on Windows file
+
+
+print("VF," + str(len(agWindowSeqs)) + str(len(iTM)) +  str(len(iQM)) + str(len(setHasTM)) + str(len(setHasQM))  + str(len(sClustNames.difference(sWindowNames))))
+
 
 print "Total number of windows:"
 print len(agWindowSeqs)
