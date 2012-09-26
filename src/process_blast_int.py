@@ -339,8 +339,8 @@ print "Length of dictGOIGenes:",len(dictGOIGenes)
 for key in dictGOIGenes:
     if key in setHasMarkers:
         strGeneName = ">" + key + "_TM"
-    elif key in setHasClassMarkers:
-        strGeneName = ">" + key + "_CM"
+    #elif key in setHasClassMarkers:
+     #   strGeneName = ">" + key + "_CM"
     elif key in dictQuasiMarkers:
         strGeneName = ">" + key + "_QM" + str(dictQuasiMarkers[key][1])
     else:
