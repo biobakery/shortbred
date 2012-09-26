@@ -76,7 +76,7 @@ for tup in atupCounts:
 #Tabs on Windows file
 
 
-print("VF," + str(len(agWindowSeqs)) + str(len(iTM)) +  str(len(iQM)) + str(len(setHasTM)) + str(len(setHasQM))  + str(len(sClustNames.difference(sWindowNames))))
+print("VF," + str(len(agWindowSeqs)) + str(iTM) +  str(iQM) + str(len(setHasTM)) + str(len(setHasQM))  + str(len(sClustNames.difference(sWindowNames))))
 
 
 print "Total number of windows:"
