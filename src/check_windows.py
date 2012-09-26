@@ -78,7 +78,7 @@ for tup in atupCounts:
 sClustNames = set(astrClustNames)
 sWindowNames = set(astrWindowNames)
 
-print("VF," + str(len(agWindowSeqs)) + str(iTM) +  str(iQM) + str(len(setHasTM)) + str(len(setHasQM))  + str(len(sClustNames.difference(sWindowNames))))
+print("VF," + str(len(agWindowSeqs)) + "," + str(iTM) +  "," + str(iQM) + "," + str(len(setHasTM)) + "," + str(len(setHasQM))  +  "," + str(len(sClustNames.difference(sWindowNames))))
 
 
 print "Total number of windows:"
