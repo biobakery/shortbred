@@ -62,7 +62,7 @@ subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc"
 #Make blastdb's of clustered input genes.
 #MAKE SURE THAT THESE SLASHES DO NOT CAUSE PROBLEMS ON MAC OR WINDOWS.
 subprocess.check_call(["makeblastdb", "-in", "tmp/clust.faa", "-out", "tmp/goidb"])
-subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", "tmp/refdb"])
+subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", "tmp/refdb", "-max_file_sz,", "7GB"])
 
 
 #Blast input genes against self, and the reference db.
