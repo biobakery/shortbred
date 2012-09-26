@@ -353,5 +353,5 @@ for key in dictGOIGenes:
 
 f = open('VF'+str(args.iWinLength)+str(args.dL), 'w')
 #f.write( "Database, ClustID, PctID, PctLength, WinLength, Quasi-Threshhold Used, Num Genes After Clust, # TM's, # QM's, Windows, Num Genes Missing Windows, Sum Overlap for QM's")
-f.write("VF,95%," + str(args.dID) + "," + str(args.dL) + "," + str(args.iWinLength) + ",999," + len(dictGOIGenes))  
+f.write("VF,95%," + str(args.dID) + "," + str(args.dL) + "," + str(args.iWinLength) + ",999," + str(len(dictGOIGenes))  
 f.close()
