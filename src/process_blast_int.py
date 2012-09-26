@@ -279,11 +279,15 @@ print "Genes with True Markers:", len(setHasMarkers)
 
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 
+#Removed this code, was used to make class markers
+
+"""
 setHasClassMarkers = CheckForMarkers(setLeftover.intersection(dictRefCounts.keys()), dictRefCounts, args.iWinLength)
 print "Genes with Class Markers:",  len(setHasClassMarkers)
 
 
 setLeftover = setLeftover.difference(setHasClassMarkers)
+"""
 
 dictQuasiMarkers = CheckForQuasiMarkers(setLeftover, dictBoth, dictGOIGenes,args.iWinLength)
 print "Genes with Quasi-Markers:", len(dictQuasiMarkers)
