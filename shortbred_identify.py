@@ -42,6 +42,8 @@ parser.add_argument('--cmap', type=str, default="gene-centroid.uc", dest='sMap',
 #PARAMETERS
 parser.add_argument('--threads', type=int, default=1, dest='iThreads', help='Enter the number of threads to use.')
 parser.add_argument('--totlength', default = 200, type=int, dest='iTotLength', help='Enter the maximum length for the combined windows for a gene. Default is 200')
+parser.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity cutoff. Examples: .90, .85, .10,...')
+parser.add_argument('--len', default = .10, type=float, dest='dL', help='Enter maximum length for region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
 
 args = parser.parse_args()
 
@@ -68,7 +70,6 @@ subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/goidb", 
 
 subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb", "-out", "tmp/refresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
 
-
 #######################################################################################################
 #PROCESS BLAST RESULTS, COUNT OVERLAP BETWEEN GENES(CENTROIDS) AND "HITS"
 
@@ -76,8 +77,8 @@ subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb", 
 #dictGOIGenes has form (genename, "AMNLJI....")
 #dictRefCounts,dictGOICounts have form (genename,[list of overlap counts for each AA])
 dictGOIGenes = pb.getGeneData(open(args.sGOIProts))
-dictRefCounts = pb.getOverlapCounts(args.fRefBlast)
-dictGOICounts = pb.getOverlapCounts(args.fGOIBlast)
+dictRefCounts = pb.getOverlapCounts(args.fRefBlast, args.dID, args.dL, 0)
+dictGOICounts = pb.getOverlapCounts(args.fGOIBlast, args.dID, args.dL, 0)
 
 #If a gene has 0 valid hits in the ref database, make an array of 0's
 #so the program knows that nothing overlapped with the gene

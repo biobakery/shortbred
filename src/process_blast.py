@@ -42,12 +42,13 @@ Add a log file
 -Number of unique query genes in blast file
 -Number of genes that did not drop any domains
 -Number of genes that lost more than 90% of data
-
-"""             
+             
 
 
 dIDcutoff = args.dID * 100
 dLengthcutoff = args.dL
+
+"""
 
 ###############################################################################
 def getGeneData ( fileFasta):
@@ -75,7 +76,7 @@ def getGeneData ( fileFasta):
 
 #Add the last gene when you finish the file
 
-def getOverlapCounts (fileBlast):
+def getOverlapCounts (fileBlast, dIDcutoff, dLengthcutoff, iRegionLength):
 
     strCurQuery = ""
     dictAAOverlapCounts = {}
@@ -109,10 +110,10 @@ def getOverlapCounts (fileBlast):
         
         dMatchLength = (iAln) / float(iQLength)
 
-
+        
         #If user gave "abs_l" parameter, use that to determine what regions to eliminate
-        if (args.iRegionLength>0):
-            if (dIdentity >= dIDcutoff) and (iAln >= args.iRegionLength) and (strQueryID!=strSubId):
+        if (iRegionLength>0):
+            if (dIdentity >= dIDcutoff) and (iAln >= iRegionLength) and (strQueryID!=strSubId):
                 #(Blast starts count at 1, but our array starts at 0, so we subtract 1. )                
                 for i in range(iQStart-1, iQEnd):
                     aiCounts[i]=aiCounts[i]+1
