@@ -292,7 +292,7 @@ setLeftover = setLeftover.difference(setHasClassMarkers)
 dictQuasiMarkers = CheckForQuasiMarkers(setLeftover, dictBoth, dictGOIGenes,args.iWinLength)
 print "Genes with Quasi-Markers:", len(dictQuasiMarkers)
 
-print "Union of all Genes with Markers:", len((setHasMarkers.union(setHasClassMarkers)).union(dictQuasiMarkers.keys()))
+print "Union of all Genes with Markers:", len(setHasMarkers.union(dictQuasiMarkers.keys()))
 
 
 ###########################################################################
