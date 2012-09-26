@@ -165,8 +165,9 @@ def CheckForMarkers(setGenes, dictKnockOut, iN):
 def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
     
     #Only run this on the leftover genes
+    # "n" = minimum window length
     #For each one, sum up the values from [0:n], then [1:n+1]...
-    #Store these in an array of length (genelength-n)
+    #Store these in an array of length (len(gene)-n)
     #FInd the minimum value in this array
     #Take its index
     #Your window is [index:index+n]
@@ -308,6 +309,7 @@ for key in setHasMarkers:
             strGene = "".join(strGene)
             dictGOIGenes[key] =strGene
 
+"""
 ###########################################################################
 #Replace AA's with X's in Class Markers
 for key in setHasClassMarkers:
@@ -320,7 +322,7 @@ for key in setHasClassMarkers:
                     strGene[i] = "X"
             strGene = "".join(strGene)
             dictGOIGenes[key] =strGene
-            
+"""            
 ###########################################################################
 #Add in the QuasiMarkers
 
