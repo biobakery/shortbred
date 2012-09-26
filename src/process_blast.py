@@ -21,6 +21,7 @@ from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO
 
+"""
 parser = argparse.ArgumentParser(description='Remove hits with indetity >=i and length <=l from sequence.')
 parser.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity cutoff. Examples: .90, .85, .10,...')
 parser.add_argument('--len', default = .10, type=float, dest='dL', help='Enter maximum length for region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
@@ -33,7 +34,7 @@ parser.add_argument('--ko', type=str, dest='sKO', help='Enter \"ref\",\"goi\" or
 parser.add_argument('--winlength', type=int, dest='iWinLength', help='Enter window length')
 
 args = parser.parse_args()
-             
+"""             
 """
 Add a log file
 -Number of genes in input file
