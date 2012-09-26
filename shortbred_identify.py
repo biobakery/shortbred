@@ -36,6 +36,8 @@ parser.add_argument('--markerlength', type=int, default=20, dest='iMLength', hel
 #marker file
 #map to centroids
 parser.add_argument('--markers', type=str, default="markers.faa", dest='sMarkers', help='Enter name and path of marker output file')
+parser.add_argument('--cmap', type=str, default="gene-centroid.uc", dest='sMap', help='Enter name and path of centroids-gene file')
+
 
 #PARAMETERS
 parser.add_argument('--threads', type=int, default=1, dest='iThreads', help='Enter the number of threads to use.')
@@ -46,12 +48,12 @@ args = parser.parse_args()
 #Clean genes? Check for nuc sequences?
 
 #Cluster genes 
-subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--id", ".95","--centroids", "tmp/clust.faa"])
+subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", args.sMap, "--id", ".95","--centroids", "tmp/clust.faa"])
 
 
 #Remember to output map of genes to their centroids, this is the uc file in usearch, will have to clean it.
 
-"""
+
 #############################################################################################
 #BLAST
 
@@ -60,38 +62,12 @@ subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--id"
 subprocess.check_call(["makeblastdb", "-in", "tmp/clust.faa", "-out", "tmp/goidb"])
 subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", "tmp/refdb"])
 
-#ADD FEATURE FOR MORE PROCESSORS
+
 #Blast input genes against self, and the reference db.
 subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/goidb", "-out", "tmp/goiresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
 
 subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb", "-out", "tmp/refresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
 
-
-oo.blastp([c_fileClustGenes,c_fileClustGenes], c_BlastInputToSelf,
-			outfmt="6 std qlen",matrix="PAM30",ungapped="",
-			comp_based_stats="F",window_size="0", xdrop_ungap=1,
-			evalue=1e-3,num_alignments=100000,max_target_seqs=100000,
-			num_descriptions=100000,num_threads = 2,makedb=False)
-
-
-Default([c_BlastInputToSelf])
-
-####################################################################################
-#TRY NOT TO EDIT THIS - TAKES SEVERAL HOURS TO RUN
-oo.blast([c_fileClustGenes,c_RefGenesPFasta], c_BlastInputToRef,prog = "blastp", 
-			outfmt="6 std qlen",matrix="PAM30",ungapped="",
-			comp_based_stats="F",window_size="0",
-			evalue=1e-3,num_alignments=100000,max_target_seqs=100000,
-			num_descriptions=100000,num_threads = c_iThreads,makedb=True)
-######################################################################################
-
-
-
-#X out the conserved small regions.
-
-
-# Make first set of windows. 
-"""
 
 #######################################################################################################
 #PROCESS BLAST RESULTS, COUNT OVERLAP BETWEEN GENES(CENTROIDS) AND "HITS"
