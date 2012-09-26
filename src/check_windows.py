@@ -75,6 +75,8 @@ for tup in atupCounts:
 #######################################################
 #Tabs on Windows file
 
+sClustNames = set(astrClustNames)
+sWindowNames = set(astrWindowNames)
 
 print("VF," + str(len(agWindowSeqs)) + str(iTM) +  str(iQM) + str(len(setHasTM)) + str(len(setHasQM))  + str(len(sClustNames.difference(sWindowNames))))
 
@@ -90,8 +92,7 @@ for x in Counter(aCounts).items():
 #######################################################
 #Check for missing genes
 
-sClustNames = set(astrClustNames)
-sWindowNames = set(astrWindowNames)
+
 
 
 print "Unique genes in clustered file:"
