@@ -44,8 +44,6 @@ Add a log file
 
 """             
 
-print "Python version:"
-print(sys.version)
 
 dIDcutoff = args.dID * 100
 dLengthcutoff = args.dL
@@ -236,9 +234,7 @@ dictGOIGenes = getGeneData(args.fGOIFasta)
 dictRefCounts = getOverlapCounts(args.fRefBlast)
 dictGOICounts = getOverlapCounts(args.fGOIBlast)
 
-print "GOI Genes:", len(dictGOIGenes)
-print "Ref Valid Hits:", len(dictRefCounts)
-print "GOI Valid Hits:",len(dictGOICounts)
+
 
 #If a gene has 0 valid hits in the ref database, make an array of 0's
 #so the program knows that nothing overlapped with the gene
@@ -272,11 +268,9 @@ for sGene in setRefGOI:
 #Check for genes that have "marker windows": windows of length N that do not
 #overlap with anything in the "overlap reference"
 
-print ""
-print "Window Length: ", args.iWinLength
 
 setHasMarkers = CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictBoth.keys()), dictBoth, args.iWinLength)
-print "Genes with True Markers:", len(setHasMarkers)
+
 
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 
@@ -291,9 +285,7 @@ setLeftover = setLeftover.difference(setHasClassMarkers)
 """
 
 dictQuasiMarkers = CheckForQuasiMarkers(setLeftover, dictBoth, dictGOIGenes,args.iWinLength)
-print "Genes with Quasi-Markers:", len(dictQuasiMarkers)
 
-print "Union of all Genes with Markers:", len(setHasMarkers.union(dictQuasiMarkers.keys()))
 
 
 ###########################################################################
@@ -334,6 +326,22 @@ for key in dictQuasiMarkers:
 strGeneName = ""
 iCount = 0
 
+
+#f.write( "Database, ClustID, PctID, PctLength, WinLength, Quasi-Threshhold Used, Num Genes After Clust, # TM's, # QM's, Windows, Num Genes Missing Windows, Sum Overlap for QM's")
+print("VF,95%," + str(args.dID) + "," + str(args.dL) + "," + str(args.iWinLength) + ",999," + str(len(dictGOIGenes)))  
+
+
+print "GOI Genes:", len(dictGOIGenes)
+print "Ref Valid Hits:", len(dictRefCounts)
+print "GOI Valid Hits:",len(dictGOICounts)
+
+print ""
+print "Window Length: ", args.iWinLength
+
+print "Genes with True Markers:", len(setHasMarkers)
+print "Genes with Quasi-Markers:", len(dictQuasiMarkers)
+print "Union of all Genes with Markers:", len(setHasMarkers.union(dictQuasiMarkers.keys()))
+
 print "Length of dictGOIGenes:",len(dictGOIGenes)
      
 for key in dictGOIGenes:
@@ -351,7 +359,3 @@ for key in dictGOIGenes:
     print re.sub("(.{80})","\\1\n",dictGOIGenes[key],re.DOTALL)
     iCount = iCount+1
 
-f = open('VF'+str(args.iWinLength)+str(args.dL), 'w')
-#f.write( "Database, ClustID, PctID, PctLength, WinLength, Quasi-Threshhold Used, Num Genes After Clust, # TM's, # QM's, Windows, Num Genes Missing Windows, Sum Overlap for QM's")
-f.write("VF,95%," + str(args.dID) + "," + str(args.dL) + "," + str(args.iWinLength) + ",999," + str(len(dictGOIGenes)))  
-f.close()
