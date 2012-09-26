@@ -83,10 +83,10 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthcutoff, iRegionLength):
     aiCounts =[]
     iGeneCount = 0
     
-    for aLine in csv.reader( fileBlast, csv.excel_tab ):
+    for aLine in csv.reader( open(fileBlast), csv.excel_tab ):
         strQueryID = aLine[0]
         strSubId = aLine[1]
-        dIdentity =float(aLine[2])
+        dIdentity =float(aLine[2])/100
         iAln= int(aLine[3] )
         iMismatch = int(aLine[4])
         iGap = int(aLine[5] )

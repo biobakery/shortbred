@@ -28,8 +28,8 @@ parser = argparse.ArgumentParser(description='ShortBRED Identify \n This program
 parser.add_argument('--goi', type=str, dest='sGOIProts', help='Enter the path and name of the genes of interest file (proteins).')
 parser.add_argument('--ref', type=str, dest='sRefProts', help='Enter the path and name of the reference database protein file.')
 
-parser.add_argument('--goiblast', type=file, default = "tmp/goiresults.blast", dest='fGOIBlast', help='Enter the path and name of the blast results from the goi db.')
-parser.add_argument('--refblast', type=file, default = "tmp/refresults.blast", dest='fRefBlast', help='Enter the path and name of the blast results from the refrence db.')
+parser.add_argument('--goiblast', type=str, default = "tmp/goiresults.blast", dest='sGOIBlast', help='Enter the path and name of the blast results from the goi db.')
+parser.add_argument('--refblast', type=str, default = "tmp/refresults.blast", dest='sRefBlast', help='Enter the path and name of the blast results from the refrence db.')
 parser.add_argument('--markerlength', type=int, default=20, dest='iMLength', help='Enter marker length')
 
 #OUTPUT
@@ -58,7 +58,7 @@ subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc"
 
 #############################################################################################
 #BLAST
-
+"""
 #Make blastdb's of clustered input genes.
 #MAKE SURE THAT THESE SLASHES DO NOT CAUSE PROBLEMS ON MAC OR WINDOWS.
 subprocess.check_call(["makeblastdb", "-in", "tmp/clust.faa", "-out", "tmp/goidb"])
@@ -69,7 +69,7 @@ subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", "tmp/re
 subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/goidb", "-out", "tmp/goiresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
 
 subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb", "-out", "tmp/refresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
-
+"""
 #######################################################################################################
 #PROCESS BLAST RESULTS, COUNT OVERLAP BETWEEN GENES(CENTROIDS) AND "HITS"
 
@@ -77,8 +77,8 @@ subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb", 
 #dictGOIGenes has form (genename, "AMNLJI....")
 #dictRefCounts,dictGOICounts have form (genename,[list of overlap counts for each AA])
 dictGOIGenes = pb.getGeneData(open(args.sGOIProts))
-dictRefCounts = pb.getOverlapCounts(args.fRefBlast, args.dID, args.dL, 0)
-dictGOICounts = pb.getOverlapCounts(args.fGOIBlast, args.dID, args.dL, 0)
+dictRefCounts = pb.getOverlapCounts(args.sRefBlast, args.dID, args.dL, 0)
+dictGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, args.dL, 0)
 
 #If a gene has 0 valid hits in the ref database, make an array of 0's
 #so the program knows that nothing overlapped with the gene
