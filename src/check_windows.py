@@ -55,7 +55,7 @@ for i in agWindowSeqs:
     if strMarkerType == "_TM":
         setHasTM.add(strName)
         iTM+=1
-    if strMarkerType == "_QM":
+    if strMarkerType[:3] == "_QM":
         setHasQM.add(strName)
         iQM+=1
     
