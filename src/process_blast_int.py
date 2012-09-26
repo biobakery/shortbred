@@ -270,8 +270,6 @@ for sGene in setRefGOI:
 
 
 setHasMarkers = CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictBoth.keys()), dictBoth, args.iWinLength)
-
-
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 
 #Removed this code, was used to make class markers
