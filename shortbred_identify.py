@@ -44,11 +44,14 @@ parser.add_argument('--threads', type=int, default=1, dest='iThreads', help='Ent
 parser.add_argument('--totlength', default = 200, type=int, dest='iTotLength', help='Enter the maximum length for the combined windows for a gene. Default is 200')
 parser.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity cutoff. Examples: .90, .85, .10,...')
 parser.add_argument('--len', default = .10, type=float, dest='dL', help='Enter maximum length for region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
+parser.add_argument('--runblast', default = "True", type=str, dest='sRunBlast', help='Set equal to \'False\' to skip Blast, and use existing Blast output')
+
 
 args = parser.parse_args()
 
 #Clean genes? Check for nuc sequences?
 
+#############################################################################################
 #Cluster genes 
 subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", args.sMap, "--id", ".95","--centroids", "tmp/clust.faa"])
 
@@ -59,16 +62,22 @@ subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc"
 #############################################################################################
 #BLAST
 
-#Make blastdb's of clustered input genes.
-#MAKE SURE THAT THESE SLASHES DO NOT CAUSE PROBLEMS ON MAC OR WINDOWS.
-subprocess.check_call(["makeblastdb", "-in", "tmp/clust.faa", "-out", "tmp/goidb"])
-subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", "tmp/refdb", "-max_file_sz", "7GB"])
 
 
-#Blast input genes against self, and the reference db.
-subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/goidb", "-out", "tmp/goiresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
+print(args.sRunBlast)
 
-subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb", "-out", "tmp/refresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
+if(args.sRunBlast == "True"):
+
+    #Make blastdb's of clustered input genes.
+    #MAKE SURE THAT THESE SLASHES DO NOT CAUSE PROBLEMS ON MAC OR WINDOWS.
+    subprocess.check_call(["makeblastdb", "-in", "tmp/clust.faa", "-out", "tmp/goidb"])
+    subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", "tmp/refdb", "-max_file_sz", "7GB"])
+    
+    
+    #Blast input genes against self, and the reference db.
+    subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/goidb", "-out", "tmp/goiresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
+    
+    subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb", "-out", "tmp/refresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
 
 #######################################################################################################
 #PROCESS BLAST RESULTS, COUNT OVERLAP BETWEEN GENES(CENTROIDS) AND "HITS"
