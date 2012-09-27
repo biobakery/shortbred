@@ -53,7 +53,14 @@ args = parser.parse_args()
 
 #############################################################################################
 #Cluster genes 
-subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", args.sMap, "--id", ".95","--centroids", "tmp/clust.faa"])
+
+log = open("log.txt", "w")
+log.write("ShortBRED log \n")
+
+
+
+
+subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", args.sMap, "--id", ".95","--centroids", "tmp/clust.faa"], stdout = log, stderr = log)
 
 
 #Remember to output map of genes to their centroids, this is the uc file in usearch, will have to clean it.
@@ -79,8 +86,8 @@ if(args.sRunBlast == "True"):
     
     subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb", "-out", "tmp/refresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
 
-#######################################################################################################
-#PROCESS BLAST RESULTS, COUNT OVERLAP BETWEEN GENES(CENTROIDS) AND "HITS"
+##################################################################################################
+#PROCESS BLAST RESULTS, COUNT OVERLAP BETWEEN GENES (CENTROIDS) AND "HITS"
 
 #Get dict of GeneSeqs, then overlap counts from the Ref and GOI blast results
 #dictGOIGenes has form (genename, "AMNLJI....")
