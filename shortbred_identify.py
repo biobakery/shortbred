@@ -78,7 +78,7 @@ if(args.sRunBlast == "True"):
     #Make blastdb's of clustered input genes.
     #MAKE SURE THAT THESE SLASHES DO NOT CAUSE PROBLEMS ON MAC OR WINDOWS.
     subprocess.check_call(["makeblastdb", "-in", "tmp/clust.faa", "-out", "tmp/goidb", "-dbtype", "prot"])
-    subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", "tmp/refdb", "-dbtype", "prot", "-max_file_sz", "12GB","-logfile", "largedb.txt"])
+    subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", "tmp/refdb/refblastdb", "-dbtype", "prot", "-logfile", "largedb.txt"])
     
     #Check the blast DB's
     #subprocess.check_call(["blastdbcheck","-db","tmp/refdb"])
@@ -88,7 +88,7 @@ if(args.sRunBlast == "True"):
     #Blast input genes against self, and the reference db.
     subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/goidb", "-out", "tmp/goiresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
     
-    subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb", "-out", "tmp/refresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
+    subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb/refblastdb", "-out", "tmp/refresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
 
 ##################################################################################################
 #PROCESS BLAST RESULTS, COUNT OVERLAP BETWEEN GENES (CENTROIDS) AND "HITS"
