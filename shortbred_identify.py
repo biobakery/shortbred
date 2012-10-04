@@ -98,7 +98,7 @@ if(args.sRunBlast == "True"):
 #Get dict of GeneSeqs, then overlap counts from the Ref and GOI blast results
 #dictGOIGenes has form (genename, "AMNLJI....")
 #dictRefCounts,dictGOICounts have form (genename,[list of overlap counts for each AA])
-dictGOIGenes = pb.getGeneData(open(args.sGOIProts))
+dictGOIGenes = pb.getGeneData(open("tmp/clust.faa"))
 dictRefCounts = pb.getOverlapCounts(args.sRefBlast, args.dID, 0, args.dL, 0, 0)
 dictGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, 0, args.dL, 0, 0)
 dictBigGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, args.dL +.01, .70, args.iMLength/2, 0)
