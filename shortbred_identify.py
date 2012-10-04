@@ -101,7 +101,7 @@ if(args.sRunBlast == "True"):
 dictGOIGenes = pb.getGeneData(open(args.sGOIProts))
 dictRefCounts = pb.getOverlapCounts(args.sRefBlast, args.dID, 0, args.dL, 0, 0)
 dictGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, 0, args.dL, 0, 0)
-dictBigGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, .args.dL +.01, .65, args.iMLength/2, 0)
+dictBigGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, args.dL +.01, .70, args.iMLength/2, 0)
 
 #If a gene has 0 valid hits in the ref database, make an array of 0's
 #so the program knows that nothing overlapped with the gene
