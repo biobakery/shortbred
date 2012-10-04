@@ -78,7 +78,7 @@ if(args.sRunBlast == "True"):
     #Make blastdb's of clustered input genes.
     #MAKE SURE THAT THESE SLASHES DO NOT CAUSE PROBLEMS ON MAC OR WINDOWS.
     subprocess.check_call(["makeblastdb", "-in", "tmp/clust.faa", "-out", "tmp/goidb", "-dbtype", "prot"])
-    subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", "tmp/refdb/refblastdb", "-dbtype", "prot", "-logfile", "largedb.txt"])
+    
     
     #Check the blast DB's
     #subprocess.check_call(["blastdbcheck","-db","tmp/refdb"])
@@ -87,6 +87,8 @@ if(args.sRunBlast == "True"):
     
     #Blast input genes against self, and the reference db.
     subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/goidb", "-out", "tmp/goiresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
+    
+    subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", "tmp/refdb/refblastdb", "-dbtype", "prot", "-logfile", "largedb.txt"])    
     
     subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb/refblastdb", "-out", "tmp/refresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
 
@@ -97,8 +99,9 @@ if(args.sRunBlast == "True"):
 #dictGOIGenes has form (genename, "AMNLJI....")
 #dictRefCounts,dictGOICounts have form (genename,[list of overlap counts for each AA])
 dictGOIGenes = pb.getGeneData(open(args.sGOIProts))
-dictRefCounts = pb.getOverlapCounts(args.sRefBlast, args.dID, args.dL, 0)
-dictGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, args.dL, 0)
+dictRefCounts = pb.getOverlapCounts(args.sRefBlast, args.dID, 0, args.dL, 0, 0)
+dictGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, 0, args.dL, 0, 0)
+dictBigGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, .args.dL +.01, .65, args.iMLength/2, 0)
 
 #If a gene has 0 valid hits in the ref database, make an array of 0's
 #so the program knows that nothing overlapped with the gene
@@ -119,12 +122,12 @@ if len(setGOINoHits)>0:
 
 
 #Get dict of counts for (Ref+GOI)
-dictBoth = {}
+dictAllCounts = {}
 setRefGOI = set(dictGOICounts.keys()).union(set(dictRefCounts.keys())) 
 
 for sGene in setRefGOI:
-    aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]))]
-    dictBoth[sGene] = aiSum
+    aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]),dictBigGOICounts.get(sGene,[0]))]
+    dictAllCounts[sGene] = aiSum
 
 ###########################################################################
 #CHECK FOR MARKER WINDOWS, BUILD QUASI-MARKERS FOR LEFTOVER GENES
@@ -132,17 +135,17 @@ for sGene in setRefGOI:
 #the goi or reference database
 
 
-setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictBoth.keys()), dictBoth, args.iMLength)
+setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAllCounts.keys()), dictAllCounts, args.iMLength)
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 
-dictQuasiMarkers = pb.CheckForQuasiMarkers(setLeftover, dictBoth, dictGOIGenes,args.iMLength)
+dictQuasiMarkers = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
 
 
 
 #Replace AA's with X's in True Markers
 for key in setHasMarkers:
-        if dictBoth.has_key(key):
-            aiWindow = dictBoth[key]
+        if dictAllCounts.has_key(key):
+            aiWindow = dictAllCounts[key]
             strGene = list(dictGOIGenes[key])
 
             for i in range(0,len(aiWindow)):

@@ -76,7 +76,7 @@ def getGeneData ( fileFasta):
 
 #Add the last gene when you finish the file
 
-def getOverlapCounts (fileBlast, dIDcutoff, dLengthcutoff, iRegionLength):
+def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, iRegionLength):
 
     strCurQuery = ""
     dictAAOverlapCounts = {}
@@ -119,8 +119,8 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthcutoff, iRegionLength):
                     aiCounts[i]=aiCounts[i]+1
             
         #Else: Mask high-identity, low-length regions using (alignment length / query length)
-        elif (dIdentity >= dIDcutoff) and (dMatchLength <= dLengthcutoff) and (strQueryID!=strSubId):
-            for i in range(iQStart-1, iQEnd):
+        elif (dIdentity >= dIDcutoff) and (dMatchLength <= dLengthcutoff) and (strQueryID!=strSubId) and (dMatchLength >= dLengthMin):
+            for i in range(iQStart-1+iOffset, iQEnd-iOffset):
                 aiCounts[i]=aiCounts[i]+1
     
     #Once the loop is done, remember to add the last window.
