@@ -43,7 +43,7 @@ subprocess.check_call(["usearch6", "--makeudb_usearch", args.sMarkers, "--output
 
 
 #Use usearch to checkj for hits (usearch global)
-subprocess.check_call(["usearch6", "--usearch_global", args.sWGS, "--db", strDBName, "--id", "0.9", "--blast6out", strSearchResults])
+subprocess.check_call(["usearch6", "--usearch_global", args.sWGS, "--db", strDBName, "--id", "0.9", "--blast6out", strSearchResults, "--notmatched", "missed.txt"])
 
 
 

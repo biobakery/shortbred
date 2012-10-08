@@ -206,10 +206,24 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
             aiWindowSums.append(iSumCounts)
             iStart+=1
             
+        #Find first AminoAcid of window
         iMin = min(aiWindowSums)
         iWinStart = aiWindowSums.index(iMin)            
+        iWinEnd = iWinStart + iN
         
-        dictQM[key]= [dictGenes[key][iWinStart:iWinStart+iN],iMin]
+        bStop = False        
+        
+        #If the next AA has (overlap==0), then extend the window to include it                        
+        while(bStop==False):
+            if (dictGenes[key][iWinEnd+1]==0):
+                iWinEnd+=1
+            else:
+                bStop==False
+        
+        
+        dictQM[key]= [dictGenes[key][iWinStart:iWinEnd],iMin]
+        
+        
         
         
         #Error Checking   
