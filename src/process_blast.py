@@ -217,12 +217,15 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
         while(bStop==False and iWinEnd< len(dictGenes[key])-1):
             if (dictGenes[key][iWinEnd+1]==0):
                 iWinEnd+=1
+                print key, "this ran"
             else:
                 bStop=True
         
         
         dictQM[key]= [dictGenes[key][iWinStart:iWinEnd],iMin]
-        
+        #In the knockouty dictionary, set the QM region you just took to have "9999"
+        #for each AA. Then it wont be used again for the second QM window.
+        dictKnockOut[key][iWinStart:iWinEnd] = [9999]*(iWinEnd-iWinStart +1)
         
         
         
