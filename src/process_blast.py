@@ -214,7 +214,7 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
         bStop = False        
         
         #If the next AA has (overlap==0), then extend the window to include it                        
-        while(bStop==False):
+        while(bStop==False and iWinEnd< len(dictGenes[key])-1):
             if (dictGenes[key][iWinEnd+1]==0):
                 iWinEnd+=1
             else:
