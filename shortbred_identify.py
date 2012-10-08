@@ -71,7 +71,7 @@ subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc"
 
 
 
-print(args.sRunBlast)
+#print(args.sRunBlast)
 
 if(args.sRunBlast == "True"):
 
@@ -92,6 +92,8 @@ if(args.sRunBlast == "True"):
     
     subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb/refblastdb", "-out", "tmp/refresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
 
+else:
+    print "Skipping BLAST..."
 ##################################################################################################
 #PROCESS BLAST RESULTS, COUNT OVERLAP BETWEEN GENES (CENTROIDS) AND "HITS"
 
@@ -137,9 +139,9 @@ for sGene in setRefGOI:
 
 setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAllCounts.keys()), dictAllCounts, args.iMLength)
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
-
+print "Found True Markers..."
 dictQuasiMarkers = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
-
+print "Found Quasi Markers..."
 
 
 #Replace AA's with X's in True Markers
