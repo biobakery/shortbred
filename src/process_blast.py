@@ -218,7 +218,7 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
             if (dictGenes[key][iWinEnd+1]==0):
                 iWinEnd+=1
             else:
-                bStop==True
+                bStop=True
         
         
         dictQM[key]= [dictGenes[key][iWinStart:iWinEnd],iMin]
