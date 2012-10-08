@@ -205,8 +205,8 @@ for tup in atupQM:
         iCounter =1  
     else:
         iCounter+=1
-    fOut.write(">" + tup[0] + "_QM" + tup[2] + "_#" +str(iCounter).zfill(2) + '\n')
-    fOut.write(tup[1] + '\n')
+    fOut.write(">" + str(tup[0]) + "_QM" + str(tup[2]) + "_#" +str(iCounter).zfill(2) + '\n')
+    fOut.write(str(tup[1]) + '\n')
     strName = tup[0]
     
 
