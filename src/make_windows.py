@@ -102,7 +102,7 @@ def printQM(dictGeneData1, dictGeneData2, sOut):
            
     
     for strName in dictGeneData1.keys():
-        for strWindow in dictGeneData1[strName]:
+        for strWindow in dictGeneData1[strName][0]:
                      fOut.write(">" + strName + "_#" + str(1).zfill(2) + '\n')
                      fOut.write( re.sub("(.{80})","\\1\n",strWindow,re.DOTALL) + '\n')
         if (dictGeneData2.get(strName,"") != ""):

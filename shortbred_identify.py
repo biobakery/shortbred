@@ -190,3 +190,27 @@ mw.printWindows(dictSplitWindows, args.sMarkers, args.iMLength, args.iTotLength)
 #mw.printQM(dictQuasiMarkers, dictQuasiMarkers2, args.sMarkers)
 print atupQuasiMarkers1
 print atupQuasiMarkers2 
+
+atupQM = atupQuasiMarkers1 + atupQuasiMarkers2
+atupQM = sorted(atupQM, key=lambda tup: tup[0])
+
+iCounter = 0
+strName = 0
+
+
+fOut = open(args.sMarkers, 'a')
+
+for tup in atupQM:
+    if atupQM != strName:
+        iCounter =1  
+    else:
+        iCounter+=1
+    fOut.write(">" + atupQM + "_QM" + tup[2] + "_#" +str(iCounter).zfill(2) + '\n')
+    fOut.write(tup[1] + '\n')
+    strName = tup[0]
+    
+
+#concatenate these two lists
+#('ABE02101', 'SIFMMGISLTISGLLPQSGF', 20)]
+#('ABE02101', 'IGGLLLGLFGNYQKRILLIT', 20)]
+
