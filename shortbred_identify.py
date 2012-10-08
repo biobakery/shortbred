@@ -195,19 +195,19 @@ atupQM = atupQuasiMarkers1 + atupQuasiMarkers2
 atupQM = sorted(atupQM, key=lambda tup: tup[0])
 
 iCounter = 0
-strName = 0
+strName = ""
 
 
 fOut = open(args.sMarkers, 'a')
 
 for tup in atupQM:
-    if atupQM != strName:
+    if str(tup[0]) != strName:
         iCounter =1  
     else:
         iCounter+=1
     fOut.write(">" + str(tup[0]) + "_QM" + str(tup[2]) + "_#" +str(iCounter).zfill(2) + '\n')
     fOut.write(str(tup[1]) + '\n')
-    strName = tup[0]
+    strName = str(tup[0])
     
 
 #concatenate these two lists
