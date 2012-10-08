@@ -142,7 +142,7 @@ setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 print "Found True Markers..."
 dictQuasiMarkers = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
 print "Found first set of Quasi Markers..."
-ductQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
+dictQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
 print "Found second set of Quasi Markers..."
 
 
