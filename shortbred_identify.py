@@ -143,9 +143,9 @@ for sGene in setRefGOI:
 setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAllCounts.keys()), dictAllCounts, args.iMLength)
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 print "Found True Markers..."
-dictQuasiMarkers = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
+atupQuasiMarkers1 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
 print "Found first set of Quasi Markers..."
-dictQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
+atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
 print "Found second set of Quasi Markers..."
 
 
@@ -187,4 +187,6 @@ premarkers.close()
 dictGeneWindows = mw.getGeneWindows (open('tmp/premarkers.txt'))
 dictSplitWindows = mw.splitGenes(dictGeneWindows, args.iTotLength)
 mw.printWindows(dictSplitWindows, args.sMarkers, args.iMLength, args.iTotLength)
-mw.printQM(dictQuasiMarkers, dictQuasiMarkers2, args.sMarkers)
+#mw.printQM(dictQuasiMarkers, dictQuasiMarkers2, args.sMarkers)
+print atupQuasiMarkers1
+print atupQuasiMarkers2 

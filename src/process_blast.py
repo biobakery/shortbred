@@ -244,7 +244,7 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
         """
         
     
-    return dictQM
+    return atupQM
 
 """
 ##############################################################################
