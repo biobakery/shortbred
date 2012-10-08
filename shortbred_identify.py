@@ -93,15 +93,18 @@ if(args.sRunBlast == "True"):
     subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb/refblastdb", "-out", "tmp/refresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
 
 else:
-    print "Skipping BLAST..."
+    print "Skipped BLAST."
 ##################################################################################################
 #PROCESS BLAST RESULTS, COUNT OVERLAP BETWEEN GENES (CENTROIDS) AND "HITS"
 
 #Get dict of GeneSeqs, then overlap counts from the Ref and GOI blast results
 #dictGOIGenes has form (genename, "AMNLJI....")
 #dictRefCounts,dictGOICounts have form (genename,[list of overlap counts for each AA])
+
 dictGOIGenes = pb.getGeneData(open("tmp/clust.faa"))
+print "Finding overlap with reference database..."
 dictRefCounts = pb.getOverlapCounts(args.sRefBlast, args.dID, 0, args.dL, 0, 0)
+print "Finding overlap with goi database..."
 dictGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, 0, args.dL, 0, 0)
 dictBigGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, args.dL +.01, .70, args.iMLength/2, 0)
 
@@ -171,16 +174,10 @@ premarkers = open('tmp/premarkers.txt', 'w')
 
 for key in dictGOIGenes:
     if key in setHasMarkers:
-        strGeneName = ">" + key + "_TM"
-    #elif key in dictQuasiMarkers:
-    #    strGeneName = ">" + key + "_QM" + str(dictQuasiMarkers[key][1])
-    else:
-        strGeneName = ">" + key + "_OTH"
-         
-    
-    premarkers.write(strGeneName  + '\n')
-    premarkers.write(re.sub("(.{80})","\\1\n",dictGOIGenes[key],re.DOTALL)  + '\n')
-    iCount = iCount+1
+        strGeneName = ">" + key + "_TM"    
+        premarkers.write(strGeneName  + '\n')
+        premarkers.write(re.sub("(.{80})","\\1\n",dictGOIGenes[key],re.DOTALL)  + '\n')
+        iCount = iCount+1
     
 premarkers.close()
 

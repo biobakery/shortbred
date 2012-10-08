@@ -98,7 +98,8 @@ def printWindows(dictGeneData, sOut, iMin, iTot):
     return                    
               
 def printQM(dictGeneData1, dictGeneData2, sOut):
-    fOut = open(sOut, 'a')        
+    fOut = open(sOut, 'a') 
+           
     
     for strName in dictGeneData1.keys():
         for strWindow in dictGeneData1[strName]:

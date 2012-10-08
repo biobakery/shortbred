@@ -178,22 +178,21 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
     
     #Return dictQM with these windows
 
-    dictQM = {}
+    #tuple with 3 values (name, window, overlapvalue)
+    
+    
+    atupQM = []
 
     
-    
-    
-    
-    setGenesWithMarkers = set()
     
     for key in setGenes:
         aiWindow = dictKnockOut[key]
         iStart = 0
-        fHitEnd = False
         iMin = 0
         iSumCounts = 0
+        fHitEnd = False
         aiWindowSums = []
-        #print aiWindow
+ 
         
 
         
@@ -206,7 +205,7 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
             aiWindowSums.append(iSumCounts)
             iStart+=1
             
-        #Find first AminoAcid of window
+        #Find first AminoAcid of best window (lowest total overlap) with length N
         iMin = min(aiWindowSums)
         iWinStart = aiWindowSums.index(iMin)            
         iWinEnd = iWinStart + iN
@@ -221,8 +220,9 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
             else:
                 bStop=True
         
+        tup = (key, dictGenes[key][iWinStart:iWinEnd],iMin)       
+        atupQM.append(tup)
         
-        dictQM[key]= [dictGenes[key][iWinStart:iWinEnd],iMin]
         #In the knockouty dictionary, set the QM region you just took to have "9999"
         #for each AA. Then it wont be used again for the second QM window.
         dictKnockOut[key][iWinStart:iWinEnd] = [9999]*(iWinEnd-iWinStart +1)
