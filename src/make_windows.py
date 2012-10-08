@@ -94,8 +94,22 @@ def printWindows(dictGeneData, sOut, iMin, iTot):
                      fOut.write(">" + strName + "_#" + str(iCounter).zfill(2) + '\n')
                      fOut.write( re.sub("(.{80})","\\1\n",strWindow,re.DOTALL) + '\n')
                      iLength = iLength + len(strWindow)
+    fOut.close()
     return                    
+              
+def printQM(dictGeneData1, dictGeneData2, sOut):
+    fOut = open(sOut, 'a')        
+    
+    for strName in dictGeneData1.keys():
+        for strWindow in dictGeneData1[strName]:
+                     fOut.write(">" + strName + "_#" + str(1).zfill(2) + '\n')
+                     fOut.write( re.sub("(.{80})","\\1\n",strWindow,re.DOTALL) + '\n')
+        if (dictGeneData2.get(strName,"") != ""):
+            for strWindow in dictGeneData2[strName]:
+                     fOut.write(">" + strName + "_#" + str(1).zfill(2) + '\n')
+                     fOut.write( re.sub("(.{80})","\\1\n",strWindow,re.DOTALL) + '\n')
                     
+    return   
 ##############################################################
 #dictGeneWindows = getGeneWindows (sys.stdin)
 #dictSplitWindows = splitGenes(dictGeneWindows)

@@ -141,7 +141,9 @@ setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAll
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 print "Found True Markers..."
 dictQuasiMarkers = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
-print "Found Quasi Markers..."
+print "Found first set of Quasi Markers..."
+ductQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
+print "Found second set of Quasi Markers..."
 
 
 #Replace AA's with X's in True Markers
@@ -157,8 +159,8 @@ for key in setHasMarkers:
             dictGOIGenes[key] =strGene
 
 #Add in the QuasiMarkers
-for key in dictQuasiMarkers:
-    dictGOIGenes[key]=dictQuasiMarkers[key][0]
+#for key in dictQuasiMarkers:
+#    dictGOIGenes[key]=dictQuasiMarkers[key][0]
    
    
 #Print out the genes
@@ -170,8 +172,8 @@ premarkers = open('tmp/premarkers.txt', 'w')
 for key in dictGOIGenes:
     if key in setHasMarkers:
         strGeneName = ">" + key + "_TM"
-    elif key in dictQuasiMarkers:
-        strGeneName = ">" + key + "_QM" + str(dictQuasiMarkers[key][1])
+    #elif key in dictQuasiMarkers:
+    #    strGeneName = ">" + key + "_QM" + str(dictQuasiMarkers[key][1])
     else:
         strGeneName = ">" + key + "_OTH"
          
@@ -188,4 +190,4 @@ premarkers.close()
 dictGeneWindows = mw.getGeneWindows (open('tmp/premarkers.txt'))
 dictSplitWindows = mw.splitGenes(dictGeneWindows, args.iTotLength)
 mw.printWindows(dictSplitWindows, args.sMarkers, args.iMLength, args.iTotLength)
-
+mw.printQM(dictQuasiMarkers, dictQuasiMarkers2, args.sMarkers)
