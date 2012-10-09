@@ -188,8 +188,8 @@ dictGeneWindows = mw.getGeneWindows (open('tmp/premarkers.txt'))
 dictSplitWindows = mw.splitGenes(dictGeneWindows, args.iTotLength)
 mw.printWindows(dictSplitWindows, args.sMarkers, args.iMLength, args.iTotLength)
 #mw.printQM(dictQuasiMarkers, dictQuasiMarkers2, args.sMarkers)
-print atupQuasiMarkers1
-print atupQuasiMarkers2 
+#print atupQuasiMarkers1
+#print atupQuasiMarkers2 
 
 atupQM = atupQuasiMarkers1 + atupQuasiMarkers2
 atupQM = sorted(atupQM, key=lambda tup: tup[0])
