@@ -45,6 +45,7 @@ parser.add_argument('--totlength', default = 200, type=int, dest='iTotLength', h
 parser.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity cutoff. Examples: .90, .85, .10,...')
 parser.add_argument('--len', default = .10, type=float, dest='dL', help='Enter maximum length for region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
 parser.add_argument('--runblast', default = "True", type=str, dest='sRunBlast', help='Set equal to \'False\' to skip Blast, and use existing Blast output')
+parser.add_argument('--tmpdir', default = "/tmp", type=str, dest='sTmp', help='Set directory for temporary output files.')
 
 
 args = parser.parse_args()
@@ -60,7 +61,7 @@ log.write("ShortBRED log \n")
 
 
 
-subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", args.sMap, "--id", ".95","--centroids", "tmp/clust.faa"])
+subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", args.sMap, "--id", ".95","--centroids", args.sTmp + os.sep + "clust.faa"])
 
 
 #Remember to output map of genes to their centroids, this is the uc file in usearch, will have to clean it.
@@ -73,11 +74,11 @@ subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc"
 
 #print(args.sRunBlast)
 
-if(args.sRunBlast == "True"):
+if(args.sRunBlast == "True" or args.sRunBlast == "OnlyBlast" ):
 
     #Make blastdb's of clustered input genes.
     #MAKE SURE THAT THESE SLASHES DO NOT CAUSE PROBLEMS ON MAC OR WINDOWS.
-    subprocess.check_call(["makeblastdb", "-in", "tmp/clust.faa", "-out", "tmp/goidb", "-dbtype", "prot"])
+    subprocess.check_call(["makeblastdb", "-in", args.sTmp + os.sep + "clust.faa", "-out", args.sTmp + os.sep + "goidb", "-dbtype", "prot"])
     
     
     #Check the blast DB's
@@ -86,12 +87,13 @@ if(args.sRunBlast == "True"):
     
     
     #Blast input genes against self, and the reference db.
-    subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/goidb", "-out", "tmp/goiresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
+    subprocess.check_call(["blastp", "-query", args.sTmp + os.sep + "clust.faa", "-db", args.sTmp + os.sep + "goidb", "-out", args.sGOIBlast, "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
     
-    subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", "tmp/refdb/refblastdb", "-dbtype", "prot", "-logfile", "largedb.txt"])    
+    subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", args.sTmp + os.sep + "refblastdb", "-dbtype", "prot", "-logfile", "largedb.txt"])    
     
-    subprocess.check_call(["blastp", "-query", "tmp/clust.faa", "-db", "tmp/refdb/refblastdb", "-out", "tmp/refresults.blast", "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
-
+    subprocess.check_call(["blastp", "-query", args.sTmp + os.sep + "clust.faa", "-db", args.sTmp + os.sep + "refblastdb", "-out", args.sRefBlast, "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
+    if(args.sRunBlast == "OnlyBlast"):
+        os._exit(1)
 else:
     print "Skipped BLAST."
 ##################################################################################################
