@@ -7,6 +7,7 @@ import csv
 import argparse
 import subprocess
 import re
+import os
 
 import src.process_blast
 pb = src.process_blast
