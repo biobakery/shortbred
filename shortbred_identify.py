@@ -31,7 +31,9 @@ parser.add_argument('--ref', type=str, dest='sRefProts', help='Enter the path an
 
 parser.add_argument('--goiblast', type=str, default = "tmp/goiresults.blast", dest='sGOIBlast', help='Enter the path and name of the blast results from the goi db.')
 parser.add_argument('--refblast', type=str, default = "tmp/refresults.blast", dest='sRefBlast', help='Enter the path and name of the blast results from the refrence db.')
-parser.add_argument('--markerlength', type=int, default=20, dest='iMLength', help='Enter marker length')
+parser.add_argument('--clust', type=str, default = "tmp" + os.sep+ "clust.faa", dest='sClust', help='Enter the path and name of clustered file.')
+
+
 
 #OUTPUT
 #marker file
@@ -41,6 +43,7 @@ parser.add_argument('--cmap', type=str, default="gene-centroid.uc", dest='sMap',
 
 
 #PARAMETERS
+parser.add_argument('--markerlength', type=int, default=20, dest='iMLength', help='Enter marker length')
 parser.add_argument('--threads', type=int, default=1, dest='iThreads', help='Enter the number of threads to use.')
 parser.add_argument('--totlength', default = 200, type=int, dest='iTotLength', help='Enter the maximum length for the combined windows for a gene. Default is 200')
 parser.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity cutoff. Examples: .90, .85, .10,...')
@@ -56,13 +59,12 @@ args = parser.parse_args()
 #############################################################################################
 #Cluster genes 
 
-log = open("log.txt", "w")
+log = open(args.sTmp + "log.txt", "w")
 log.write("ShortBRED log \n")
 
 
 
 
-subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", args.sMap, "--id", ".95","--centroids", args.sTmp + os.sep + "clust.faa"])
 
 
 #Remember to output map of genes to their centroids, this is the uc file in usearch, will have to clean it.
@@ -77,18 +79,19 @@ subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc"
 
 if(args.sRunBlast == "True" or args.sRunBlast == "OnlyBlast" ):
 
+    subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", args.sMap, "--id", ".95","--centroids", args.sTmp + os.sep + "clust.faa"])
+
+
     #Make blastdb's of clustered input genes.
     #MAKE SURE THAT THESE SLASHES DO NOT CAUSE PROBLEMS ON MAC OR WINDOWS.
-    subprocess.check_call(["makeblastdb", "-in", args.sTmp + os.sep + "clust.faa", "-out", args.sTmp + os.sep + "goidb", "-dbtype", "prot"])
-    
-    
-    #Check the blast DB's
-    #subprocess.check_call(["blastdbcheck","-db","tmp/refdb"])
+    subprocess.check_call(["makeblastdb", "-in", args.sTmp + os.sep + "clust.faa", "-out", args.sTmp + os.sep + "goidb", "-dbtype", "prot", "-logfile", "smalldb.txt"])
     
     
     
     #Blast input genes against self, and the reference db.
     subprocess.check_call(["blastp", "-query", args.sTmp + os.sep + "clust.faa", "-db", args.sTmp + os.sep + "goidb", "-out", args.sGOIBlast, "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
+    
+    
     
     subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", args.sTmp + os.sep + "refblastdb", "-dbtype", "prot", "-logfile", "largedb.txt"])    
     
@@ -96,7 +99,7 @@ if(args.sRunBlast == "True" or args.sRunBlast == "OnlyBlast" ):
     if(args.sRunBlast == "OnlyBlast"):
         os._exit(1)
 else:
-    print "Skipped BLAST."
+    sys.stderr.write( "Skipped BLAST.")
 ##################################################################################################
 #PROCESS BLAST RESULTS, COUNT OVERLAP BETWEEN GENES (CENTROIDS) AND "HITS"
 
@@ -104,10 +107,10 @@ else:
 #dictGOIGenes has form (genename, "AMNLJI....")
 #dictRefCounts,dictGOICounts have form (genename,[list of overlap counts for each AA])
 
-dictGOIGenes = pb.getGeneData(open("tmp/clust.faa"))
-print "Finding overlap with reference database..."
+dictGOIGenes = pb.getGeneData(open(args.sClust))
+sys.stderr.write( "Finding overlap with reference database...")
 dictRefCounts = pb.getOverlapCounts(args.sRefBlast, args.dID, 0, args.dL, 0, 0)
-print "Finding overlap with goi database..."
+sys.stderr.write( "Finding overlap with goi database...")
 dictGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, 0, args.dL, 0, 0)
 dictBigGOICounts = pb.getOverlapCounts(args.sGOIBlast, args.dID, args.dL +.01, .70, args.iMLength/2, 0)
 
@@ -145,11 +148,11 @@ for sGene in setRefGOI:
 
 setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAllCounts.keys()), dictAllCounts, args.iMLength)
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
-print "Found True Markers..."
+sys.stderr.write( "Found True Markers...")
 atupQuasiMarkers1 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
-print "Found first set of Quasi Markers..."
+sys.stderr.write( "Found first set of Quasi Markers...")
 atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
-print "Found second set of Quasi Markers..."
+sys.stderr.write( "Found second set of Quasi Markers...")
 
 
 #Replace AA's with X's in True Markers
@@ -173,7 +176,7 @@ for key in setHasMarkers:
 strGeneName = ""
 iCount = 0
 
-premarkers = open('tmp/premarkers.txt', 'w')
+premarkers = open(args.sTmp + os.sep + 'premarkers.txt', 'w')
 
 for key in dictGOIGenes:
     if key in setHasMarkers:
@@ -187,7 +190,7 @@ premarkers.close()
 ##################################################################################
 #PRINT WINDOWS
 
-dictGeneWindows = mw.getGeneWindows (open('tmp/premarkers.txt'))
+dictGeneWindows = mw.getGeneWindows (open(args.sTmp + os.sep + 'premarkers.txt'))
 dictSplitWindows = mw.splitGenes(dictGeneWindows, args.iTotLength)
 mw.printWindows(dictSplitWindows, args.sMarkers, args.iMLength, args.iTotLength)
 #mw.printQM(dictQuasiMarkers, dictQuasiMarkers2, args.sMarkers)
