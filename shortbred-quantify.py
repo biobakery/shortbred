@@ -20,6 +20,8 @@ parser.add_argument('--wgs', type=str, dest='sWGS', help='Enter the path and nam
 
 parser.add_argument('--tmp', type=str, dest='sTmp', help='Enter the path and name of the tmp directory.')
 parser.add_argument('--length', type=int, dest='iLength', help='Enter the minimum length of the markers.')
+parser.add_argument('--threads', type=int, dest='iThreads', help='Enter the number of CPUs available for usearch.')
+parser.add_argument('--notmarkers', type=str, dest='strNM',default="N", help='Enter the number of CPUs available for usearch.')
 
 
 args = parser.parse_args()
@@ -31,8 +33,12 @@ dictMarkerLen = {}
 
 #Load the WGS data. For each gene stub, copy in all the matching genes
 for seq in SeqIO.parse(args.sMarkers, "fasta"):
-    mtchStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',seq.id)
-    dictMarkerLen[mtchStub.group(1)] = len(seq) + dictMarkerLen.get(mtchStub.group(1),0)   
+	if args.strNM=="N":
+		mtchStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',seq.id)
+		strStub = mtchStub.group(1)
+	else:
+		strStub = seq.id
+	dictMarkerLen[strStub] = len(seq) + dictMarkerLen.get(strStub,0)   
     
 
 ###############################################################################
@@ -43,8 +49,8 @@ for seq in SeqIO.parse(args.sMarkers, "fasta"):
 strDBName = args.sMarkers + ".udb"
 strSearchResults = args.sMarkers +".blast"
 
-p = subprocess.Popen(["usearch6", "--makeudb_usearch", args.sMarkers, "--output", strDBName],stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-out, err = p.communicate()
+#Note: Cannot limit threads used in creating of usearch database
+p = subprocess.check_call(["usearch6", "--makeudb_usearch", args.sMarkers, "--output", strDBName])
 
 dQueryCov = (float(args.iLength)*3)/float(100)
 print dQueryCov
@@ -53,10 +59,10 @@ strQC = str(dQueryCov)
 print "The value is: ", strQC
 
 #Use usearch to check for hits (usearch global)
-p = subprocess.Popen(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", "0.90", "--query_cov", strQC, "--blast6out", strSearchResults])
+subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", "0.90", "--query_cov", strQC, "--blast6out", strSearchResults,"--threads",str(args.iThreads)])
 
 
-
+print "Ran usearch_local"
 
 
 #Use usearch to checkj for hits (usearch local)
@@ -72,13 +78,15 @@ for line in open(args.sWGS):
 #Go through the blast hits, for each prot family, print out the number of hits
 dictBLAST = {}    
 for aLine in csv.reader( open( strSearchResults), csv.excel_tab ):
-    #print aLine[1]
-    mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])    
-    strProtFamily = mtchProtStub.group(1)        
-    dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))
-    if (mtchProtStub):
-        iHits+=1
-            
+	#print aLine[1]
+	if args.strNM=="N":
+		mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])    
+		strProtFamily = mtchProtStub.group(1)
+	else:
+		strProtFamily = aLine[1]
+	dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))
+	iHits+=1
+print "Searched through the file"            
     
 for strProt in dictBLAST.keys():
     print strProt + "\t" +  str(float(len(dictBLAST[strProt]))/dictMarkerLen[strProt])
