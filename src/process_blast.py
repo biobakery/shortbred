@@ -14,6 +14,9 @@ import re
 import sys
 import csv
 import argparse
+import os
+import subprocess
+import glob
 
 import Bio
 from Bio.Seq import Seq
@@ -49,6 +52,78 @@ dIDcutoff = args.dID * 100
 dLengthcutoff = args.dL
 
 """
+###############################################################################
+def MakeFamilyFastaFiles ( dictFams, fileFasta, dirOut):
+    
+    dictgeneFamilies = {}    
+    
+    for gene in SeqIO.parse(fileFasta, "fasta"):
+        strFamily = dictFams.get(gene.id,"unassigned")
+        aGene = dictgeneFamilies.get(strFamily,list())        
+        aGene.append(gene)
+        dictgeneFamilies[strFamily] = aGene
+
+    for key in dictgeneFamilies.keys():
+        strFamFile = dirOut + os.sep + key +".faa"
+        f = open(strFamFile, 'w')
+        SeqIO.write(dictgeneFamilies[key], strFamFile, "fasta")                         
+        f.close()
+        
+
+            
+        
+    
+
+###############################################################################
+def ClusterFams(dirClust):
+    
+    dirFams = dirClust + os.sep + "fams"
+    dirCentroids = dirFams+os.sep+"centroids"
+    dirUC = dirFams+ os.sep + "uc"
+       
+    if not os.path.exists(dirClust):
+        os.makedirs(dirClust)
+    if not os.path.exists(dirFams):
+        os.makedirs(dirFams)
+    if not os.path.exists(dirCentroids):
+        os.makedirs(dirCentroids)
+        
+    if not os.path.exists(dirUC):
+        os.makedirs(dirUC)
+    
+     
+    print dirCentroids 
+    print glob.glob(dirFams+os.sep+'*.faa')
+    for fileFasta in glob.glob(dirFams+os.sep+'*.faa'):
+        print "The file is ", fileFasta
+        fileClust = dirCentroids + os.sep + os.path.basename(fileFasta) 
+        fileUC    = dirUC + os.sep + os.path.basename(fileFasta) + ".uc"
+        subprocess.check_call(["usearch6", "--cluster_fast", str(fileFasta), "--uc", str(fileUC), "--id", ".95","--centroids", str(fileClust)])
+
+    
+    ageneAllGenes = []
+
+    for fileFasta in glob.glob(dirCentroids+os.sep+'*.faa'):
+        for gene in SeqIO.parse(fileFasta, "fasta"):
+            ageneAllGenes.append(gene)
+            
+    
+    SeqIO.write(ageneAllGenes, dirClust + os.sep + "clust.faa", "fasta")
+
+###############################################################################
+def printMap(strUCMap,strTxtMap):
+   
+    dictGeneMap={}
+    for strLine in csv.reader(open(strUCMap),delimiter='\t'):
+        if (strLine[0] == "H"):
+            dictGeneMap[strLine[-2]] = strLine[-1]
+        elif (strLine[0] == "C"):
+            dictGeneMap[strLine[-2]] = strLine[-2]           
+            
+    f = open(strTxtMap, 'w')
+    for prot, fam in sorted(dictGeneMap.items(), key = lambda(prot, fam): (fam,prot)):
+        f.write(fam + "\t" + prot + "\n")
+    f.close()
 
 ###############################################################################
 def getGeneData ( fileFasta):
