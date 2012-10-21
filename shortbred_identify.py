@@ -71,7 +71,8 @@ log.write("ShortBRED log \n")
 
 iMode = 0
 
-# Step Zero: Determine which mode the program will run
+################################################################################
+# Step Zero: Choose program mode based on args supplied by user
 if (args.sRefProts!=""):
     log.write("Mode 1: Building everything..." + "\n")
     iMode = 1
@@ -84,15 +85,15 @@ elif (args.sClust !="" and args.sGOIBlast!="" and args.sRefBlast!="" and args.sM
 else:
     print "Command line arguments incorrect."
 
-print "Running in mode ",iMode
+print "Running in mode",iMode,"..."
 
 
 ################################################################################
 # Step One: Cluster input genes and make into a blast database.
 #
-# Save clustered file to                "tmp/clust/clust.faa"
-# Save blastdb of clustered file to     "tmp/clustdb/goidb"
-# If prot-to-fam does not exist, save at"tmp/clust/clust.map"
+# Save clustered file to                    "tmp/clust/clust.faa"
+# Save blastdb of clustered file to         "tmp/clustdb/goidb"
+# If prot-to-fam map does not exist, make   "tmp/clust/clust.map"
 
 #Make directories for clustfile and database.
 if(iMode==1 or iMode==2):
@@ -135,7 +136,8 @@ if(iMode==1 or iMode==2):
         pb.ClusterFams(dirClust)
     else:
         subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", strMap + ".uc", "--id", ".95","--centroids", strClustFile])
-        pb.printMap(strMap+".uc", dirClust + os.sep + "clust.map")
+        strMapFile = dirClust + os.sep + "clust.map"
+        pb.printMap(strMap+".uc",strMapFile )
     
     #Make goi database
     subprocess.check_call(["makeblastdb", "-in", strClustFile, "-out", strClustDB, "-dbtype", "prot", "-logfile", dirTmp + os.sep + "goidb.log"])
@@ -181,11 +183,13 @@ if(iMode==1 or iMode==2):
 
 
 ##################################################################################################
-#Part Four: PROCESS BLAST RESULTS, COUNT OVERLAP BETWEEN GENES (CENTROIDS) AND "HITS"
+#Part Four: Process BLAST results, find regions of overlap.
 
 #Get dict of GeneSeqs, then overlap counts from the Ref and GOI blast results
 #dictGOIGenes has form (genename, "AMNLJI....")
 #dictRefCounts,dictGOICounts have form (genename,[list of overlap counts for each AA])
+
+#Get blastresults, clustfile and map from args if only creating the markers
 if (args.sClust!=""):
     strClustFile = args.sClust
 if (args.sRefBlast!=""):
@@ -195,13 +199,19 @@ if (args.sGOIBlast!=""):
 if (args.sMapIn!=""):
     strMapFile = args.sMapIn
 
+dictFams = {}
+for strLine in csv.reader(open(strMapFile),delimiter='\t'):
+    dictFams[strLine[1]]=strLine[0]
+        
+
 
 dictGOIGenes = pb.getGeneData(open(strClustFile))
 sys.stderr.write( "Finding overlap with reference database...")
 dictRefCounts = pb.getOverlapCounts(strBlastRef, args.dID, 0, args.dL, 0, 0)
 sys.stderr.write( "Finding overlap with goi database...")
-dictGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, 0, args.dL, 0, 0)
+dictGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, 0, args.dL, 0, 0,dictFams)
 dictBigGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, args.dL +.01, .70, args.iMLength/2, 0)
+
 
 #If a gene has 0 valid hits in the ref database, make an array of 0's
 #so the program knows that nothing overlapped with the gene

@@ -151,7 +151,7 @@ def getGeneData ( fileFasta):
 
 #Add the last gene when you finish the file
 
-def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, iRegionLength):
+def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, iRegionLength, dictFams={}):
 
     strCurQuery = ""
     dictAAOverlapCounts = {}
@@ -185,16 +185,22 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
         
         dMatchLength = (iAln) / float(iQLength)
 
-        
+        """
         #If user gave "abs_l" parameter, use that to determine what regions to eliminate
         if (iRegionLength>0):
             if (dIdentity >= dIDcutoff) and (iAln >= iRegionLength) and (strQueryID!=strSubId):
                 #(Blast starts count at 1, but our array starts at 0, so we subtract 1. )                
                 for i in range(iQStart-1, iQEnd):
                     aiCounts[i]=aiCounts[i]+1
-            
-        #Else: Mask high-identity, low-length regions using (alignment length / query length)
-        elif (dIdentity >= dIDcutoff) and (dMatchLength <= dLengthcutoff) and (strQueryID!=strSubId) and (dMatchLength >= dLengthMin):
+        """
+
+        if (len(dictFams) > 0):
+            bNotSameFam = (dictFams.get(strQueryID,"NoQuery")!=dictFams.get(strSubId,"NoSubject"))
+        #Mask high-identity, low-length regions using (alignment length / query length)
+        else:
+            bNotSameFam = True
+        
+        if (dIdentity >= dIDcutoff) and (dMatchLength <= dLengthcutoff) and (strQueryID!=strSubId) and (dMatchLength >= dLengthMin) and bNotSameFam:
             for i in range(iQStart-1+iOffset, iQEnd-iOffset):
                 aiCounts[i]=aiCounts[i]+1
     
