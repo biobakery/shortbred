@@ -291,9 +291,43 @@ premarkers.close()
 ##################################################################################
 #PRINT WINDOWS
 
-dictGeneWindows = mw.getGeneWindows (open(args.sTmp + os.sep + 'premarkers.txt'))
-dictSplitWindows = mw.splitGenes(dictGeneWindows, args.iTotLength)
-mw.printWindows(dictSplitWindows, args.sMarkers, args.iMLength, args.iTotLength)
+#Print the True Markers.
+
+#Read in the data from "premarkers.txt",
+#It looks like the example below:
+"""
+>AAA26613_TM
+MTXXXXXLETXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXSXXXXXX
+XXXXXXXXCLINETEKFLNIWIESNVSFXXXXXXYKSDLLEYKDTXXXXXXXXXXXXXGXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXQNIVDSVNEWDLNLK
+"""     
+#For each gene,look at the stretches of sequence not X'ed out. 
+#If it's long to be a marker, convert it to a seq object and print it out, and
+#add the length to iLength. Don't print if iLength would be over the
+#total_marker_length limit.
+
+fOut = open(args.sMarkers, 'w') 
+
+for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):
+    
+    iCount = 1
+    iLength = 0
+    
+    for strMarker in (re.split('X*',str(gene.seq))):
+        if (len(strMarker)>=args.iMLength and (iLength + len(strMarker)) <= args.iTotLength ):
+            geneMarker = SeqRecord(Seq(strMarker),id = ">" + gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
+            SeqIO.write(geneMarker, fOut,"fasta")
+            iCount+=1
+            iLength = iLength + len(strMarker)            
+            
+            
+
+
+
+
+#dictGeneWindows = mw.getGeneWindows (open(args.sTmp + os.sep + 'premarkers.txt'))
+#dictSplitWindows = mw.splitGenes(dictGeneWindows, args.iTotLength)
+#mw.printWindows(dictSplitWindows, args.sMarkers, args.iMLength, args.iTotLength)
 #mw.printQM(dictQuasiMarkers, dictQuasiMarkers2, args.sMarkers)
 #print atupQuasiMarkers1
 #print atupQuasiMarkers2 
