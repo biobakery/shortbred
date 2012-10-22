@@ -15,6 +15,14 @@ pb = src.process_blast
 import src.make_windows
 mw = src.make_windows
 
+import Bio
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio.Alphabet import IUPAC
+from Bio.Data import CodonTable
+from Bio import SeqIO
+
+
 ###############################################################################
 #ARGUMENTS
 
@@ -54,10 +62,10 @@ parser.add_argument('--tmpdir', default =os.getcwd() +os.sep + "tmp", type=str, 
 args = parser.parse_args()
 ##############################################################################
 
-print os.getcwd()
+#print os.getcwd()
 
 dirTmp = args.sTmp
-print dirTmp
+#print dirTmp
 
 #Make out and tmp directories.
 if not os.path.exists("out"):
@@ -85,7 +93,7 @@ elif (args.sClust !="" and args.sGOIBlast!="" and args.sRefBlast!="" and args.sM
 else:
     print "Command line arguments incorrect."
 
-print "Running in mode",iMode,"..."
+#print "Running in mode",iMode,"..."
 
 
 ################################################################################
@@ -301,28 +309,31 @@ MTXXXXXLETXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXSXXXXXX
 XXXXXXXXCLINETEKFLNIWIESNVSFXXXXXXYKSDLLEYKDTXXXXXXXXXXXXXGXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXQNIVDSVNEWDLNLK
 """     
-#For each gene,look at the stretches of sequence not X'ed out. 
-#If it's long to be a marker, convert it to a seq object and print it out, and
-#add the length to iLength. Don't print if iLength would be over the
-#total_marker_length limit.
+
 
 fOut = open(args.sMarkers, 'w') 
+iMLength = args.iMLength
+iTotLength = args.iTotLength
 
-for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):
-    
+for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):    
     iCount = 1
-    iLength = 0
+    iRemSeq = iTotLength
     
-    for strMarker in (re.split('X*',str(gene.seq))):
-        if (len(strMarker)>=args.iMLength and (iLength + len(strMarker)) <= args.iTotLength ):
-            geneMarker = SeqRecord(Seq(strMarker),id = ">" + gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
-            SeqIO.write(geneMarker, fOut,"fasta")
-            iCount+=1
-            iLength = iLength + len(strMarker)            
-            
-            
+    mtch = re.search('X',str(gene.seq))
+    if not mtch:
+        strMarker = str(gene.seq)
+        geneMarker = SeqRecord(Seq(strMarker[0:min(iRemSeq,len(strMarker))]),id = gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
+        SeqIO.write(geneMarker, fOut,"fasta")
+        iRemSeq = iRemSeq - len(geneMarker.seq)
 
-
+    else:
+        for strMarker in (re.split('X*',str(gene.seq))):
+            if (iRemSeq>=iMLength and len(strMarker) >= iMLength ):
+                geneMarker = SeqRecord(Seq(strMarker[0:min(iRemSeq,len(strMarker))]),id = gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
+                SeqIO.write(geneMarker, fOut,"fasta")
+                iCount+=1
+                iRemSeq = iRemSeq - len(geneMarker)
+    
 
 
 #dictGeneWindows = mw.getGeneWindows (open(args.sTmp + os.sep + 'premarkers.txt'))
