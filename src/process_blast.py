@@ -157,9 +157,13 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
     dictAAOverlapCounts = {}
     aiCounts =[]
     iGeneCount = 0
-    
-    for aLine in csv.reader( open(fileBlast), csv.excel_tab ):
-        strQueryID = aLine[0]
+    iLine =0    
+	    
+
+    sys.stderr.write("The file is " + fileBlast + "\n")	
+    for aLine in csv.reader( open(fileBlast, 'rb'), delimiter='\t' ):
+
+	strQueryID = aLine[0]
         strSubId = aLine[1]
         dIdentity =float(aLine[2])/100
         iAln= int(aLine[3] )

@@ -54,7 +54,7 @@ parser.add_argument('--tmpdir', default =os.getcwd() +os.sep + "tmp", type=str, 
 args = parser.parse_args()
 ##############################################################################
 
-
+print os.getcwd()
 
 dirTmp = args.sTmp
 print dirTmp
@@ -206,6 +206,8 @@ for strLine in csv.reader(open(strMapFile),delimiter='\t'):
 
 
 dictGOIGenes = pb.getGeneData(open(strClustFile))
+sys.stderr.write(strBlastRef)
+sys.stderr.write(strBlastSelf)
 sys.stderr.write( "Finding overlap with reference database...")
 dictRefCounts = pb.getOverlapCounts(strBlastRef, args.dID, 0, args.dL, 0, 0)
 sys.stderr.write( "Finding overlap with goi database...")
