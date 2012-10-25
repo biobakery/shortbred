@@ -31,7 +31,9 @@ parser = argparse.ArgumentParser(description='ShortBRED Identify \n This program
 ############################################################################
 #INPUT Files
 #For initial run: goi genes, ref genes, (famlist)
-#For runs after BLAST and Clustering: goiblast, refblast, clust, (famlist)
+#For initial run, with blastdb: goi genes, ref fb, (famlist)
+#
+
 #(famlist) is an optional specification of protein families
  
 parser.add_argument('--goi', type=str, dest='sGOIProts',default= "", help='Enter the path and name of the genes of interest file (proteins).')
@@ -56,6 +58,7 @@ parser.add_argument('--totlength', default = 200, type=int, dest='iTotLength', h
 parser.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity cutoff. Examples: .90, .85, .10,...')
 parser.add_argument('--len', default = .10, type=float, dest='dL', help='Enter maximum length for region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
 parser.add_argument('--runblast', default = "True", type=str, dest='sRunBlast', help='Set equal to \'False\' to skip Blast, and use existing Blast output')
+parser.add_argument('--clustid',default = .90, type=float, dest='dClustID', help='Enter the identity cutoff for clustering the refdb and goidb. Examples: .90, .85, .10,...')
 parser.add_argument('--tmpdir', default =os.getcwd() +os.sep + "tmp", type=str, dest='sTmp', help='Set directory for temporary output files.')
 
 
@@ -65,6 +68,10 @@ args = parser.parse_args()
 #print os.getcwd()
 
 dirTmp = args.sTmp
+dirTime = dirTmp + os.sep + "time"
+
+
+
 #print dirTmp
 
 #Make out and tmp directories.
@@ -72,7 +79,8 @@ if not os.path.exists("out"):
     os.makedirs("out")
 if not os.path.exists(dirTmp):
     os.makedirs(dirTmp)
-
+if not os.path.exists(dirTime):
+    os.makedirs(dirTime)
 
 log = open(dirTmp + os.sep + "log.txt", "w")
 log.write("ShortBRED log \n")
@@ -143,12 +151,12 @@ if(iMode==1 or iMode==2):
         pb.MakeFamilyFastaFiles(dictFams, args.sGOIProts, dirFams)
         pb.ClusterFams(dirClust)
     else:
-        subprocess.check_call(["usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", strMap + ".uc", "--id", ".95","--centroids", strClustFile])
+        subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", strMap + ".uc", "--id", str(args.dClustID),"--centroids", strClustFile])
         strMapFile = dirClust + os.sep + "clust.map"
         pb.printMap(strMap+".uc",strMapFile )
     
     #Make goi database
-    subprocess.check_call(["makeblastdb", "-in", strClustFile, "-out", strClustDB, "-dbtype", "prot", "-logfile", dirTmp + os.sep + "goidb.log"])
+    subprocess.check_call(["time", "-o", dirTime + os.sep + "goidb.time", "makeblastdb", "-in", strClustFile, "-out", strClustDB, "-dbtype", "prot", "-logfile", dirTmp + os.sep + "goidb.log"])
 
 
 ################################################################################
@@ -162,7 +170,11 @@ if(iMode==1):
             os.makedirs(dirRefDB)
         strRefDBPath = dirRefDB + os.sep + "refdb"    
         
-        subprocess.check_call(["makeblastdb", "-in", str(args.sRefProts),"-out", strRefDBPath, "-dbtype", "prot", "-logfile", dirTmp + os.sep +  "refdb.log"])
+        #Recent edits to cluster the reference database ahead of time
+        """      
+        subprocess.check_call(["time", "-o",dirTime + os.sep + "refclust.time","usearch6", "--cluster_fast", str(args.sRefProts), "--uc",  "ref.uc", "--id", str(args.dClustID),"--centroids", strClustFile])        
+        """        
+        subprocess.check_call(["time", "-o",dirTime + os.sep + "refdb.time","makeblastdb", "-in", str(args.sRefProts),"-out", strRefDBPath, "-dbtype", "prot", "-logfile", dirTmp + os.sep +  "refdb.log"])
 
 ################################################################################
 # Step Three: Run Blast Searches
@@ -184,10 +196,10 @@ if(iMode==1 or iMode==2):
         os.makedirs(dirBlastResults)
     
     #Blast clust file against goidb
-    subprocess.check_call(["blastp", "-query", strClustFile, "-db", strClustDB, "-out", strBlastSelf, "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
+    subprocess.check_call(["time", "-o", dirTime + os.sep +"goisearch.time","blastp", "-query", strClustFile, "-db", strClustDB, "-out", strBlastSelf, "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
     
     #Blast clust file against refdb
-    subprocess.check_call(["blastp", "-query", strClustFile, "-db",strRefDBPath, "-out", strBlastRef, "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
+    subprocess.check_call(["time", "-o", dirTime + os.sep +"refsearch.time", "blastp", "-query", strClustFile, "-db",strRefDBPath, "-out", strBlastRef, "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
 
 
 ##################################################################################################
@@ -272,7 +284,7 @@ for key in setHasMarkers:
 
             for i in range(0,len(aiWindow)):
                 if aiWindow[i] >= 1:
-                    strGene[i] = "X"
+                    strGene[i] = "+"
             strGene = "".join(strGene)
             dictGOIGenes[key] =strGene
 
@@ -319,7 +331,7 @@ for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):
     iCount = 1
     iRemSeq = iTotLength
     
-    mtch = re.search('X',str(gene.seq))
+    mtch = re.search('\+',str(gene.seq))
     if not mtch:
         strMarker = str(gene.seq)
         geneMarker = SeqRecord(Seq(strMarker[0:min(iRemSeq,len(strMarker))]),id = gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
@@ -327,7 +339,7 @@ for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):
         iRemSeq = iRemSeq - len(geneMarker.seq)
 
     else:
-        for strMarker in (re.split('X*',str(gene.seq))):
+        for strMarker in (re.split('\+*',str(gene.seq))):
             if (iRemSeq>=iMLength and len(strMarker) >= iMLength ):
                 geneMarker = SeqRecord(Seq(strMarker[0:min(iRemSeq,len(strMarker))]),id = gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
                 SeqIO.write(geneMarker, fOut,"fasta")
