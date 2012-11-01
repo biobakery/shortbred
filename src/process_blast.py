@@ -1,15 +1,5 @@
 #!/usr/bin/env python
 
-
-#This is a modified version of process_blast.py. That program used "bool" values
-#to determine if an amino acid was X'ed out. This program instead records the count
-#of regions that overlapped a given AA.
-
-#****************************************************************************
-#--Example Use--
-#  python process_blast_int.py --fasta /home/jim/tmp/clust.faa --goi /home/jim/tmp/blast_clust_to_clust.txt --ref /home/jim/tmp/blast_clust_to_clust.txt
-
-
 import re
 import sys
 import csv
@@ -24,36 +14,10 @@ from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO
 
-"""
-parser = argparse.ArgumentParser(description='Remove hits with indetity >=i and length <=l from sequence.')
-parser.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity cutoff. Examples: .90, .85, .10,...')
-parser.add_argument('--len', default = .10, type=float, dest='dL', help='Enter maximum length for region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
-parser.add_argument('--tabs', default = False, type=bool, dest='fTabs', help='Set to True if you would like to print: GeneName, #AAs after process, ##AA initially ')
-parser.add_argument('--fasta', type=file, dest='fGOIFasta', help='Enter the path and name of your fasta file.')
-parser.add_argument('--abs_l', default=0, type=int, dest='iRegionLength', help='Enter an integer here to remove regions of X length or greater. This will cause the program to ignore any other parameters for length')
-parser.add_argument('--ref', type=file, dest='fRefBlast', help='Enter the path and name of the blast results from the refrence db.')
-parser.add_argument('--goi', type=file, dest='fGOIBlast', help='Enter the path and name of the blast results from the goi db.')
-parser.add_argument('--ko', type=str, dest='sKO', help='Enter \"ref\",\"goi\" or \"both\".')
-parser.add_argument('--winlength', type=int, dest='iWinLength', help='Enter window length')
 
-args = parser.parse_args()
-"""             
-"""
-Add a log file
--Number of genes in input file
--Number of matches in blast file
--Number of unique query genes in blast file
--Number of genes that did not drop any domains
--Number of genes that lost more than 90% of data
-             
-
-
-dIDcutoff = args.dID * 100
-dLengthcutoff = args.dL
-
-"""
 ###############################################################################
 def MakeFamilyFastaFiles ( dictFams, fileFasta, dirOut):
+#Makes a fasta file containing genes for each family in dictFams.    
     
     dictgeneFamilies = {}    
     
@@ -69,13 +33,9 @@ def MakeFamilyFastaFiles ( dictFams, fileFasta, dirOut):
         SeqIO.write(dictgeneFamilies[key], strFamFile, "fasta")                         
         f.close()
         
-
-            
-        
-    
-
 ###############################################################################
 def ClusterFams(dirClust):
+#Clusters all of the family files made by MakeFamilyFastaFiles.
     
     dirFams = dirClust + os.sep + "fams"
     dirCentroids = dirFams+os.sep+"centroids"
@@ -112,6 +72,7 @@ def ClusterFams(dirClust):
 
 ###############################################################################
 def printMap(strUCMap,strTxtMap):
+#Converts usearch .uc file into two column (FamId, GeneId) file.
    
     dictGeneMap={}
     for strLine in csv.reader(open(strUCMap),delimiter='\t'):
@@ -127,6 +88,7 @@ def printMap(strUCMap,strTxtMap):
 
 ###############################################################################
 def getGeneData ( fileFasta):
+#Returns dict of form (GeneID, seq)
     dictGeneData = {}
     
     for gene in SeqIO.parse(fileFasta, "fasta"):
@@ -138,8 +100,9 @@ def getGeneData ( fileFasta):
     return dictGeneData
 
 ##############################################################################
-#Make a dictionary of form (Gene, [0,0,0,0,1,1...]), where the number indicates
-#the number of times an amino acid overlaps with a region in the blast output
+def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, iRegionLength, dictFams={}):
+#Makes a dictionary of form (GeneID, [0,0,0,0,1,1...]), where the number indicates
+#the number of times an amino acid overlaps with a region in the blast output.
 
 #Read in the blast output line by line
 #When the program finds a new QueryGene:
@@ -151,8 +114,6 @@ def getGeneData ( fileFasta):
 
 #Add the last gene when you finish the file
 
-def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, iRegionLength, dictFams={}):
-
     strCurQuery = ""
     dictAAOverlapCounts = {}
     aiCounts =[]
@@ -160,7 +121,7 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
     iLine =0    
 	    
 
-    sys.stderr.write("The file is " + fileBlast + "\n")	
+    #sys.stderr.write("The file is " + fileBlast + "\n")	
     for aLine in csv.reader( open(fileBlast, 'rb'), delimiter='\t' ):
 
 	strQueryID = aLine[0]
@@ -217,11 +178,11 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
     return dictAAOverlapCounts
 
 ###########################################################################
-#Take the genes in setNames, look in dictKnockOut to see if they have a 
-#region of length N without any overlap. Returns set of genes with markers.
-
-
 def CheckForMarkers(setGenes, dictKnockOut, iN):
+#Take the genes in setNames, look in dictKnockOut (GeneID, [0,0,..])
+#to see if they have a region of length N without any overlap. 
+# Returns set of genes (ID's) with markers.
+
 
     fFoundRegion = False
     fHitEnd = False
@@ -250,10 +211,10 @@ def CheckForMarkers(setGenes, dictKnockOut, iN):
 def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
     
     #Only run this on the leftover genes
-    # "n" = minimum window length
+    # "iN" = minimum window length
     #For each one, sum up the values from [0:n], then [1:n+1]...
     #Store these in an array of length (len(gene)-n)
-    #FInd the minimum value in this array
+    #Find the minimum value in this array
     #Take its index
     #Your window is [index:index+n]
     
@@ -263,7 +224,7 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
     
     #Return dictQM with these windows
 
-    #tuple with 3 values (name, window, overlapvalue)
+    #A QM_tuple has 3 values (name, window, overlapvalue)
     
     
     atupQM = []
@@ -281,7 +242,7 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
         
 
         
-        #Cycle through all windows of length N, record total overlap
+        #Cycle through all windows of length N, record total overlap in aiWindowSums
         
         while (fHitEnd == False):
             if ((iStart+iN) >= len(aiWindow)):
@@ -308,10 +269,12 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
         tup = (key, dictGenes[key][iWinStart:iWinEnd],iMin)       
         atupQM.append(tup)
         
-        #In the knockouty dictionary, set the QM region you just took to have "9999"
+        #In the knockout dictionary, set the QM region you just took to have "9999"
         #for each AA. Then it wont be used again for the second QM window.
         dictKnockOut[key][iWinStart:iWinEnd] = [9999]*(iWinEnd-iWinStart +1)
         
+        #11/1/2012 - Jim
+        #Daniela, I just looked at this and now I think changing that region to 9999 may be wrong.
         
         
         #Error Checking   
@@ -331,133 +294,4 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
     
     return atupQM
 
-"""
-##############################################################################
-#Get dict of GeneSeqs, then overlap counts from the Ref and GOI blast results
-dictGOIGenes = getGeneData(args.fGOIFasta)
-dictRefCounts = getOverlapCounts(args.fRefBlast)
-dictGOICounts = getOverlapCounts(args.fGOIBlast)
 
-
-
-#If a gene has 0 valid hits in the ref database, make an array of 0's
-#so the program knows that nothing overlapped with the gene
-setGOINotInRef = set(dictGOIGenes.keys()).difference(set(dictRefCounts.keys()))
-
-if len(setGOINotInRef)>0:
-    for sGene in setGOINotInRef:
-        dictRefCounts[sGene] = [0]*len(dictGOIGenes[sGene])
-
-#If a gene has 0 valid hits in the GOI database (unlikely), make an 
-#array of 0's so the program knows that nothing overlapped with the gene    
-
-setGOINoHits = set(dictGOIGenes.keys()).difference(set(dictGOICounts.keys()))
-
-if len(setGOINoHits)>0:
-    for sGene in setGOINoHits:
-        dictGOICounts[sGene] = [0]*len(dictGOIGenes[sGene])
-
-
-#Get dict of counts for (Ref+GOI)
-dictBoth = {}
-setRefGOI = set(dictGOICounts.keys()).union(set(dictRefCounts.keys())) 
-
-for sGene in setRefGOI:
-    aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]))]
-    dictBoth[sGene] = aiSum
-    
-
-
-###########################################################################
-#Check for genes that have "marker windows": windows of length N that do not
-#overlap with anything in the "overlap reference"
-
-
-setHasMarkers = CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictBoth.keys()), dictBoth, args.iWinLength)
-setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
-"""
-#Removed this code, was used to make class markers
-
-"""
-setHasClassMarkers = CheckForMarkers(setLeftover.intersection(dictRefCounts.keys()), dictRefCounts, args.iWinLength)
-print "Genes with Class Markers:",  len(setHasClassMarkers)
-
-
-setLeftover = setLeftover.difference(setHasClassMarkers)
-"""
-"""
-dictQuasiMarkers = CheckForQuasiMarkers(setLeftover, dictBoth, dictGOIGenes,args.iWinLength)
-
-
-
-###########################################################################
-#Replace AA's with X's in True Markers
-for key in setHasMarkers:
-        if dictBoth.has_key(key):
-            aiWindow = dictBoth[key]
-            strGene = list(dictGOIGenes[key])
-
-            for i in range(0,len(aiWindow)):
-                if aiWindow[i] >= 1:
-                    strGene[i] = "X"
-            strGene = "".join(strGene)
-            dictGOIGenes[key] =strGene
-
-###########################################################################
-#Replace AA's with X's in Class Markers
-for key in setHasClassMarkers:
-        if dictRefCounts.has_key(key):
-            aiWindow = dictRefCounts[key]
-            strGene = list(dictGOIGenes[key])
-
-            for i in range(0,len(aiWindow)):
-                if aiWindow[i] >= 1:
-                    strGene[i] = "X"
-            strGene = "".join(strGene)
-            dictGOIGenes[key] =strGene
-           
-###########################################################################
-#Add in the QuasiMarkers
-
-for key in dictQuasiMarkers:
-    dictGOIGenes[key]=dictQuasiMarkers[key][0]
-   
-##############################################################################
-#Print out the genes
-strGeneName = ""
-iCount = 0
-
-
-#f.write( "Database, ClustID, PctID, PctLength, WinLength, Quasi-Threshhold Used, Num Genes After Clust, # TM's, # QM's, Windows, Num Genes Missing Windows, Sum Overlap for QM's")
-print("VF,95%," + str(args.dID) + "," + str(args.dL) + "," + str(args.iWinLength) + ",999," + str(len(dictGOIGenes)))  
-
-
-print "GOI Genes:", len(dictGOIGenes)
-print "Ref Valid Hits:", len(dictRefCounts)
-print "GOI Valid Hits:",len(dictGOICounts)
-
-print ""
-print "Window Length: ", args.iWinLength
-
-print "Genes with True Markers:", len(setHasMarkers)
-print "Genes with Quasi-Markers:", len(dictQuasiMarkers)
-print "Union of all Genes with Markers:", len(setHasMarkers.union(dictQuasiMarkers.keys()))
-
-print "Length of dictGOIGenes:",len(dictGOIGenes)
-     
-for key in dictGOIGenes:
-    if key in setHasMarkers:
-        strGeneName = ">" + key + "_TM"
-    #elif key in setHasClassMarkers:
-     #   strGeneName = ">" + key + "_CM"
-    elif key in dictQuasiMarkers:
-        strGeneName = ">" + key + "_QM" + str(dictQuasiMarkers[key][1])
-    else:
-        strGeneName = ">" + key + "_OTH"
-         
-    
-    print strGeneName
-    print re.sub("(.{80})","\\1\n",dictGOIGenes[key],re.DOTALL)
-    iCount = iCount+1
-
-"""

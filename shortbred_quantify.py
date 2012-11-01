@@ -13,13 +13,14 @@ from Bio import SeqIO
 
 parser = argparse.ArgumentParser(description='ShortBRED Quantify \n This program takes a set of protein family markers, and produces a relative abundance table.')
 
-
+#Input
 parser.add_argument('--markers', type=str, dest='sMarkers', help='Enter the path and name of the genes of interest file (proteins).')
-parser.add_argument('--results', type=str, dest='sResults', help='Enter the path and name of the results file.')
-
-
 parser.add_argument('--wgs', type=str, dest='sWGS', help='Enter the path and name of the genes of interest file (proteins).')
 
+#Output
+parser.add_argument('--results', type=str, dest='sResults', help='Enter the path and name of the results file.')
+
+#Parameters
 parser.add_argument('--tmp', type=str, dest='sTmp', help='Enter the path and name of the tmp directory.')
 parser.add_argument('--length', type=int, dest='iLength', help='Enter the minimum length of the markers.')
 parser.add_argument('--threads', type=int, dest='iThreads', help='Enter the number of CPUs available for usearch.')
