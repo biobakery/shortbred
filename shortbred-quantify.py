@@ -15,13 +15,15 @@ parser = argparse.ArgumentParser(description='ShortBRED Quantify \n This program
 
 
 parser.add_argument('--markers', type=str, dest='sMarkers', help='Enter the path and name of the genes of interest file (proteins).')
+parser.add_argument('--results', type=str, dest='sResults', help='Enter the path and name of the results file.')
+
 
 parser.add_argument('--wgs', type=str, dest='sWGS', help='Enter the path and name of the genes of interest file (proteins).')
 
 parser.add_argument('--tmp', type=str, dest='sTmp', help='Enter the path and name of the tmp directory.')
 parser.add_argument('--length', type=int, dest='iLength', help='Enter the minimum length of the markers.')
 parser.add_argument('--threads', type=int, dest='iThreads', help='Enter the number of CPUs available for usearch.')
-parser.add_argument('--notmarkers', type=str, dest='strNM',default="N", help='Enter the number of CPUs available for usearch.')
+parser.add_argument('--notmarkers', type=str, dest='strNM',default="N", help='.')
 
 
 args = parser.parse_args()
@@ -58,22 +60,13 @@ dQueryCov = round(dQueryCov,2)
 strQC = str(dQueryCov)
 print "The value is: ", strQC
 
-#Use usearch to check for hits (usearch global)
-subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", "0.90", "--query_cov", strQC, "--blast6out", strSearchResults,"--threads",str(args.iThreads)])
-
-
-print "Ran usearch_local"
+#Use usearch to check for hits (usearch local)
+subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", "0.95", "--blast6out", strSearchResults,"--threads", str(args.iThreads), "--gapopen", "20"])
 
 
 #Use usearch to checkj for hits (usearch local)
 
-iReads = 0
-iHits = 0
 
-for line in open(args.sWGS):
-    mtch = re.search(r'^\>',line)
-    if (mtch):
-        iReads+=1
 
 #Go through the blast hits, for each prot family, print out the number of hits
 dictBLAST = {}    
@@ -85,13 +78,10 @@ for aLine in csv.reader( open( strSearchResults), csv.excel_tab ):
 	else:
 		strProtFamily = aLine[1]
 	dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))
-	iHits+=1
-print "Searched through the file"            
+	
+
+
     
 for strProt in dictBLAST.keys():
     print strProt + "\t" +  str(float(len(dictBLAST[strProt]))/dictMarkerLen[strProt])
     
-
-print "Reads in WGS file:" + " " + str(iReads)
-print "Total Reads Matched:" + " " + str(iHits)
-print "Share of WGS matched:" + " " + str(round(float(iHits)/iReads,5))
