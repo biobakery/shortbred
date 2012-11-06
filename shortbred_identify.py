@@ -46,6 +46,7 @@ parser.add_argument('--refblast', type=str, dest='sRefBlast', default= "", help=
 parser.add_argument('--goiclust', type=str, default ="", dest='sClust', help='Enter the path and name of the clustered genes of interest file.')
 parser.add_argument('--map_in', type=str, dest='sMapIn',default="", help='Enter the path and name of the two column file connecting proteins to families.')
 
+
 # DANIELA NOTE: Put these first 7 elements in one list. Easier to check whether the user 
 # had supplied incorrect parameters. Determine control flow based on that.
 
@@ -74,6 +75,7 @@ parser.add_argument('--len', default = .10, type=float, dest='dL', help='Enter t
 #Markers
 parser.add_argument('--markerlength', type=int, default=20, dest='iMLength', help='Enter the minimum marker length.')
 parser.add_argument('--totlength', default = 200, type=int, dest='iTotLength', help='Enter the maximum length for the combined markers for a gene. Default is 200')
+parser.add_argument('--qthresh', type=int, dest='iThresh',default=30, help='Enter a maximum quasi-score.')
 
 
 #Tmp Directory
@@ -310,7 +312,7 @@ for sGene in setRefGOI:
 setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAllCounts.keys()), dictAllCounts, args.iMLength)
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 sys.stderr.write( "Found True Markers...")
-atupQuasiMarkers1 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength,30, args.iTotLength)
+atupQuasiMarkers1 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength,args.iThresh, args.iTotLength)
 sys.stderr.write( "Found first set of Quasi Markers...")
 #atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
 #sys.stderr.write( "Found second set of Quasi Markers...")
