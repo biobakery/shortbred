@@ -11,7 +11,7 @@ import Bio
 from Bio.Seq import Seq
 from Bio import SeqIO
 
-parser = argparse.ArgumentParser(description='ShortBRED Quantify \n This program takes a set of protein family markers, and produces a relative abundance table.')
+parser = argparse.ArgumentParser(description='ShortBRED Quantify \n This program takes a set of protein family markers and wgs file as input, and produces a relative abundance table.')
 
 #Input
 parser.add_argument('--markers', type=str, dest='sMarkers', help='Enter the path and name of the genes of interest file (proteins).')
@@ -25,6 +25,8 @@ parser.add_argument('--tmp', type=str, dest='sTmp', help='Enter the path and nam
 parser.add_argument('--length', type=int, dest='iLength', help='Enter the minimum length of the markers.')
 parser.add_argument('--threads', type=int, dest='iThreads', help='Enter the number of CPUs available for usearch.')
 parser.add_argument('--notmarkers', type=str, dest='strNM',default="N", help='.')
+
+#DB Note - Maybe ask Nicola how to remove usearch6 output
 
 
 args = parser.parse_args()
@@ -55,18 +57,16 @@ strSearchResults = args.sMarkers +".blast"
 #Note: Cannot limit threads used in creating of usearch database
 p = subprocess.check_call(["usearch6", "--makeudb_usearch", args.sMarkers, "--output", strDBName])
 
+"""
 dQueryCov = (float(args.iLength)*3)/float(100)
 print dQueryCov
 dQueryCov = round(dQueryCov,2)
 strQC = str(dQueryCov)
 print "The value is: ", strQC
+"""
 
 #Use usearch to check for hits (usearch local)
 subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", "0.95", "--blast6out", strSearchResults,"--threads", str(args.iThreads), "--gapopen", "20"])
-
-
-#Use usearch to checkj for hits (usearch local)
-
 
 
 #Go through the blast hits, for each prot family, print out the number of hits
@@ -80,8 +80,6 @@ for aLine in csv.reader( open( strSearchResults), csv.excel_tab ):
 		strProtFamily = aLine[1]
 	dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))
 	
-
-
     
 for strProt in dictBLAST.keys():
     print strProt + "\t" +  str(float(len(dictBLAST[strProt]))/dictMarkerLen[strProt])

@@ -123,8 +123,10 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
 
     #sys.stderr.write("The file is " + fileBlast + "\n")	
     for aLine in csv.reader( open(fileBlast, 'rb'), delimiter='\t' ):
-
-	strQueryID = aLine[0]
+    
+        iLine+=1
+        
+        strQueryID = aLine[0]
         strSubId = aLine[1]
         dIdentity =float(aLine[2])/100
         iAln= int(aLine[3] )
@@ -138,8 +140,12 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
         dBit = float(aLine[11])
         iQLength = int(aLine[12]) 
 
+        
+        #When the current queryID changes, add the last one, and switch to the next gene.
+        #DB Note - Edited so we do not add the blank strCurQuery on the first line.
         if strQueryID != strCurQuery:
-            dictAAOverlapCounts.setdefault(strCurQuery, aiCounts)        
+            if iLine>1:
+                dictAAOverlapCounts.setdefault(strCurQuery, aiCounts)        
             iGeneCount = iGeneCount+1        
             strCurQuery = strQueryID
                   
@@ -158,12 +164,16 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
                 for i in range(iQStart-1, iQEnd):
                     aiCounts[i]=aiCounts[i]+1
         """
-
+        
+        #DB Note - This code was part of an old idea, to not knockout seqs that belong to the same family if the user pre-specified families.  
+        """
         if (len(dictFams) > 0):
             bNotSameFam = (dictFams.get(strQueryID,"NoQuery")!=dictFams.get(strSubId,"NoSubject"))
         #Mask high-identity, low-length regions using (alignment length / query length)
         else:
             bNotSameFam = True
+        """
+        bNotSameFam = True
         
         if (dIdentity >= dIDcutoff) and (dMatchLength <= dLengthcutoff) and (strQueryID!=strSubId) and (dMatchLength >= dLengthMin) and bNotSameFam:
             for i in range(iQStart-1+iOffset, iQEnd-iOffset):
@@ -173,7 +183,6 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
     dictAAOverlapCounts.setdefault(strCurQuery.strip(), aiCounts)        
     iGeneCount = iGeneCount+1 
     
-    del dictAAOverlapCounts[""]
 
     return dictAAOverlapCounts
 
@@ -208,7 +217,7 @@ def CheckForMarkers(setGenes, dictKnockOut, iN):
     
     return setGenesWithMarkers
 ###############################################################################
-def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
+def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLength):
     
     #Only run this on the leftover genes
     # "iN" = minimum window length
@@ -224,7 +233,7 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
     
     #Return dictQM with these windows
 
-    #A QM_tuple has 3 values (name, window, overlapvalue)
+    #A QM_tuple has 3 values (name, markers, overlapvalue)
     
     
     atupQM = []
@@ -258,23 +267,38 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN):
         
         bStop = False        
         
-        #If the next AA has (overlap==0), then extend the window to include it                        
-        while(bStop==False and iWinEnd< len(dictGenes[key])-1):
-            if (dictGenes[key][iWinEnd+1]==0):
+            
+        
+        #Add next AA if that does not pus this over the threshhold
+        print key
+        print iWinStart,iWinEnd              
+        while(bStop==False and iWinEnd< len(dictGenes[key])-1 and len(aiWindow[iWinStart:iWinEnd+1]) < iTotLength):
+            if (sum(aiWindow[iWinStart:iWinEnd+1])<=iThresh):
                 iWinEnd+=1
-                print key, "this ran"
             else:
                 bStop=True
+                
+        #After you've grown the QM as much as possible to the right, try growing to the left.
+        #Test the AA before the first AA of the QM, add it if it doesn't put you over iThresh                
+        while(bStop==False and iWinStart>= 1 and len(aiWindow[iWinStart-1:iWinEnd]) < iTotLength):
+            if (sum(aiWindow[iWinStart-1:iWinEnd])<=iThresh):
+                iWinStart-=1
+            else:
+                bStop=True        
         
-        tup = (key, dictGenes[key][iWinStart:iWinEnd],iMin)       
+        
+        iQuasi = sum(aiWindow[iWinStart:iWinEnd])
+        print "Data"        
+        print key
+        print aiWindow
+        print "Start,End",iWinStart, iWinEnd
+        print aiWindow[iWinStart:iWinEnd]
+        print dictGenes[key][iWinStart:iWinEnd]
+        print "Quasi:",iQuasi
+        
+        
+        tup = (key, dictGenes[key][iWinStart:iWinEnd],iQuasi)       
         atupQM.append(tup)
-        
-        #In the knockout dictionary, set the QM region you just took to have "9999"
-        #for each AA. Then it wont be used again for the second QM window.
-        dictKnockOut[key][iWinStart:iWinEnd] = [9999]*(iWinEnd-iWinStart +1)
-        
-        #11/1/2012 - Jim
-        #Daniela, I just looked at this and now I think changing that region to 9999 may be wrong.
         
         
         #Error Checking   

@@ -13,9 +13,6 @@ import os
 import src.process_blast
 pb = src.process_blast
 
-import src.make_windows
-mw = src.make_windows
-
 import Bio
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -49,9 +46,19 @@ parser.add_argument('--refblast', type=str, dest='sRefBlast', default= "", help=
 parser.add_argument('--goiclust', type=str, default ="", dest='sClust', help='Enter the path and name of the clustered genes of interest file.')
 parser.add_argument('--map_in', type=str, dest='sMapIn',default="", help='Enter the path and name of the two column file connecting proteins to families.')
 
+# DANIELA NOTE: Put these first 7 elements in one list. Easier to check whether the user 
+# had supplied incorrect parameters. Determine control flow based on that.
+
+# DB NOTE: Put in a few examples there. Maybe even provide a few sample fasta files.
+#           That will help the user out a great deal. They can see how this will work for different
+#           Parameters, etc.
+
+
 #OUTPUT
 #Markers, and marker-to-prot_family map
 parser.add_argument('--markers', type=str, default="markers.faa", dest='sMarkers', help='Enter name and path for the marker output file')
+
+#DB NOTE - fix the naming system here
 parser.add_argument('--map_out', type=str, default="gene-centroid.uc", dest='sMap', help='Enter name and path for the output map file')
 
 
@@ -79,22 +86,30 @@ args = parser.parse_args()
 #Preliminary: Create temporary folder, open log file
 
 dirTmp = args.sTmp
+
+#DB NOTE - We might want to cut this out of the final version.
 dirTime = dirTmp + os.sep + "time"
 
 
-#Make out and tmp directories.
+#Make tmp directories.
 if not os.path.exists(dirTmp):
     os.makedirs(dirTmp)
 if not os.path.exists(dirTime):
     os.makedirs(dirTime)
 
-log = open(dirTmp + os.sep + "log.txt", "w")
+#DB Note - You could name the log file after the markers. 
+
+log = open(dirTmp + os.sep +"log.txt", "w")
 log.write("ShortBRED log \n")
+#DB Note - Include date
 
 iMode = 0
 
 ################################################################################
 # Step Zero: Choose program mode based on files supplied by the user.
+
+#DB Note - handles the error checking a little bit better
+# report an error if user supplies parameters for two different things
 
 if (args.sRefProts!=""):
     log.write("Mode 1: Building everything..." + "\n")
@@ -107,16 +122,20 @@ elif (args.sClust !="" and args.sGOIBlast!="" and args.sRefBlast!="" and args.sM
     iMode = 3
 else:
     print "Command line arguments incorrect."
+    
+#DB Note - Can use "try" and "except" for error reporting.
 
 ################################################################################
 # Step One: Cluster input genes and make into a blast database.
 #
-# Save clustered file to                    "tmp/clust/clust.faa"
-# Save blastdb of clustered file to         "tmp/clustdb/goidb"
+# Save centroids to                         "tmp/clust/clust.faa"
+# Save blastdb of centroids file to         "tmp/clustdb/goidb"
 # If prot-to-fam map does not exist, make   "tmp/clust/clust.map"
 
 #Make directories for clustfile and database.
 if(iMode==1 or iMode==2):
+    
+#DB note - consider making this into a function, checking and creating files/driectories
     dirClust = dirTmp + os.sep + "clust"
     dirClustDB = dirTmp + os.sep + "clustdb"
 
@@ -129,6 +148,8 @@ if(iMode==1 or iMode==2):
        
     strClustFile = dirClust + os.sep + "clust.faa"
     strClustDB = dirClustDB + os.sep + "goidb"
+    
+    #DB Note: clean up strMap
     strMap = os.path.splitext(strClustFile)[0]    
     
     
@@ -139,13 +160,15 @@ if(iMode==1 or iMode==2):
     if(args.sMapIn!=""):
         dictFams = {}
         for astrLine in csv.reader( open(args.sMapIn), csv.excel_tab ):
-            #dictFams[family]=[protein]        
+            #dictFams[protein]=[family]        
             dictFams[str(astrLine[1]).strip()]=str(astrLine[0]).strip()
         
         
         #Create subfolders for user-defined families
         dirFams = dirClust + os.sep + "fams"
-        strClustPath = dirClust + os.sep + "clust.faa"    
+        strClustPath = dirClust + os.sep + "clust.faa" 
+        
+        #DB Note - Probably erase this.
         strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
         
     
@@ -187,6 +210,8 @@ if(iMode==1):
 #Blast goi centroids against goidb, save results at  "tmp/blastresults/selfblast.txt"
 #Blast goi centroids against refdb, save results at  "tmp/blastresults/refblast.txt"
 
+#DB note - rename selfblast.txt goiblast.txt
+
 #If refdb supplied, use that name. 
 if(iMode==1 or iMode==2):
     if (args.dirRefDB!=""):
@@ -214,8 +239,6 @@ if(iMode==1 or iMode==2):
 #make dictRefCounts: dict of (genename, [overlap count for each AA]),
 
 
-
-
 #Get dict of GeneSeqs, then overlap counts from the Ref and GOI blast results
 #dictGOIGenes has form (genename, "AMNLJI....")
 #dictRefCounts,dictGOICounts have form (genename,[list of overlap counts for each AA])
@@ -240,11 +263,14 @@ dictGOIGenes = pb.getGeneData(open(strClustFile))
 sys.stderr.write( "Finding overlap with reference database...")
 dictRefCounts = pb.getOverlapCounts(strBlastRef, args.dID, 0, args.dL, 0, 0)
 sys.stderr.write( "Finding overlap with goi database...")
-dictGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, 0, args.dL, 0, 0,dictFams)
+dictGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, 0, args.dL, 0, 0)
 
 #Get medium, high-identity hits - keep edges
 dictBigGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, args.dL +.01, .70, args.iMLength/2, 0)
 #Noticed on 11/1/2012 - Should I do this for the reference set as well?
+
+
+#DB note - maybe make this as function.
 
 #If a gene has 0 valid hits in the ref database, make an array of 0's
 #so the program knows that nothing overlapped with the gene.
@@ -263,6 +289,7 @@ if len(setGOINoHits)>0:
     for sGene in setGOINoHits:
         dictGOICounts[sGene] = [0]*len(dictGOIGenes[sGene])
 
+#DB Note - DOUBLE-CHECK THIS!
 
 #Get dict of counts for (Ref+GOI)
 dictAllCounts = {}
@@ -278,15 +305,15 @@ for sGene in setRefGOI:
 #TM's - look in [AA overlap] for regions of all O's, at least as long as minLength
 #QM's - find region if length (minLength) in [AA overlap] with lowest sum([AA overlap])
 
-
+#DB Note- double-check to make sure this is the same.
 
 setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAllCounts.keys()), dictAllCounts, args.iMLength)
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 sys.stderr.write( "Found True Markers...")
-atupQuasiMarkers1 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
+atupQuasiMarkers1 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength,30, args.iTotLength)
 sys.stderr.write( "Found first set of Quasi Markers...")
-atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
-sys.stderr.write( "Found second set of Quasi Markers...")
+#atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
+#sys.stderr.write( "Found second set of Quasi Markers...")
 
 
 #Replace AA's with +'s in True Markers
@@ -359,7 +386,7 @@ for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):
 #Print QM's
 #Each QM_tuple has the values: (name, window, overlapvalue)
 
-atupQM = atupQuasiMarkers1 + atupQuasiMarkers2
+atupQM = atupQuasiMarkers1 
 atupQM = sorted(atupQM, key=lambda tup: tup[0])
 
 iCounter = 0
