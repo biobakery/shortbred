@@ -270,8 +270,7 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
             
         
         #Add next AA if that does not pus this over the threshhold
-        print key
-        print iWinStart,iWinEnd              
+        
         while(bStop==False and iWinEnd< len(dictGenes[key])-1 and len(aiWindow[iWinStart:iWinEnd+1]) < iTotLength):
             if (sum(aiWindow[iWinStart:iWinEnd+1])<=iThresh):
                 iWinEnd+=1
@@ -288,6 +287,9 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
         
         
         iQuasi = sum(aiWindow[iWinStart:iWinEnd])
+
+        #Error Checking
+        """
         print "Data"        
         print key
         print aiWindow
@@ -295,7 +297,7 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
         print aiWindow[iWinStart:iWinEnd]
         print dictGenes[key][iWinStart:iWinEnd]
         print "Quasi:",iQuasi
-        
+        """
         
         tup = (key, dictGenes[key][iWinStart:iWinEnd],iQuasi)       
         atupQM.append(tup)
