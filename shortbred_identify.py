@@ -180,7 +180,7 @@ if(iMode==1 or iMode==2):
         pb.MakeFamilyFastaFiles(dictFams, args.sGOIProts, dirFams)
         pb.ClusterFams(dirClust)
     else:
-        subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", strMap + ".uc", "--id", str(args.dClustID),"--centroids", strClustFile])
+        subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", strMap + ".uc", "--id", str(args.dClustID),"--centroids", strClustFile,"--maxaccepts","0","--maxrejects","0"])
         strMapFile = dirClust + os.sep + "clust.map"
         pb.printMap(strMap+".uc",strMapFile )
     

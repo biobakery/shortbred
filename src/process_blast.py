@@ -7,6 +7,7 @@ import argparse
 import os
 import subprocess
 import glob
+import math
 
 import Bio
 from Bio.Seq import Seq
@@ -182,7 +183,6 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
     #Once the loop is done, remember to add the last window.
     dictAAOverlapCounts.setdefault(strCurQuery.strip(), aiCounts)        
     iGeneCount = iGeneCount+1 
-    
 
     return dictAAOverlapCounts
 
@@ -242,11 +242,20 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
     
     for key in setGenes:
         aiWindow = dictKnockOut[key]
+        
+        #Take some function of each overlap count, reduce influence of outliers
+        
+        import math
+        
+        adAdjWindow = [math.pow(x,(1/4.0)) for x in aiWindow]
+                
+       
+        
         iStart = 0
-        iMin = 0
-        iSumCounts = 0
+        dMin = 0
+        dSumCounts = 0
         fHitEnd = False
-        aiWindowSums = []
+        adWindowSums = []
  
         
 
@@ -254,15 +263,15 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
         #Cycle through all windows of length N, record total overlap in aiWindowSums
         
         while (fHitEnd == False):
-            if ((iStart+iN) >= len(aiWindow)):
+            if ((iStart+iN) >= len(adAdjWindow)):
                 fHitEnd = True                
-            iSumCounts = sum(aiWindow[iStart:(iStart+iN)])        
-            aiWindowSums.append(iSumCounts)
+            dSumCounts = sum(adAdjWindow[iStart:(iStart+iN)])        
+            adWindowSums.append(dSumCounts)
             iStart+=1
             
         #Find first AminoAcid of best window (lowest total overlap) with length N
-        iMin = min(aiWindowSums)
-        iWinStart = aiWindowSums.index(iMin)            
+        dMin = min(adWindowSums)
+        iWinStart = adWindowSums.index(dMin)            
         iWinEnd = iWinStart + iN
         
         bStop = False        
@@ -271,8 +280,8 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
         
         #Add next AA if that does not pus this over the threshhold
         
-        while(bStop==False and iWinEnd< len(dictGenes[key])-1 and len(aiWindow[iWinStart:iWinEnd+1]) < iTotLength):
-            if (sum(aiWindow[iWinStart:iWinEnd+1])<=iThresh):
+        while(bStop==False and iWinEnd< len(dictGenes[key])-1 and len(adAdjWindow[iWinStart:iWinEnd+1]) < iTotLength):
+            if (sum(adAdjWindow[iWinStart:iWinEnd+1])<=iThresh):
                 iWinEnd+=1
             else:
                 bStop=True
@@ -280,21 +289,25 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
         #After you've grown the QM as much as possible to the right, try growing to the left.
         #Test the AA before the first AA of the QM, add it if it doesn't put you over iThresh                
         while(bStop==False and iWinStart>= 1 and len(aiWindow[iWinStart-1:iWinEnd]) < iTotLength):
-            if (sum(aiWindow[iWinStart-1:iWinEnd])<=iThresh):
+            if (sum(adAdjWindow[iWinStart-1:iWinEnd])<=iThresh):
                 iWinStart-=1
             else:
                 bStop=True        
         
         
-        iQuasi = sum(aiWindow[iWinStart:iWinEnd])
+        iQuasi = int(sum(adAdjWindow[iWinStart:iWinEnd]))
 
         #Error Checking
+        
         """
         print "Data"        
         print key
+        print "Integer Window"
         print aiWindow
+        print "Adjusted Window"
+        print adAdjWindow
         print "Start,End",iWinStart, iWinEnd
-        print aiWindow[iWinStart:iWinEnd]
+        print adAdjWindow[iWinStart:iWinEnd]
         print dictGenes[key][iWinStart:iWinEnd]
         print "Quasi:",iQuasi
         """
