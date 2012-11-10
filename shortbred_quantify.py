@@ -38,7 +38,7 @@ args = parser.parse_args()
 log = open(dirTmp + os.sep +"Quantlog.txt", "w")
 log.write("ShortBRED log \n" + datetime.date.today().ctime() + "\n SEARCH PARAMETERS \n")
 log.write("Match ID:" + str(args.dID) + "\n")
-log.write("Match Coverage of Read:" + str(args.iMLength) + "\n")
+log.write("Match Coverage of Read:" + str(args.dCov) + "\n")
 log.close()
 
 ###############################################################################
