@@ -66,7 +66,7 @@ print "The value is: ", strQC
 """
 
 #Use usearch to check for hits (usearch local)
-subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", "0.95", "--blast6out", strSearchResults,"--threads", str(args.iThreads), "--gapopen", "20"])
+subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", "0.95", "--blast6out", strSearchResults,"--threads", str(args.iThreads)])
 
 
 #Go through the blast hits, for each prot family, print out the number of hits

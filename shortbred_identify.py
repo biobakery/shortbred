@@ -180,9 +180,19 @@ if(iMode==1 or iMode==2):
         pb.MakeFamilyFastaFiles(dictFams, args.sGOIProts, dirFams)
         pb.ClusterFams(dirClust)
     else:
+        """
+        Old Code to cluster in usearch
         subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", strMap + ".uc", "--id", str(args.dClustID),"--centroids", strClustFile,"--maxaccepts","0","--maxrejects","0"])
         strMapFile = dirClust + os.sep + "clust.map"
         pb.printMap(strMap+".uc",strMapFile )
+        """
+        #New code to cluster in cdhit
+        subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","cdhit", "-i", str(args.sGOIProts),"-o",strClustFile,"-b",str(max(args.iMLength-10,10)), "-d", "0", "-c", str(args.dClustID), "-b", "10","-U", "10"]) 
+        strMapFile = dirClust + os.sep + "clust.map"
+        pb.GetCDHitMap ( strClustFile+".clstr",strMapFile)
+        
+                               
+                               
     
     #Make database from goi centroids
     subprocess.check_call(["time", "-o", dirTime + os.sep + "goidb.time", "makeblastdb", "-in", strClustFile, "-out", strClustDB, "-dbtype", "prot", "-logfile", dirTmp + os.sep + "goidb.log"])
@@ -203,7 +213,9 @@ if(iMode==1):
         #Recent edits to cluster the reference database ahead of time
         """      
         subprocess.check_call(["time", "-o",dirTime + os.sep + "refclust.time","usearch6", "--cluster_fast", str(args.sRefProts), "--uc",  "ref.uc", "--id", str(args.dClustID),"--centroids", strClustFile])        
-        """        
+        """
+        
+        
         subprocess.check_call(["time", "-o",dirTime + os.sep + "refdb.time","makeblastdb", "-in", str(args.sRefProts),"-out", strRefDBPath, "-dbtype", "prot", "-logfile", dirTmp + os.sep +  "refdb.log"])
 
 ################################################################################
@@ -256,6 +268,8 @@ if (args.sMapIn!=""):
     strMapFile = args.sMapIn
 
 dictFams = {}
+
+
 for strLine in csv.reader(open(strMapFile),delimiter='\t'):
     dictFams[strLine[1]]=strLine[0]
         

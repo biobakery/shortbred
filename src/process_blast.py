@@ -15,6 +15,44 @@ from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO
 
+###############################################################################
+def GetCDHitMap ( fileCluster, strTxtMap):
+    setGenes = set()
+    strFam = ""    
+    iLine = 0
+
+    dictFams = {}    
+    
+    for astrLine in csv.reader(open(fileCluster),delimiter='\t'):
+        iLine+=1
+        mtch = re.search(r'^>',astrLine[0])
+        if (mtch):
+            if (len(setGenes)>0 and strFam!=""):
+                for strGene in setGenes:
+                    dictFams[strGene] = strFam
+                setGenes=set()
+                strFam = ""
+        else:
+            mtchGene = re.search(r'>(.*)\.\.\.',str(astrLine[1]))
+            strGene = mtchGene.groups(1)[0]
+            setGenes.add(strGene.strip())
+            mtchFam = re.search(r'\.\.\.\s\*',str(astrLine[1]))
+            if mtchFam:
+                strFam = strGene.strip()
+    
+    for strGene in setGenes:
+                    dictFams[strGene.strip()] = strFam.strip()
+
+    
+    f = open(strTxtMap, 'w')
+    for prot, fam in sorted(dictFams.items(), key = lambda(prot, fam): (fam,prot)):
+        f.write(fam + "\t" + prot + "\n")
+    f.close()
+        
+        
+    
+    
+
 
 ###############################################################################
 def MakeFamilyFastaFiles ( dictFams, fileFasta, dirOut):
