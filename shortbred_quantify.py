@@ -28,7 +28,7 @@ parser.add_argument('--id', type=float, dest='dID', help='Enter the percent iden
 parser.add_argument('--cov', type=float, dest='dCov', help='Enter the percent coverage for the match', default = .90)
 
 
-parser.add_argument('--tmp', type=str, dest='sTmp', help='Enter the path and name of the tmp directory.')
+parser.add_argument('--tmp', type=str, dest='sTmp', default =os.getcwd() +os.sep + "tmp",help='Enter the path and name of the tmp directory.')
 parser.add_argument('--length', type=int, dest='iLength', help='Enter the minimum length of the markers.')
 parser.add_argument('--threads', type=int, dest='iThreads', help='Enter the number of CPUs available for usearch.')
 parser.add_argument('--notmarkers', type=str, dest='strNM',default="N", help='.')
@@ -37,6 +37,8 @@ parser.add_argument('--notmarkers', type=str, dest='strNM',default="N", help='.'
 
 
 args = parser.parse_args()
+
+dirTmp = args.sTmp
 
 log = open(dirTmp + os.sep +"Quantlog.txt", "w")
 log.write("ShortBRED log \n" + datetime.date.today().ctime() + "\n SEARCH PARAMETERS \n")
