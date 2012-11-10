@@ -19,6 +19,9 @@ parser.add_argument('--wgs', type=str, dest='sWGS', help='Enter the path and nam
 
 #Output
 parser.add_argument('--results', type=str, dest='sResults', help='Enter the path and name of the results file.')
+parser.add_argument(' --blastout', type=str, dest='strBlast', help='Enter the path and name of the blastoutput.')
+
+ 
 
 #Parameters
 parser.add_argument('--id', type=float, dest='dID', help='Enter the percent identity for the match', default = .95)
@@ -69,7 +72,7 @@ p = subprocess.check_call(["usearch6", "--makeudb_usearch", args.sMarkers, "--ou
 
 
 #Use usearch to check for hits (usearch local)
-subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", str(args.dID), "--cov", str(args.dCov),"--blast6out", strSearchResults,"--threads", str(args.iThreads)])
+subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", str(args.dID), "--cov", str(args.dCov),"--blast6out", args.strBlast,"--threads", str(args.iThreads)])
 
 
 #Go through the blast hits, for each prot family, print out the number of hits
