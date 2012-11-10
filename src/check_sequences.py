@@ -26,7 +26,7 @@ aSeqs = getSeqs(sys.stdin)
 #fix to see if there are consensus sequences
 #delete nucleotide sequences
 for x in aSeqs:
-    mtch = re.search('[^ACGT]',str(x.seq))
+    mtch = re.search('[^ACGTN]',str(x.seq))
     if mtch == None:
         aSeqs.remove(x)
 
