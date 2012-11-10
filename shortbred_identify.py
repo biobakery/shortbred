@@ -9,6 +9,7 @@ import argparse
 import subprocess
 import re
 import os
+import datetime 
 
 import src.process_blast
 pb = src.process_blast
@@ -102,8 +103,11 @@ if not os.path.exists(dirTime):
 #DB Note - You could name the log file after the markers. 
 
 log = open(dirTmp + os.sep +"log.txt", "w")
-log.write("ShortBRED log \n")
-#DB Note - Include date
+log.write("ShortBRED log \n" + datetime.date.today().ctime() + "\n MARKER PARAMETERS \n")
+log.write("ClustID:" + str(args.dClustID) + "\n")
+log.write("MarkerLength:" + str(args.iMLength) + "\n")
+log.write("QM Thresh:" + str(args.iThresh) + "\n")
+
 
 iMode = 0
 

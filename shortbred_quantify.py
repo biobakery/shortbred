@@ -21,6 +21,10 @@ parser.add_argument('--wgs', type=str, dest='sWGS', help='Enter the path and nam
 parser.add_argument('--results', type=str, dest='sResults', help='Enter the path and name of the results file.')
 
 #Parameters
+parser.add_argument('--id', type=float, dest='dID', help='Enter the percent identity for the match', default = .95)
+parser.add_argument('--cov', type=float, dest='dCov', help='Enter the percent coverage for the match', default = .90)
+
+
 parser.add_argument('--tmp', type=str, dest='sTmp', help='Enter the path and name of the tmp directory.')
 parser.add_argument('--length', type=int, dest='iLength', help='Enter the minimum length of the markers.')
 parser.add_argument('--threads', type=int, dest='iThreads', help='Enter the number of CPUs available for usearch.')
@@ -30,6 +34,12 @@ parser.add_argument('--notmarkers', type=str, dest='strNM',default="N", help='.'
 
 
 args = parser.parse_args()
+
+log = open(dirTmp + os.sep +"Quantlog.txt", "w")
+log.write("ShortBRED log \n" + datetime.date.today().ctime() + "\n SEARCH PARAMETERS \n")
+log.write("Match ID:" + str(args.dID) + "\n")
+log.write("Match Coverage of Read:" + str(args.iMLength) + "\n")
+log.close()
 
 ###############################################################################
 # SUM TOTAL MARKER LENGTH FOR EACH PROT FAMILY
@@ -57,16 +67,9 @@ strSearchResults = args.sMarkers +".blast"
 #Note: Cannot limit threads used in creating of usearch database
 p = subprocess.check_call(["usearch6", "--makeudb_usearch", args.sMarkers, "--output", strDBName])
 
-"""
-dQueryCov = (float(args.iLength)*3)/float(100)
-print dQueryCov
-dQueryCov = round(dQueryCov,2)
-strQC = str(dQueryCov)
-print "The value is: ", strQC
-"""
 
 #Use usearch to check for hits (usearch local)
-subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", "0.95", "--blast6out", strSearchResults,"--threads", str(args.iThreads)])
+subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", str(args.dID), "--cov", str(args.dCov),"--blast6out", strSearchResults,"--threads", str(args.iThreads)])
 
 
 #Go through the blast hits, for each prot family, print out the number of hits

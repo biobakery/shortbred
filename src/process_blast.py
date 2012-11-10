@@ -216,15 +216,6 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
         
         if (dIdentity >= dIDcutoff) and (dMatchLength <= dLengthcutoff) and (strQueryID!=strSubId) and (dMatchLength >= dLengthMin) and bNotSameFam:
             for i in range(iQStart-1+iOffset, iQEnd-iOffset):
-                if (i>= len(aiCounts)):
-                    print iLine
-                    print len(dictAAOverlapCounts)
-                    print iOffset
-                    print iQLength
-                    print len(aiCounts)
-                    print iQStart
-                    print iQEnd
-                    #print aLine
                 aiCounts[i]=aiCounts[i]+1
     
     #Once the loop is done, remember to add the last window.
