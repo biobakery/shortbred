@@ -19,7 +19,7 @@ parser.add_argument('--wgs', type=str, dest='sWGS', help='Enter the path and nam
 
 #Output
 parser.add_argument('--results', type=str, dest='sResults', help='Enter the path and name of the results file.')
-parser.add_argument(' --blastout', type=str, dest='strBlast', help='Enter the path and name of the blastoutput.')
+parser.add_argument('--blastout', type=str, dest='strBlast', help='Enter the path and name of the blastoutput.')
 
  
 
