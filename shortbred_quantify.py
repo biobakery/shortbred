@@ -20,7 +20,7 @@ parser.add_argument('--wgs', type=str, dest='sWGS', help='Enter the path and nam
 
 #Output
 parser.add_argument('--results', type=str, dest='sResults', help='Enter the path and name of the results file.')
-parser.add_argument('--blastout', type=str, dest='strBlast', help='Enter the path and name of the blastoutput.')
+parser.add_argument('--blastout', type=str, dest='strBlast', default="out.blast",help='Enter the path and name of the blastoutput.')
 
 #Parameters
 parser.add_argument('--id', type=float, dest='dID', help='Enter the percent identity for the match', default = .95)
@@ -53,6 +53,8 @@ log.close()
 # SUM TOTAL MARKER LENGTH FOR EACH PROT FAMILY
 
 dictMarkerLen = {}
+dictMarkerLenAll = {}
+
 
 #Load the WGS data. For each gene stub, copy in all the matching genes
 for seq in SeqIO.parse(args.sMarkers, "fasta"):
@@ -61,7 +63,8 @@ for seq in SeqIO.parse(args.sMarkers, "fasta"):
 		strStub = mtchStub.group(1)
 	else:
 		strStub = seq.id
-	dictMarkerLen[strStub] = len(seq) + dictMarkerLen.get(strStub,0)   
+	dictMarkerLenAll[strStub] = len(seq) + dictMarkerLenAll.get(strStub,0)   
+ 	dictMarkerLen[seq.id] = len(seq)
     
 
 ###############################################################################
@@ -69,21 +72,28 @@ for seq in SeqIO.parse(args.sMarkers, "fasta"):
 
 #Make a database from the markers
 
-strDBName = args.sMarkers + ".udb"
+strDBName = str(args.sMarkers) + ".udb"
 strSearchResults = args.sMarkers +".blast"
 
 #Note: Cannot limit threads used in creating of usearch database
-p = subprocess.check_call(["usearch6", "--makeudb_usearch", args.sMarkers, "--output", strDBName])
+p = subprocess.check_call(["usearch6", "--makeudb_usearch", str(args.sMarkers), "--output", strDBName])
 
 
 #Use usearch to check for hits (usearch local)
-subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", str(args.dID),"--blast6out", args.strBlast,"--threads", str(args.iThreads),"--maxaccepts","0","--maxrejects","0"])
+subprocess.check_call(["usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", str(args.dID),"--blast6out", args.strBlast,"--threads", str(args.iThreads),"--maxaccepts","0","--maxrejects","0"])
 
 
 #Go through the blast hits, for each prot family, print out the number of hits
 dictBLAST = {}    
 for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
-	if int(aLine[3])>= args.iAlnLength:
+    mtchTM = re.search(r'_TM*',aLine[1])
+    if (mtchTM):
+        dID = .90
+    else:
+        dID = .80
+          
+      
+    if int(aLine[3])>= args.iAlnLength and float(aLine[2]) >= dID:
         	if args.strNM=="N":
         		mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])    
         		strProtFamily = mtchProtStub.group(1)
@@ -93,5 +103,5 @@ for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
 	
     
 for strProt in dictBLAST.keys():
-    print strProt + "\t" +  str(float(len(dictBLAST[strProt]))/dictMarkerLen[strProt])
+    print strProt + "\t" +  str(float(len(dictBLAST[strProt]))/dictMarkerLenAll[strProt])
     
