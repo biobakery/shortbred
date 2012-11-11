@@ -26,7 +26,7 @@ parser.add_argument('--blastout', type=str, dest='strBlast', help='Enter the pat
 
 #Parameters
 parser.add_argument('--id', type=float, dest='dID', help='Enter the percent identity for the match', default = .95)
-parser.add_argument('--cov', type=float, dest='dCov', help='Enter the percent coverage for the match', default = .90)
+parser.add_argument('--alnlength', type=int, dest='iAlnLength', help='Enter the minimum length for a valid alignment. The default is 20.', default = 20)
 
 
 parser.add_argument('--tmp', type=str, dest='sTmp', default =os.getcwd() +os.sep + "tmp",help='Enter the path and name of the tmp directory.')
@@ -75,7 +75,7 @@ p = subprocess.check_call(["usearch6", "--makeudb_usearch", args.sMarkers, "--ou
 
 
 #Use usearch to check for hits (usearch local)
-subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", str(args.dID), "--cov", str(args.dCov),"--blast6out", args.strBlast,"--threads", str(args.iThreads)])
+subprocess.check_call(["usearch6", "--usearch_local", args.sWGS, "--db", strDBName, "--id", str(args.dID),"--blast6out", args.strBlast,"--threads", str(args.iThreads)])
 
 
 #Go through the blast hits, for each prot family, print out the number of hits
@@ -87,7 +87,8 @@ for aLine in csv.reader( open( strSearchResults), csv.excel_tab ):
 		strProtFamily = mtchProtStub.group(1)
 	else:
 		strProtFamily = aLine[1]
-	dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))
+      if (int(aLine[3])>(args.iAlnLength)):
+          dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))
 	
     
 for strProt in dictBLAST.keys():
