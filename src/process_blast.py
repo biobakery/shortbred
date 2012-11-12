@@ -371,4 +371,20 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
     
     return atupQM
 
-
+###############################################################################
+def PrintQuasiMarkers(atupQM, fileOut):
+    iCounter = 0
+    strName = ""
+    
+    
+    for tup in atupQM:
+        if str(tup[0]) != strName:
+            iCounter =1  
+        else:
+            iCounter+=1
+        fileOut.write(">" + str(tup[0]) + "_QM" + str(tup[2]) + "_#" +str(iCounter).zfill(2) + '\n')
+        fileOut.write(str(tup[1]) + '\n')
+        strName = str(tup[0])
+    
+        
+    return

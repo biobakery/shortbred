@@ -67,6 +67,7 @@ parser.add_argument('--map_out', type=str, default="gene-centroid.uc", dest='sMa
 #PARAMETERS
 #Clustering
 parser.add_argument('--clustid',default = .90, type=float, dest='dClustID', help='Enter the identity cutoff for clustering the genes of interest. Examples: .90, .85, .10,...')
+parser.add_argument('--qclustid',default = .90, type=float, dest='dQClustID', help='Enter the identity cutoff for clustering the quasi-markers. Examples: .90, .85, .10,...')
 
 #BLAST Search
 parser.add_argument('--threads', type=int, default=1, dest='iThreads', help='Enter the number of threads to use.')
@@ -92,13 +93,15 @@ dirTmp = args.sTmp
 
 #DB NOTE - We might want to cut this out of the final version.
 dirTime = dirTmp + os.sep + "time"
-
+dirQuasi = dirTmp + os.sep + "quasi"
 
 #Make tmp directories.
 if not os.path.exists(dirTmp):
     os.makedirs(dirTmp)
 if not os.path.exists(dirTime):
     os.makedirs(dirTime)
+if not os.path.exists(dirQuasi):
+    os.makedirs(dirQuasi)
 
 #DB Note - You could name the log file after the markers. 
 
@@ -191,7 +194,7 @@ if(iMode==1 or iMode==2):
         pb.printMap(strMap+".uc",strMapFile )
         """
         #New code to cluster in cdhit
-        subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","cd-hit", "-i", str(args.sGOIProts),"-o",strClustFile, "-d", "0", "-c", str(args.dClustID), "-b", "10","-g", "1","-aL","1.0"]) 
+        subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","cdhit", "-i", str(args.sGOIProts),"-o",strClustFile, "-d", "0", "-c", str(args.dClustID), "-b", "10","-g", "1","-aL","1.0"]) 
         strMapFile = dirClust + os.sep + "clust.map"
         pb.GetCDHitMap ( strClustFile+".clstr",strMapFile)
         
@@ -331,6 +334,9 @@ setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAll
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 sys.stderr.write( "Found True Markers...")
 atupQuasiMarkers1 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength,args.iThresh, args.iTotLength)
+
+
+
 sys.stderr.write( "Found first set of Quasi Markers...")
 #atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
 #sys.stderr.write( "Found second set of Quasi Markers...")
@@ -366,7 +372,7 @@ for key in dictGOIGenes:
 premarkers.close()
 
 ##################################################################################
-##Step Six: Print the TM's, Print the QM's.
+##Step Six: Print the TM's, 
 
 #Print the TM's.
 #Go through premarkers.txt, find regions satisying user criteria.
@@ -402,27 +408,52 @@ for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):
                 iCount+=1
                 iRemSeq = iRemSeq - len(geneMarker)
     
+atupQM = atupQuasiMarkers1 
+atupQM = sorted(atupQM, key=lambda tup: tup[0])
+
+#####################################################################################################
+#Step 7: Cluster the Quasi-Markers. Remap the proteins they represent to the centroid marker for each cluster.
+
+strQuasiFN = dirQuasi+ os.sep + "quasi.faa"
+strQuasiClust = dirQuasi+ os.sep + "quasiclust.faa"
+strQuasiMap = dirQuasi+ os.sep + "quasi.map"
+fQuasi = open(strQuasiFN,'w')
+pb.PrintQuasiMarkers(atupQM,fQuasi)
+fQuasi.close()
+
+subprocess.check_call(["cdhit", "-i", strQuasiFN,"-o",strQuasiClust, "-d", "0", "-c", str(args.dQClustID), "-b", "10","-g", "1","-aL","1.0"]) 
+        
+
+pb.GetCDHitMap ( strQuasiClust+".clstr",strQuasiMap)
+
+dictQuasiClust = {}
+for astrLine in csv.reader( open(strQuasiMap), csv.excel_tab ):
+            
+            mtchMarker = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[1])
+            strMarker = mtchMarker.group(1)
+            mtchFam = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[0])
+            strFam = mtchFam.group(1)
+            
+            dictQuasiClust[strMarker] = strFam
+
+for key in dictQuasiClust:
+    dictFams[key] = dictFams[dictQuasiClust[key]]
+
+fFinalMap = open(dirTmp + os.sep + "final.map",'w')
+
+for prot, fam in sorted(dictFams.items(), key = lambda(prot, fam): (fam,prot)):
+        fFinalMap.write(fam + "\t" + prot + "\n")
+fFinalMap.close()
+
 
 #Print QM's
 #Each QM_tuple has the values: (name, window, overlapvalue)
 
-atupQM = atupQuasiMarkers1 
-atupQM = sorted(atupQM, key=lambda tup: tup[0])
-
-iCounter = 0
-strName = ""
-
-
-fOut = open(args.sMarkers, 'a')
+atupQMFinal = []
 
 for tup in atupQM:
-    if str(tup[0]) != strName:
-        iCounter =1  
-    else:
-        iCounter+=1
-    fOut.write(">" + str(tup[0]) + "_QM" + str(tup[2]) + "_#" +str(iCounter).zfill(2) + '\n')
-    fOut.write(str(tup[1]) + '\n')
-    strName = str(tup[0])
-
-
-
+    if tup[0] in dictQuasiClust.values():
+        atupQMFinal.append(tup)
+        
+fOut = open(args.sMarkers, 'a') 
+pb.PrintQuasiMarkers(atupQMFinal,fOut)
