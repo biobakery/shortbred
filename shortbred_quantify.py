@@ -24,6 +24,8 @@ parser.add_argument('--blastout', type=str, dest='strBlast', default="out.blast"
 
 #Parameters
 parser.add_argument('--id', type=float, dest='dID', help='Enter the percent identity for the match', default = .95)
+parser.add_argument('--tmid', type=float, dest='dTMID', help='Enter the percent identity for a TM match', default = .95)
+parser.add_argument('--qmid', type=float, dest='dQMID', help='Enter the percent identity for a QM match', default = .90)
 parser.add_argument('--alnlength', type=int, dest='iAlnLength', help='Enter the minimum alignment length. The default is 20', default = 20)
 
 
@@ -86,11 +88,11 @@ subprocess.check_call(["usearch6", "--usearch_local", str(args.sWGS), "--db", st
 #Go through the blast hits, for each prot family, print out the number of hits
 dictBLAST = {}    
 for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
-    mtchTM = re.search(r'_TM*',aLine[1])
+    mtchTM = re.search(r'_TM.*',aLine[1])
     if (mtchTM):
-        dID = .90
+        dID = args.dTMID
     else:
-        dID = .80
+        dID = args.dQMID
           
       
     if int(aLine[3])>= args.iAlnLength and float(aLine[2]) >= dID:
