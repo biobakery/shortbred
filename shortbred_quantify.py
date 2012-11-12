@@ -97,7 +97,7 @@ for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
         dID = args.dQMID
           
       
-    if int(aLine[3])>= args.iAlnLength and float(aLine[2]) >= dID:
+    if int(aLine[3])>= args.iAlnLength and (float(aLine[2])/100.0) >= dID:
         	if args.strNM=="N":
         		mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])    
         		strProtFamily = mtchProtStub.group(1)

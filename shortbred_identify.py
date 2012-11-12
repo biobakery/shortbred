@@ -383,8 +383,11 @@ for astrLine in csv.reader( open(strQuasiMap), csv.excel_tab ):
             
             dictQuasiClust[strMarker] = strFam
 
-for key in dictQuasiClust:
-    dictFams[key] = dictFams[dictQuasiClust[key]]
+for qckey in dictQuasiClust.keys():
+    for key in dictFams:
+        if (dictFams[key] == qckey):
+            dictFams[key] = dictQuasiClust[qckey]
+        
 
 fFinalMap = open(dirTmp + os.sep + "final.map",'w')
 
