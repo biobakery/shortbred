@@ -49,6 +49,8 @@ log = open(str(dirTmp + os.sep + strBase+ ".log"), "w")
 log.write("ShortBRED log \n" + datetime.date.today().ctime() + "\n SEARCH PARAMETERS \n")
 log.write("Match ID:" + str(args.dID) + "\n")
 log.write("Alignment Length:" + str(args.iAlnLength) + "\n")
+log.write("TM id:" + str(args.dTMID) + "\n")
+log.write("QM id:" + str(args.dQMID) + "\n")
 log.close()
 
 ###############################################################################
