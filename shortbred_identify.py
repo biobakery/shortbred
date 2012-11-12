@@ -194,7 +194,7 @@ if(iMode==1 or iMode==2):
         pb.printMap(strMap+".uc",strMapFile )
         """
         #New code to cluster in cdhit
-        subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","cdhit", "-i", str(args.sGOIProts),"-o",strClustFile, "-d", "0", "-c", str(args.dClustID), "-b", "10","-g", "1","-aL","1.0"]) 
+        subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","cd-hit", "-i", str(args.sGOIProts),"-o",strClustFile, "-d", "0", "-c", str(args.dClustID), "-b", "10","-g", "1","-aL","1.0"]) 
         strMapFile = dirClust + os.sep + "clust.map"
         pb.GetCDHitMap ( strClustFile+".clstr",strMapFile)
         
@@ -421,7 +421,7 @@ fQuasi = open(strQuasiFN,'w')
 pb.PrintQuasiMarkers(atupQM,fQuasi)
 fQuasi.close()
 
-subprocess.check_call(["cdhit", "-i", strQuasiFN,"-o",strQuasiClust, "-d", "0", "-c", str(args.dQClustID), "-b", "10","-g", "1","-aL","1.0"]) 
+subprocess.check_call(["cd-hit", "-i", strQuasiFN,"-o",strQuasiClust, "-d", "0", "-c", str(args.dQClustID), "-b", "10","-g", "1","-aL","1.0"]) 
         
 
 pb.GetCDHitMap ( strQuasiClust+".clstr",strQuasiMap)
