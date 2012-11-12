@@ -354,7 +354,39 @@ for key in setHasMarkers:
             strGene = "".join(strGene)
             dictGOIGenes[key] =strGene
 
-   
+#####################################################################################################
+#Step Six: Cluster the Quasi-Markers. Remap the proteins they represent to the centroid marker for each cluster.
+
+strQuasiFN = dirQuasi+ os.sep + "quasi.faa"
+strQuasiClust = dirQuasi+ os.sep + "quasiclust.faa"
+strQuasiMap = dirQuasi+ os.sep + "quasi.map"
+fQuasi = open(strQuasiFN,'w')
+pb.PrintQuasiMarkers(atupQM,fQuasi)
+fQuasi.close()
+
+subprocess.check_call(["cd-hit", "-i", strQuasiFN,"-o",strQuasiClust, "-d", "0", "-c", str(args.dQClustID), "-b", "10","-g", "1","-aL","1.0"]) 
+        
+
+pb.GetCDHitMap ( strQuasiClust+".clstr",strQuasiMap)
+
+dictQuasiClust = {}
+for astrLine in csv.reader( open(strQuasiMap), csv.excel_tab ):
+            
+            mtchMarker = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[1])
+            strMarker = mtchMarker.group(1)
+            mtchFam = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[0])
+            strFam = mtchFam.group(1)
+            
+            dictQuasiClust[strMarker] = strFam
+
+for key in dictQuasiClust:
+    dictFams[key] = dictFams[dictQuasiClust[key]]
+
+fFinalMap = open(dirTmp + os.sep + "final.map",'w')
+
+for prot, fam in sorted(dictFams.items(), key = lambda(prot, fam): (fam,prot)):
+        fFinalMap.write(fam + "\t" + prot + "\n")
+fFinalMap.close()
    
 #Print AA with overlap area removed to premarkers.txt
 strGeneName = ""
@@ -372,7 +404,7 @@ for key in dictGOIGenes:
 premarkers.close()
 
 ##################################################################################
-##Step Six: Print the TM's, 
+##Step Seven: Print the TM's, 
 
 #Print the TM's.
 #Go through premarkers.txt, find regions satisying user criteria.
@@ -411,39 +443,7 @@ for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):
 atupQM = atupQuasiMarkers1 
 atupQM = sorted(atupQM, key=lambda tup: tup[0])
 
-#####################################################################################################
-#Step 7: Cluster the Quasi-Markers. Remap the proteins they represent to the centroid marker for each cluster.
 
-strQuasiFN = dirQuasi+ os.sep + "quasi.faa"
-strQuasiClust = dirQuasi+ os.sep + "quasiclust.faa"
-strQuasiMap = dirQuasi+ os.sep + "quasi.map"
-fQuasi = open(strQuasiFN,'w')
-pb.PrintQuasiMarkers(atupQM,fQuasi)
-fQuasi.close()
-
-subprocess.check_call(["cd-hit", "-i", strQuasiFN,"-o",strQuasiClust, "-d", "0", "-c", str(args.dQClustID), "-b", "10","-g", "1","-aL","1.0"]) 
-        
-
-pb.GetCDHitMap ( strQuasiClust+".clstr",strQuasiMap)
-
-dictQuasiClust = {}
-for astrLine in csv.reader( open(strQuasiMap), csv.excel_tab ):
-            
-            mtchMarker = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[1])
-            strMarker = mtchMarker.group(1)
-            mtchFam = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[0])
-            strFam = mtchFam.group(1)
-            
-            dictQuasiClust[strMarker] = strFam
-
-for key in dictQuasiClust:
-    dictFams[key] = dictFams[dictQuasiClust[key]]
-
-fFinalMap = open(dirTmp + os.sep + "final.map",'w')
-
-for prot, fam in sorted(dictFams.items(), key = lambda(prot, fam): (fam,prot)):
-        fFinalMap.write(fam + "\t" + prot + "\n")
-fFinalMap.close()
 
 
 #Print QM's
