@@ -83,8 +83,12 @@ strSearchResults = args.sMarkers +".blast"
 p = subprocess.check_call(["usearch6", "--makeudb_usearch", str(args.sMarkers), "--output", strDBName])
 
 
-#Use usearch to check for hits (usearch local)
-subprocess.check_call(["usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", str(args.dID),"--blast6out", args.strBlast,"--threads", str(args.iThreads),"--maxaccepts","0","--maxrejects","0"])
+if args.strNM=="N":
+    #Use usearch to check for hits (usearch local)
+    subprocess.check_call(["usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", str(args.dID),"--blast6out", args.strBlast,"--threads", str(args.iThreads),"--maxaccepts","0","--maxrejects","0"])
+else:
+    #Use usearch to check for hits (usearch local)
+    subprocess.check_call(["usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", ".90","--blast6out", args.strBlast,"--threads", str(args.iThreads)])
 
 
 #Go through the blast hits, for each prot family, print out the number of hits
@@ -95,15 +99,16 @@ for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
         dID = args.dTMID
     else:
         dID = args.dQMID
-          
-      
-    if int(aLine[3])>= args.iAlnLength and (float(aLine[2])/100.0) >= dID:
-        	if args.strNM=="N":
-        		mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])    
-        		strProtFamily = mtchProtStub.group(1)
-        	else:
-        		strProtFamily = aLine[1]
-        	dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))
+    
+    if args.strNM=="N":
+        mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])    
+        strProtFamily = mtchProtStub.group(1)
+        if (int(aLine[3])>= args.iAlnLength and (float(aLine[2])/100.0) >= dID):
+            dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))        		
+    else:
+        strProtFamily = aLine[1]
+        dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))        		
+                
 	
     
 for strProt in dictBLAST.keys():
