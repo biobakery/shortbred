@@ -357,6 +357,10 @@ for key in setHasMarkers:
 #####################################################################################################
 #Step Six: Cluster the Quasi-Markers. Remap the proteins they represent to the centroid marker for each cluster.
 
+atupQM = atupQuasiMarkers1 
+atupQM = sorted(atupQM, key=lambda tup: tup[0])
+
+
 strQuasiFN = dirQuasi+ os.sep + "quasi.faa"
 strQuasiClust = dirQuasi+ os.sep + "quasiclust.faa"
 strQuasiMap = dirQuasi+ os.sep + "quasi.map"
@@ -440,8 +444,6 @@ for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):
                 iCount+=1
                 iRemSeq = iRemSeq - len(geneMarker)
     
-atupQM = atupQuasiMarkers1 
-atupQM = sorted(atupQM, key=lambda tup: tup[0])
 
 
 
