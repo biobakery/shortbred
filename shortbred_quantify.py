@@ -19,7 +19,7 @@ parser.add_argument('--markers', type=str, dest='sMarkers', help='Enter the path
 parser.add_argument('--wgs', type=str, dest='sWGS', help='Enter the path and name of the genes of interest file (proteins).')
 
 #Output
-parser.add_argument('--results', type=str, dest='sResults', help='Enter the path and name of the results file.')
+parser.add_argument('--SBhits', type=str, dest='sHits', help='ShortBRED will print the hits it considers positives to this file.', default="")
 parser.add_argument('--blastout', type=str, dest='strBlast', default="out.blast",help='Enter the path and name of the blastoutput.')
 
 #Parameters
@@ -37,6 +37,7 @@ parser.add_argument('--notmarkers', type=str, dest='strNM',default="N", help='.'
 
 #DB Note - Maybe ask Nicola how to remove usearch6 output
 
+ 
 
 args = parser.parse_args()
 
@@ -44,7 +45,15 @@ dirTmp = args.sTmp
 if not os.path.exists(dirTmp):
     os.makedirs(dirTmp)
 
+    
+
+
 strBase = os.path.splitext(os.path.basename(args.sMarkers))[0]
+
+if(args.sHits==""):
+    strHitsFile = args.sTmp + os.sep + "SBhits.txt"
+else:
+    strHitsFile = args.sHits
 
 log = open(str(dirTmp + os.sep + strBase+ ".log"), "w")
 log.write("ShortBRED log \n" + datetime.date.today().ctime() + "\n SEARCH PARAMETERS \n")
@@ -92,6 +101,9 @@ else:
     subprocess.check_call(["usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", ".90","--blast6out", args.strBlast,"--threads", str(args.iThreads)])
 
 
+
+fileHits = open(strHitsFile,'w') 
+
 #Go through the blast hits, for each prot family, print out the number of hits
 dictBLAST = {}    
 for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
@@ -107,11 +119,13 @@ for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
         mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])    
         strProtFamily = mtchProtStub.group(1)
         if (int(aLine[3])>= iAln and (float(aLine[2])/100.0) >= dID):
-            dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))        		
+            dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))
+            fileHits.write('\t'.join(aLine) + '\n')
     else:
         strProtFamily = aLine[1]
         dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))        		
-                
+
+fileHits.close()                
 	
     
 for strProt in dictBLAST.keys():
