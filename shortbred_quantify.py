@@ -123,7 +123,8 @@ for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
             fileHits.write('\t'.join(aLine) + '\n')
     else:
         strProtFamily = aLine[1]
-        dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))        		
+        dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))
+        fileHits.write('\t'.join(aLine) + '\n')        		
 
 fileHits.close()                
 	
