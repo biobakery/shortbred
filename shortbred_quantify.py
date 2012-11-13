@@ -27,7 +27,7 @@ parser.add_argument('--id', type=float, dest='dID', help='Enter the percent iden
 parser.add_argument('--tmid', type=float, dest='dTMID', help='Enter the percent identity for a TM match', default = .95)
 parser.add_argument('--qmid', type=float, dest='dQMID', help='Enter the percent identity for a QM match', default = .90)
 parser.add_argument('--alnlength', type=int, dest='iAlnLength', help='Enter the minimum alignment length. The default is 20', default = 20)
-parser.add_argument('--alnTM', type=int, dest='iAlnMax', help='Enter the minimum alignment length. The default is 20', default = 25)
+parser.add_argument('--alnTM', type=int, dest='iAlnMax', help='Enter a bound for TM alignments, such that aln must be>= min(markerlength,alnTM)', default = 25)
 
 
 parser.add_argument('--tmp', type=str, dest='sTmp', default =os.getcwd() +os.sep + "tmp",help='Enter the path and name of the tmp directory.')
@@ -106,7 +106,7 @@ for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
     if args.strNM=="N":
         mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])    
         strProtFamily = mtchProtStub.group(1)
-        if (int(aLine[3])>= args.iAln and (float(aLine[2])/100.0) >= dID):
+        if (int(aLine[3])>= iAln and (float(aLine[2])/100.0) >= dID):
             dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))        		
     else:
         strProtFamily = aLine[1]
