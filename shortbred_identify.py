@@ -194,7 +194,7 @@ if(iMode==1 or iMode==2):
         pb.printMap(strMap+".uc",strMapFile )
         """
         #New code to cluster in cdhit
-        subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","cd-hit", "-i", str(args.sGOIProts),"-o",strClustFile, "-d", "0", "-c", str(args.dClustID), "-b", "10","-g", "1","-aL","1.0"]) 
+        subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","cd-hit", "-i", str(args.sGOIProts),"-o",strClustFile, "-d", "0", "-c", str(args.dClustID), "-b", "10","-g", "1"]) 
         strMapFile = dirClust + os.sep + "clust.map"
         pb.GetCDHitMap ( strClustFile+".clstr",strMapFile)
         
