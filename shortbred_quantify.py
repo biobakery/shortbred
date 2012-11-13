@@ -27,6 +27,7 @@ parser.add_argument('--id', type=float, dest='dID', help='Enter the percent iden
 parser.add_argument('--tmid', type=float, dest='dTMID', help='Enter the percent identity for a TM match', default = .95)
 parser.add_argument('--qmid', type=float, dest='dQMID', help='Enter the percent identity for a QM match', default = .90)
 parser.add_argument('--alnlength', type=int, dest='iAlnLength', help='Enter the minimum alignment length. The default is 20', default = 20)
+parser.add_argument('--alnTM', type=int, dest='iAlnMax', help='Enter the minimum alignment length. The default is 20', default = 25)
 
 
 parser.add_argument('--tmp', type=str, dest='sTmp', default =os.getcwd() +os.sep + "tmp",help='Enter the path and name of the tmp directory.')
@@ -85,7 +86,7 @@ p = subprocess.check_call(["usearch6", "--makeudb_usearch", str(args.sMarkers), 
 
 if args.strNM=="N":
     #Use usearch to check for hits (usearch local)
-    subprocess.check_call(["usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", str(args.dID),"--blast6out", args.strBlast,"--threads", str(args.iThreads),"--maxaccepts","0","--maxrejects","0"])
+    subprocess.check_call(["usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", str(args.dID),"--blast6out", args.strBlast,"--threads", str(args.iThreads)])
 else:
     #Use usearch to check for hits (usearch local)
     subprocess.check_call(["usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", ".90","--blast6out", args.strBlast,"--threads", str(args.iThreads)])
@@ -97,13 +98,15 @@ for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
     mtchTM = re.search(r'_TM.*',aLine[1])
     if (mtchTM):
         dID = args.dTMID
+        iAln = min(dictMarkerLen[aLine[1]] ,args.iAlnMax)
     else:
         dID = args.dQMID
+        iAln = args.iAlnLength
     
     if args.strNM=="N":
         mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])    
         strProtFamily = mtchProtStub.group(1)
-        if (int(aLine[3])>= args.iAlnLength and (float(aLine[2])/100.0) >= dID):
+        if (int(aLine[3])>= args.iAln and (float(aLine[2])/100.0) >= dID):
             dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))        		
     else:
         strProtFamily = aLine[1]
