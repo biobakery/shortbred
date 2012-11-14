@@ -95,10 +95,10 @@ p = subprocess.check_call(["usearch6", "--makeudb_usearch", str(args.sMarkers), 
 
 if args.strNM=="N":
     #Use usearch to check for hits (usearch local)
-    subprocess.check_call(["usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", str(args.dID),"--blast6out", args.strBlast,"--threads", str(args.iThreads)])
+    subprocess.check_call(["time","-o", args.sMarkers+ ".time","usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", str(args.dID),"--blast6out", args.strBlast,"--threads", str(args.iThreads)])
 else:
     #Use usearch to check for hits (usearch local)
-    subprocess.check_call(["usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", ".90","--blast6out", args.strBlast,"--threads", str(args.iThreads)])
+    subprocess.check_call(["time","-o",args.sMarkers +".time","usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", ".90","--blast6out", args.strBlast,"--threads", str(args.iThreads)])
 
 
 
