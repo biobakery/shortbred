@@ -167,6 +167,7 @@ if(iMode==1 or iMode==2):
     #Else: cluster the entire file and make map file.
     
     if(args.sMapIn!=""):
+        """
         dictFams = {}
         for astrLine in csv.reader( open(args.sMapIn), csv.excel_tab ):
             #dictFams[protein]=[family]        
@@ -186,6 +187,7 @@ if(iMode==1 or iMode==2):
     
         pb.MakeFamilyFastaFiles(dictFams, args.sGOIProts, dirFams)
         pb.ClusterFams(dirClust)
+        """
     else:
         """
         Old Code to cluster in usearch
@@ -193,11 +195,24 @@ if(iMode==1 or iMode==2):
         strMapFile = dirClust + os.sep + "clust.map"
         pb.printMap(strMap+".uc",strMapFile )
         """
-        #New code to cluster in cdhit
+        #Cluster in cdhit
         subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","cd-hit", "-i", str(args.sGOIProts),"-o",strClustFile, "-d", "0", "-c", str(args.dClustID), "-b", "10","-g", "1"]) 
         strMapFile = dirClust + os.sep + "clust.map"
         pb.GetCDHitMap ( strClustFile+".clstr",strMapFile)
         
+        
+        #Create a folder called "clust/fams", will hold a fasta file for each CD-HIT cluster
+        dirFams = dirClust + os.sep + "fams"
+        strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
+    
+        if not os.path.exists(dirFams):
+            os.makedirs(dirFams)
+        
+        #Make a fasta file for each CD-HIT cluster
+        pb.MakeFamilyFastaFiles( strMapFile, str(args.sGOIProts), dirFams)
+        
+        #Call USEARCH to get consensus seq for each cluster,overwrite the CD-HIT cluster file 
+        pb.ClusterFams(dirClust, args.dClustID,strClustFile )
                                
                                
     

@@ -55,8 +55,12 @@ def GetCDHitMap ( fileCluster, strTxtMap):
 
 
 ###############################################################################
-def MakeFamilyFastaFiles ( dictFams, fileFasta, dirOut):
+def MakeFamilyFastaFiles ( strMapFile, fileFasta, dirOut):
 #Makes a fasta file containing genes for each family in dictFams.    
+    dictFams = {}
+    for strLine in csv.reader(open(strMapFile),delimiter='\t'):
+        dictFams[strLine[1]]=strLine[0]    
+    
     
     dictgeneFamilies = {}    
     
@@ -73,7 +77,7 @@ def MakeFamilyFastaFiles ( dictFams, fileFasta, dirOut):
         f.close()
         
 ###############################################################################
-def ClusterFams(dirClust):
+def ClusterFams(dirClust, dCLustID, strOutputFile):
 #Clusters all of the family files made by MakeFamilyFastaFiles.
     
     dirFams = dirClust + os.sep + "fams"
@@ -97,7 +101,7 @@ def ClusterFams(dirClust):
         print "The file is ", fileFasta
         fileClust = dirCentroids + os.sep + os.path.basename(fileFasta) 
         fileUC    = dirUC + os.sep + os.path.basename(fileFasta) + ".uc"
-        subprocess.check_call(["usearch6", "--cluster_fast", str(fileFasta), "--uc", str(fileUC), "--id", ".95","--centroids", str(fileClust)])
+        subprocess.check_call(["usearch6", "--cluster_smallmem", str(fileFasta), "--uc", str(fileUC), "--id", str(dCLustID),"--consout", str(fileClust),"--cons_truncate"])
 
     
     ageneAllGenes = []
@@ -105,9 +109,13 @@ def ClusterFams(dirClust):
     for fileFasta in glob.glob(dirCentroids+os.sep+'*.faa'):
         for gene in SeqIO.parse(fileFasta, "fasta"):
             ageneAllGenes.append(gene)
-            
+  
+    for gene in ageneAllGenes:
+        mtch = re.search(r'centroid=(.*)',gene.id)
+        gene.id = mtch.group(1)
+
     
-    SeqIO.write(ageneAllGenes, dirClust + os.sep + "clust.faa", "fasta")
+    SeqIO.write(ageneAllGenes, strOutputFile, "fasta")
 
 ###############################################################################
 def printMap(strUCMap,strTxtMap):
