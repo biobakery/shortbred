@@ -7,6 +7,7 @@ import csv
 import re
 import os
 import datetime
+import shutil
 
 import Bio
 from Bio.Seq import Seq

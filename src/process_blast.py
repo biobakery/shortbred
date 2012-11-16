@@ -8,6 +8,7 @@ import os
 import subprocess
 import glob
 import math
+import shutil
 
 import Bio
 from Bio.Seq import Seq
@@ -100,20 +101,40 @@ def ClusterFams(dirClust, dCLustID, strOutputFile):
     for fileFasta in glob.glob(dirFams+os.sep+'*.faa'):
         print "The file is ", fileFasta
         fileClust = dirCentroids + os.sep + os.path.basename(fileFasta) 
-        fileUC    = dirUC + os.sep + os.path.basename(fileFasta) + ".uc"
-        subprocess.check_call(["usearch6", "--cluster_smallmem", str(fileFasta), "--uc", str(fileUC), "--id", str(dCLustID),"--consout", str(fileClust),"--cons_truncate"])
+        fileAlign = dirFams + os.sep + os.path.basename(fileFasta)+".aln" 
+
+        iSeqCount = 0        
+        #Count seqs, if more than one, then align them        
+        for seq in SeqIO.parse(fileFasta, "fasta"):
+            iSeqCount+=1
+            
+        
+        if iSeqCount>1:
+            #Call muscle to produce an alignment
+            subprocess.check_call(["muscle", "-in", str(fileFasta), "-out", str(fileAlign)])          
+            
+            #Call cons or em_cons from the EMBOSS package to produce a consensus sequence
+            subprocess.check_call(["em_cons", "-seq", str(fileAlign), "-outseq", str(fileClust)])
+        else:
+            shutil.copyfile(fileFasta,fileClust)
+            
 
     
     ageneAllGenes = []
 
     for fileFasta in glob.glob(dirCentroids+os.sep+'*.faa'):
         for gene in SeqIO.parse(fileFasta, "fasta"):
+            gene.id = os.path.basename(os.path.splitext(fileFasta)[0])
             ageneAllGenes.append(gene)
-  
+            
+    """
     for gene in ageneAllGenes:
         mtch = re.search(r'centroid=(.*)',gene.id)
-        gene.id = mtch.group(1)
-
+        if mtch:
+            gene.id = mtch.group(1)
+        else:
+            gene.id = os.path.splitext()
+    """
     
     SeqIO.write(ageneAllGenes, strOutputFile, "fasta")
 
