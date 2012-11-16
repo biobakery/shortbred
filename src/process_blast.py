@@ -114,7 +114,7 @@ def ClusterFams(dirClust, dCLustID, strOutputFile):
             subprocess.check_call(["muscle", "-in", str(fileFasta), "-out", str(fileAlign)])          
             
             #Call cons or em_cons from the EMBOSS package to produce a consensus sequence
-            subprocess.check_call(["em_cons", "-seq", str(fileAlign), "-outseq", str(fileClust)])
+            subprocess.check_call(["cons", "-seq", str(fileAlign), "-outseq", str(fileClust)])
         else:
             shutil.copyfile(fileFasta,fileClust)
             
