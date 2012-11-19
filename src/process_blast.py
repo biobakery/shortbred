@@ -250,8 +250,24 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
     #Once the loop is done, remember to add the last window.
     dictAAOverlapCounts.setdefault(strCurQuery.strip(), aiCounts)        
     iGeneCount = iGeneCount+1 
+    
+
+    
 
     return dictAAOverlapCounts
+
+
+###########################################################################
+def MarkX(dictGenes, dictOverlap):
+    
+    for strName in dictGenes:
+        for i in range(len(dictGenes[strName])):
+            if dictGenes[strName][i]=="X" or dictGenes[strName][i]=="x":
+                dictOverlap[strName][i] = dictOverlap[strName][i] + 999
+    
+    #print dictOverlap["ZP_03790349"]
+    return dictOverlap
+        
 
 ###########################################################################
 def CheckForMarkers(setGenes, dictKnockOut, iN):

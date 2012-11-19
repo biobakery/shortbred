@@ -302,6 +302,7 @@ sys.stderr.write( "Finding overlap with reference database...")
 dictRefCounts = pb.getOverlapCounts(strBlastRef, args.dID, 0, args.dL, 0, 0)
 sys.stderr.write( "Finding overlap with goi database...")
 dictGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, 0, args.dL, 0, 0)
+dictGOICounts = pb.MarkX(dictGOIGenes,dictGOICounts)
 
 #Get medium, high-identity hits - keep edges
 dictBigGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, args.dL +.01, .70, args.iMLength/2, 0)
@@ -327,7 +328,7 @@ if len(setGOINoHits)>0:
     for sGene in setGOINoHits:
         dictGOICounts[sGene] = [0]*len(dictGOIGenes[sGene])
 
-#DB Note - DOUBLE-CHECK THIS!
+
 
 #Get dict of counts for (Ref+GOI)
 dictAllCounts = {}
