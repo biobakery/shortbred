@@ -305,7 +305,7 @@ dictGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, 0, args.dL, 0, 0)
 dictGOICounts = pb.MarkX(dictGOIGenes,dictGOICounts)
 
 #Get medium, high-identity hits - keep edges
-dictBigGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, args.dL +.01, .70, args.iMLength/2, 0)
+dictBigGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, args.dL +.01, .80, args.iMLength/2, 0)
 #Noticed on 11/1/2012 - Should I do this for the reference set as well?
 
 
