@@ -120,17 +120,21 @@ for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
         mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])    
         strProtFamily = mtchProtStub.group(1)
         if (int(aLine[3])>= iAln and (float(aLine[2])/100.0) >= dID):
-            dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))
+            iCountHits = dictBLAST.setdefault(strProtFamily,0)
+            iCountHits = iCountHits+1
+            dictBLAST[strProtFamily] = iCountHits
             fileHits.write('\t'.join(aLine) + '\n')
     else:
         strProtFamily = aLine[1]
 	if (int(aLine[3])>= iAln):
-            dictBLAST.setdefault(strProtFamily,set()).add((aLine[0]))
+            iCountHits = dictBLAST.setdefault(strProtFamily,0)
+            iCountHits = iCountHits+1
+            dictBLAST[strProtFamily] = iCountHits
             fileHits.write('\t'.join(aLine) + '\n')        		
 
 fileHits.close()                
 	
     
 for strProt in dictBLAST.keys():
-    print strProt + "\t" +  str(float(len(dictBLAST[strProt]))/dictMarkerLenAll[strProt])
+    print strProt + "\t" + str(float(dictBLAST[strProt])/dictMarkerLenAll[strProt]) + "\t" + str(dictBLAST[strProt]) + "\t" + str(dictMarkerLenAll[strProt])
     
