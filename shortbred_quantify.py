@@ -38,7 +38,7 @@ parser.add_argument('--notmarkers', type=str, dest='strNM',default="N", help='.'
 
 #DB Note - Maybe ask Nicola how to remove usearch6 output
 
- 
+
 
 args = parser.parse_args()
 
@@ -46,7 +46,7 @@ dirTmp = args.sTmp
 if not os.path.exists(dirTmp):
     os.makedirs(dirTmp)
 
-    
+
 
 
 strBase = os.path.splitext(os.path.basename(args.sMarkers))[0]
@@ -78,9 +78,9 @@ for seq in SeqIO.parse(args.sMarkers, "fasta"):
 		strStub = mtchStub.group(1)
 	else:
 		strStub = seq.id
-	dictMarkerLenAll[strStub] = len(seq) + dictMarkerLenAll.get(strStub,0)   
+	dictMarkerLenAll[strStub] = len(seq) + dictMarkerLenAll.get(strStub,0)
  	dictMarkerLen[seq.id] = len(seq)
-    
+
 
 ###############################################################################
 #USE USEARCH, CHECK WGS NUCS AGAINST MARKER DB
@@ -99,14 +99,14 @@ if args.strNM=="N":
     subprocess.check_call(["time","-o", args.sMarkers+ ".time","usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", str(args.dID),"--blast6out", args.strBlast,"--threads", str(args.iThreads)])
 else:
     #Use usearch to check for hits (usearch local)
-    subprocess.check_call(["time","-o",args.sMarkers +".time","usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", ".90","--blast6out", args.strBlast,"--threads", str(args.iThreads)])
+    subprocess.check_call(["time","-o",args.sMarkers +".time","usearch6", "--usearch_local", str(args.sWGS), "--db", str(strDBName), "--id", str(args.dID),"--blast6out", args.strBlast,"--threads", str(args.iThreads)])
 
 
 
-fileHits = open(strHitsFile,'w') 
+fileHits = open(strHitsFile,'w')
 
 #Go through the blast hits, for each prot family, print out the number of hits
-dictBLAST = {}    
+dictBLAST = {}
 for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
     mtchTM = re.search(r'_TM.*',aLine[1])
     if (mtchTM):
@@ -115,9 +115,9 @@ for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
     else:
         dID = args.dQMID
         iAln = args.iAlnLength
-    
+
     if args.strNM=="N":
-        mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])    
+        mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])
         strProtFamily = mtchProtStub.group(1)
         if (int(aLine[3])>= iAln and (float(aLine[2])/100.0) >= dID):
             iCountHits = dictBLAST.setdefault(strProtFamily,0)
@@ -130,11 +130,11 @@ for aLine in csv.reader( open(args.strBlast), csv.excel_tab ):
             iCountHits = dictBLAST.setdefault(strProtFamily,0)
             iCountHits = iCountHits+1
             dictBLAST[strProtFamily] = iCountHits
-            fileHits.write('\t'.join(aLine) + '\n')        		
+            fileHits.write('\t'.join(aLine) + '\n')
 
-fileHits.close()                
-	
-    
+fileHits.close()
+
+
 for strProt in dictBLAST.keys():
     print strProt + "\t" + str(float(dictBLAST[strProt])/dictMarkerLenAll[strProt]) + "\t" + str(dictBLAST[strProt]) + "\t" + str(dictMarkerLenAll[strProt])
-    
+
