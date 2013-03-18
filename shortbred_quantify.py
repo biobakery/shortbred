@@ -8,6 +8,7 @@ import re
 import os
 import datetime
 import shutil
+import tarfile
 
 import Bio
 from Bio.Seq import Seq
@@ -25,7 +26,7 @@ parser.add_argument('--SBhits', type=str, dest='strHits', help='ShortBRED will p
 parser.add_argument('--blastout', type=str, dest='strBlast', default="out.blast",help='Enter the path and name of the blastoutput.')
 
 #Parameters
-parser.add_argument('--bz2', type=bool, dest='fZipFile', help='Set to true if using a bz2 file', default = False)
+parser.add_argument('--bz2', type=bool, dest='fbz2file', help='Set to true if using a bz2 file', default = False)
 parser.add_argument('--id', type=float, dest='dID', help='Enter the percent identity for the match', default = .95)
 parser.add_argument('--tmid', type=float, dest='dTMID', help='Enter the percent identity for a TM match', default = .95)
 parser.add_argument('--qmid', type=float, dest='dQMID', help='Enter the percent identity for a QM match', default = .90)
@@ -144,7 +145,33 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 strDBName = str(dirTmp) + os.sep + str(args.strMarkers) + ".udb"
 p = subprocess.check_call(["usearch6", "--makeudb_usearch", str(args.strMarkers), "--output", strDBName])
 
-RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = args.strBlast )
+#If WGS is in a fasta file...
+if( args.fbz2file==False):
+	RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = args.strBlast )
+	PrintResults(strResults = args.strResults, strBlastOut= args.strBlast,strValidHits=strHitsFile, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
 
-PrintResults(strResults = args.strResults, strBlastOut= args.strBlast,strValidHits=strHitsFile, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
+#If WGS is in a tar file...
+else:
+	iLinesForFile = 500000
+	iCount = 0
+
+	fileFASTA = open(str(dirTmp) + os.sep + 'fasta.fna', 'w')
+
+	tarWGS = tarfile.open(args.strWGS,'r:bz2')
+	for wgsFile in tarWGS.getnames():
+		for strLine in tarWGS.extractfile(wgsFile):
+			if (iCount< iLinesForFile):
+				fileFASTA.write(strLine)
+				iCount+=1
+			else:
+				fileFASTA.close()
+				print iCount
+				print "Making a new fasta file..."
+				fileFASTA = open(str(dirTmp) + os.sep + 'fasta.fna', 'w')
+				fileFASTA.write(strLine)
+				iCount = 1
+
+	fileFASTA.close()
+	tarWGS.close()
+
 
