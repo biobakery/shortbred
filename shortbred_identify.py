@@ -11,6 +11,7 @@ import re
 import os
 import datetime 
 
+import src
 import src.process_blast
 pb = src.process_blast
 
@@ -21,6 +22,8 @@ from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO
 
+c_strCDHIT	= "cd-hit"
+c_strTIME	= "time"
 
 ###############################################################################
 #COMMAND LINE ARGUMENTS
@@ -52,8 +55,8 @@ parser.add_argument('--map_in', type=str, dest='sMapIn',default="", help='Enter 
 # had supplied incorrect parameters. Determine control flow based on that.
 
 # DB NOTE: Put in a few examples there. Maybe even provide a few sample fasta files.
-#           That will help the user out a great deal. They can see how this will work for different
-#           Parameters, etc.
+#	That will help the user out a great deal. They can see how this will work for different
+#	Parameters, etc.
 
 
 #OUTPUT
@@ -91,17 +94,8 @@ args = parser.parse_args()
 
 dirTmp = args.sTmp
 
-#DB NOTE - We might want to cut this out of the final version.
-dirTime = dirTmp + os.sep + "time"
-dirQuasi = dirTmp + os.sep + "quasi"
-
-#Make tmp directories.
-if not os.path.exists(dirTmp):
-    os.makedirs(dirTmp)
-if not os.path.exists(dirTime):
-    os.makedirs(dirTime)
-if not os.path.exists(dirQuasi):
-    os.makedirs(dirQuasi)
+dirTime = src.check_create_dir( dirTmp + os.sep + "time" )
+dirQuasi = src.check_create_dir( dirTmp + os.sep + "quasi" )
 
 #DB Note - You could name the log file after the markers. 
 
@@ -117,128 +111,121 @@ iMode = 0
 ################################################################################
 # Step Zero: Choose program mode based on files supplied by the user.
 
-#DB Note - handles the error checking a little bit better
-# report an error if user supplies parameters for two different things
-
-if (args.sRefProts!=""):
-    log.write("Mode 1: Building everything..." + "\n")
-    iMode = 1
+if (args.sGOIProts!="" and args.sRefProts!=""):
+	log.write("Mode 1: Building everything..." + "\n")
+	iMode = 1
 elif (args.sGOIProts!="" and args.dirRefDB!=""):
-    log.write("Mode 2: Using user-supplied ref db..." + "\n")    
-    iMode = 2
+	log.write("Mode 2: Using user-supplied ref db..." + "\n")
+	iMode = 2
 elif (args.sClust !="" and args.sGOIBlast!="" and args.sRefBlast!="" and args.sMapIn!=""):
-    log.write("Mode 3: Using existing BLAST and Clustering results..." + "\n")
-    iMode = 3
+	log.write("Mode 3: Using existing BLAST and Clustering results..." + "\n")
+	iMode = 3
 else:
-    print "Command line arguments incorrect."
-    
-#DB Note - Can use "try" and "except" for error reporting.
+	parser.print_help( )
+	raise Exception( "Command line arguments incorrect, must provide either:\n" +
+		"\t--goi AND --ref, OR\n" +
+		"\t--goi AND --refdb, OR\n" +
+		"\t--goiclust AND --goiblast AND --refblast AND --map_in" )
+
+#Set default blastresults, clustfile and map from args if not creating the markers
+strClustFile = args.sClust
+strBlastRef = args.sRefBlast
+strBlastSelf = args.sGOIBlast
+strMapFile = args.sMapIn
 
 ################################################################################
 # Step One: Cluster input genes and make into a blast database.
 #
-# Save centroids to                         "tmp/clust/clust.faa"
-# Save blastdb of centroids file to         "tmp/clustdb/goidb"
-# If prot-to-fam map does not exist, make   "tmp/clust/clust.map"
+# Save centroids to							"tmp/clust/clust.faa"
+# Save blastdb of centroids file to			"tmp/clustdb/goidb"
+# If prot-to-fam map does not exist, make	"tmp/clust/clust.map"
 
 #Make directories for clustfile and database.
 if(iMode==1 or iMode==2):
-    
-#DB note - consider making this into a function, checking and creating files/driectories
-    dirClust = dirTmp + os.sep + "clust"
-    dirClustDB = dirTmp + os.sep + "clustdb"
 
-    
-    if not os.path.exists(dirClust):
-        os.makedirs(dirClust)
-    if not os.path.exists(dirClustDB):
-        os.makedirs(dirClustDB)
-     
-       
-    strClustFile = dirClust + os.sep + "clust.faa"
-    strClustDB = dirClustDB + os.sep + "goidb"
-    
-    #DB Note: clean up strMap
-    strMap = os.path.splitext(strClustFile)[0]    
-    
-    
-    
-    #If user supplied a map, cluster by those families.
-    #Else: cluster the entire file and make map file.
-    
-    if(args.sMapIn!=""):
-        """
-        dictFams = {}
-        for astrLine in csv.reader( open(args.sMapIn), csv.excel_tab ):
-            #dictFams[protein]=[family]        
-            dictFams[str(astrLine[1]).strip()]=str(astrLine[0]).strip()
-        
-        
-        #Create subfolders for user-defined families
-        dirFams = dirClust + os.sep + "fams"
-        strClustPath = dirClust + os.sep + "clust.faa" 
-        
-        #DB Note - Probably erase this.
-        strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
-        
-    
-        if not os.path.exists(dirFams):
-            os.makedirs(dirFams)
-    
-        pb.MakeFamilyFastaFiles(dictFams, args.sGOIProts, dirFams)
-        pb.ClusterFams(dirClust)
-        """
-    else:
-        """
-        Old Code to cluster in usearch
-        subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", strMap + ".uc", "--id", str(args.dClustID),"--centroids", strClustFile,"--maxaccepts","0","--maxrejects","0"])
-        strMapFile = dirClust + os.sep + "clust.map"
-        pb.printMap(strMap+".uc",strMapFile )
-        """
-        #Cluster in cdhit
-        subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","cd-hit", "-i", str(args.sGOIProts),"-o",strClustFile, "-d", "0", "-c", str(args.dClustID), "-b", "10","-g", "1"]) 
-        strMapFile = dirClust + os.sep + "clust.map"
-        pb.GetCDHitMap ( strClustFile+".clstr",strMapFile)
-        
-        
-        #Create a folder called "clust/fams", will hold a fasta file for each CD-HIT cluster
-        dirFams = dirClust + os.sep + "fams"
-        strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
-    
-        if not os.path.exists(dirFams):
-            os.makedirs(dirFams)
-        
-        #Make a fasta file for each CD-HIT cluster
-        pb.MakeFamilyFastaFiles( strMapFile, str(args.sGOIProts), dirFams)
-        
-        #Call USEARCH to get consensus seq for each cluster,overwrite the CD-HIT cluster file 
-        pb.ClusterFams(dirClust, args.dClustID,strClustFile )
-                               
-                               
-    
-    #Make database from goi centroids
-    subprocess.check_call(["time", "-o", dirTime + os.sep + "goidb.time", "makeblastdb", "-in", strClustFile, "-out", strClustDB, "-dbtype", "prot", "-logfile", dirTmp + os.sep + "goidb.log"])
-
+	dirClust = src.check_create_dir( dirTmp + os.sep + "clust" )
+	dirClustDB = src.check_create_dir( dirTmp + os.sep + "clustdb" )
+	   
+	strClustFile = dirClust + os.sep + "clust.faa"
+	strClustDB = dirClustDB + os.sep + "goidb"
+	
+	#DB Note: clean up strMap
+	strMap = os.path.splitext(strClustFile)[0]	
+	
+	#If user supplied a map, cluster by those families.
+	#Else: cluster the entire file and make map file.
+	
+	if(args.sMapIn!=""):
+		"""
+		dictFams = {}
+		for astrLine in csv.reader( open(args.sMapIn), csv.excel_tab ):
+			#dictFams[protein]=[family]		
+			dictFams[str(astrLine[1]).strip()]=str(astrLine[0]).strip()
+		
+		
+		#Create subfolders for user-defined families
+		dirFams = dirClust + os.sep + "fams"
+		strClustPath = dirClust + os.sep + "clust.faa" 
+		
+		#DB Note - Probably erase this.
+		strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
+		
+	
+		if not os.path.exists(dirFams):
+			os.makedirs(dirFams)
+	
+		pb.MakeFamilyFastaFiles(dictFams, args.sGOIProts, dirFams)
+		pb.ClusterFams(dirClust)
+		"""
+	else:
+		"""
+		Old Code to cluster in usearch
+		subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", strMap + ".uc", "--id", str(args.dClustID),"--centroids", strClustFile,"--maxaccepts","0","--maxrejects","0"])
+		strMapFile = dirClust + os.sep + "clust.map"
+		pb.printMap(strMap+".uc",strMapFile )
+		"""
+		#Cluster in cdhit
+		subprocess.check_call([c_strTIME, "-o",
+			  dirTime + os.sep + "goiclust.time",
+			  c_strCDHIT, "-i", str(args.sGOIProts),
+				"-o", strClustFile, "-d", "0",
+				"-c", str(args.dClustID), "-b", "10","-g", "1"])
+		strMapFile = dirClust + os.sep + "clust.map"
+		pb.GetCDHitMap( strClustFile + ".clstr", strMapFile )
+		
+		#Create a folder called "clust/fams", will hold a fasta file for each CD-HIT cluster
+		dirFams = src.check_create_dir( dirClust + os.sep + "fams" )
+		strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
+	
+		#Make a fasta file for each CD-HIT cluster
+		pb.MakeFamilyFastaFiles( strMapFile, str(args.sGOIProts), dirFams)
+		
+		#Call USEARCH to get consensus seq for each cluster,overwrite the CD-HIT cluster file 
+		pb.ClusterFams(dirClust, args.dClustID,strClustFile )
+	
+	#Make database from goi centroids
+	subprocess.check_call([c_strTIME, "-o", dirTime + os.sep + "goidb.time",
+		"makeblastdb", "-in", strClustFile, "-out", strClustDB,
+		"-dbtype", "prot", "-logfile", dirTmp + os.sep + "goidb.log"])
 
 ################################################################################
 # Step Two: Create reference database, if not supplied by user.
 # (refblast and refdb are blank, ref exists)
 
-# Save blastdb of ref file to     "tmp/refdb/refdb"
+# Save blastdb of ref file to	 "tmp/refdb/refdb"
 if(iMode==1):
-    if (args.sRefBlast == "" and args.dirRefDB == "" and args.sRefProts!=""):
-        dirRefDB = dirTmp + os.sep + "refdb"
-        if not os.path.exists(dirRefDB):
-            os.makedirs(dirRefDB)
-        strRefDBPath = dirRefDB + os.sep + "refdb"    
-        
-        #Recent edits to cluster the reference database ahead of time
-        """      
-        subprocess.check_call(["time", "-o",dirTime + os.sep + "refclust.time","usearch6", "--cluster_fast", str(args.sRefProts), "--uc",  "ref.uc", "--id", str(args.dClustID),"--centroids", strClustFile])        
-        """
-        
-        
-        subprocess.check_call(["time", "-o",dirTime + os.sep + "refdb.time","makeblastdb", "-in", str(args.sRefProts),"-out", strRefDBPath, "-dbtype", "prot", "-logfile", dirTmp + os.sep +  "refdb.log"])
+	if (args.sRefBlast == "" and args.dirRefDB == "" and args.sRefProts!=""):
+		dirRefDB = src.check_create_dir( dirTmp + os.sep + "refdb" )
+		strRefDBPath = dirRefDB + os.sep + "refdb"	
+		
+		#Recent edits to cluster the reference database ahead of time
+		"""	  
+		subprocess.check_call(["time", "-o",dirTime + os.sep + "refclust.time","usearch6", "--cluster_fast", str(args.sRefProts), "--uc",  "ref.uc", "--id", str(args.dClustID),"--centroids", strClustFile])		
+		"""
+		
+		subprocess.check_call([c_strTIME, "-o", dirTime + os.sep + "refdb.time",
+			"makeblastdb", "-in", str(args.sRefProts),"-out", strRefDBPath,
+			"-dbtype", "prot", "-logfile", dirTmp + os.sep +  "refdb.log"])
 
 ################################################################################
 # Step Three: Run Blast Searches
@@ -250,23 +237,28 @@ if(iMode==1):
 
 #If refdb supplied, use that name. 
 if(iMode==1 or iMode==2):
-    if (args.dirRefDB!=""):
-        strRefDBPath = str(args.dirRefDB)
-    
-    dirBlastResults = dirTmp + os.sep + "blastresults"
-    strBlastRef = dirBlastResults + os.sep + "refblast.txt"
-    strBlastSelf = dirBlastResults + os.sep + "selfblast.txt"
-    
-    
-    if not os.path.exists(dirBlastResults):
-        os.makedirs(dirBlastResults)
-    
-    #Blast clust file against goidb
-    subprocess.check_call(["time", "-o", dirTime + os.sep +"goisearch.time","blastp", "-query", strClustFile, "-db", strClustDB, "-out", strBlastSelf, "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
-    
-    #Blast clust file against refdb
-    subprocess.check_call(["time", "-o", dirTime + os.sep +"refsearch.time", "blastp", "-query", strClustFile, "-db",strRefDBPath, "-out", strBlastRef, "-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped","-comp_based_stats","F","-window_size","0", "-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000", "-max_target_seqs", "100000", "-num_descriptions", "100000","-num_threads",str(args.iThreads)])
+	if (args.dirRefDB!=""):
+		strRefDBPath = str(args.dirRefDB)
+	
+	dirBlastResults = src.check_create_dir( dirTmp + os.sep + "blastresults" )
+	strBlastRef = dirBlastResults + os.sep + "refblast.txt"
+	strBlastSelf = dirBlastResults + os.sep + "selfblast.txt"
 
+	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30",
+		"-ungapped","-comp_based_stats","F","-window_size","0",
+		"-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000",
+		"-max_target_seqs", "100000", "-num_descriptions", "100000",
+		"-num_threads",str(args.iThreads)]
+	
+	#Blast clust file against goidb
+	subprocess.check_call(["time", "-o", dirTime + os.sep +"goisearch.time",
+		"blastp", "-query", strClustFile, "-db", strClustDB,
+		"-out", strBlastSelf] + astrBlastParams)
+	
+	#Blast clust file against refdb
+	subprocess.check_call(["time", "-o", dirTime + os.sep +"refsearch.time",
+		"blastp", "-query", strClustFile, "-db",strRefDBPath,
+		"-out", strBlastRef] + astrBlastParams)
 
 ##################################################################################################
 #Step Four: Search BLAST output to find regions of overlap.
@@ -274,27 +266,15 @@ if(iMode==1 or iMode==2):
 #make dictGOIgenes:   dict of (genename, seq) for centroids
 #make dictRefCounts: dict of (genename, [overlap count for each AA]),
 
-
 #Get dict of GeneSeqs, then overlap counts from the Ref and GOI blast results
 #dictGOIGenes has form (genename, "AMNLJI....")
 #dictRefCounts,dictGOICounts have form (genename,[list of overlap counts for each AA])
 
-#Get blastresults, clustfile and map from args if only creating the markers
-if (args.sClust!=""):
-    strClustFile = args.sClust
-if (args.sRefBlast!=""):
-    strBlastRef = args.sRefBlast
-if (args.sGOIBlast!=""):
-    strBlastSelf = args.sGOIBlast
-if (args.sMapIn!=""):
-    strMapFile = args.sMapIn
-
 dictFams = {}
 
-
-for strLine in csv.reader(open(strMapFile),delimiter='\t'):
-    dictFams[strLine[1]]=strLine[0]
-        
+for astrLine in csv.reader(open(strMapFile),delimiter='\t'):
+	dictFams[astrLine[1]]=astrLine[0]
+		
 dictGOIGenes = pb.getGeneData(open(strClustFile))
 
 #Get short, high-identity hits
@@ -306,37 +286,24 @@ dictGOICounts = pb.MarkX(dictGOIGenes,dictGOICounts)
 
 #Get medium, high-identity hits - keep edges
 dictBigGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, args.dL +.01, .80, args.iMLength/2, 0)
-#Noticed on 11/1/2012 - Should I do this for the reference set as well?
+#Note on 11/1/2012 - for higher precision, could be done for the reference set as well?
 
-
-#DB note - maybe make this as function.
-
-#If a gene has 0 valid hits in the ref database, make an array of 0's
+#If a gene has 0 valid hits in the ref OR GOI databases, make an array of 0's
 #so the program knows that nothing overlapped with the gene.
-setGOINotInRef = set(dictGOIGenes.keys()).difference(set(dictRefCounts.keys()))
-
-if len(setGOINotInRef)>0:
-    for sGene in setGOINotInRef:
-        dictRefCounts[sGene] = [0]*len(dictGOIGenes[sGene])
-
-#If a gene has 0 valid hits in the GOI database (unlikely), make an 
-#array of 0's so the program knows that nothing overlapped with the gene.    
-
-setGOINoHits = set(dictGOIGenes.keys()).difference(set(dictGOICounts.keys()))
-
-if len(setGOINoHits)>0:
-    for sGene in setGOINoHits:
-        dictGOICounts[sGene] = [0]*len(dictGOIGenes[sGene])
-
-
+for dictCounts in (dictRefCounts, dictGOICounts):
+	setNotInCounts = set(dictGOIGenes.keys()).difference(set(dictCounts.keys()))
+	
+	if len(setNotInCounts)>0:
+		for sGene in setNotInCounts:
+			dictCounts[sGene] = [0]*len(dictGOIGenes[sGene])
 
 #Get dict of counts for (Ref+GOI)
 dictAllCounts = {}
 setRefGOI = set(dictGOICounts.keys()).union(set(dictRefCounts.keys())) 
 
 for sGene in setRefGOI:
-    aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]),dictBigGOICounts.get(sGene,[0]))]
-    dictAllCounts[sGene] = aiSum
+	aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]),dictBigGOICounts.get(sGene,[0]))]
+	dictAllCounts[sGene] = aiSum
 
 ###########################################################################
 #Step Five: Look in AA overlap arrays in dictAllCounts for TM's and QM's
@@ -351,31 +318,26 @@ setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 sys.stderr.write( "Found True Markers...")
 atupQuasiMarkers1 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength,args.iThresh, args.iTotLength)
 
-
-
 sys.stderr.write( "Found first set of Quasi Markers...")
 #atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
 #sys.stderr.write( "Found second set of Quasi Markers...")
 
-
 #Replace AA's with +'s in True Markers
 for key in setHasMarkers:
-        if dictAllCounts.has_key(key):
-            aiWindow = dictAllCounts[key]
-            strGene = list(dictGOIGenes[key])
+	if dictAllCounts.has_key(key):
+		aiWindow = dictAllCounts[key]
+		astrGene = list(dictGOIGenes[key])
 
-            for i in range(0,len(aiWindow)):
-                if aiWindow[i] >= 1:
-                    strGene[i] = "+"
-            strGene = "".join(strGene)
-            dictGOIGenes[key] =strGene
+		for i in range(len(aiWindow)):
+			if aiWindow[i] >= 1:
+				astrGene[i] = "+"
+		dictGOIGenes[key] = "".join(astrGene)
 
 #####################################################################################################
 #Step Six: Cluster the Quasi-Markers. Remap the proteins they represent to the centroid marker for each cluster.
 
 atupQM = atupQuasiMarkers1 
 atupQM = sorted(atupQM, key=lambda tup: tup[0])
-
 
 strQuasiFN = dirQuasi+ os.sep + "quasi.faa"
 strQuasiClust = dirQuasi+ os.sep + "quasiclust.faa"
@@ -384,47 +346,40 @@ fQuasi = open(strQuasiFN,'w')
 pb.PrintQuasiMarkers(atupQM,fQuasi)
 fQuasi.close()
 
-subprocess.check_call(["cd-hit", "-i", strQuasiFN,"-o",strQuasiClust, "-d", "0", "-c", str(args.dQClustID), "-b", "10","-g", "1","-aL","1.0"]) 
-        
-
-pb.GetCDHitMap ( strQuasiClust+".clstr",strQuasiMap)
+subprocess.check_call(["cd-hit", "-i", strQuasiFN,"-o",strQuasiClust,
+	"-d", "0", "-c", str(args.dQClustID), "-b", "10","-g", "1","-aL","1.0"])
+		
+pb.GetCDHitMap( strQuasiClust+".clstr", strQuasiMap)
 
 dictQuasiClust = {}
 for astrLine in csv.reader( open(strQuasiMap), csv.excel_tab ):
-            
-            mtchMarker = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[1])
-            strMarker = mtchMarker.group(1)
-            mtchFam = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[0])
-            strFam = mtchFam.group(1)
-            
-            dictQuasiClust[strMarker] = strFam
+			
+			mtchMarker = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[1])
+			strMarker = mtchMarker.group(1)
+			mtchFam = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[0])
+			strFam = mtchFam.group(1)
+			
+			dictQuasiClust[strMarker] = strFam
 
-for qckey in dictQuasiClust.keys():
-    for key in dictFams:
-        if (dictFams[key] == qckey):
-            dictFams[key] = dictQuasiClust[qckey]
-        
+for qckey, qcvalue in dictQuasiClust.items():
+	for key in dictFams:
+		if (dictFams[key] == qckey):
+			dictFams[key] = qcvalue
 
-fFinalMap = open(dirTmp + os.sep + "final.map",'w')
+with open(dirTmp + os.sep + "final.map",'w') as fFinalMap:
+	for prot, fam in sorted(dictFams.items(), key = lambda(prot, fam): (fam,prot)):
+			fFinalMap.write(fam + "\t" + prot + "\n")
 
-for prot, fam in sorted(dictFams.items(), key = lambda(prot, fam): (fam,prot)):
-        fFinalMap.write(fam + "\t" + prot + "\n")
-fFinalMap.close()
-   
 #Print AA with overlap area removed to premarkers.txt
 strGeneName = ""
 iCount = 0
-
-premarkers = open(args.sTmp + os.sep + 'premarkers.txt', 'w')
-
-for key in dictGOIGenes:
-    if key in setHasMarkers:
-        strGeneName = ">" + key + "_TM"    
-        premarkers.write(strGeneName  + '\n')
-        premarkers.write(re.sub("(.{80})","\\1\n",dictGOIGenes[key],re.DOTALL)  + '\n')
-        iCount = iCount+1
-    
-premarkers.close()
+with open(args.sTmp + os.sep + 'premarkers.txt', 'w') as premarkers:
+	for key in dictGOIGenes:
+		if key in setHasMarkers:
+			strGeneName = ">" + key + "_TM"	
+			premarkers.write(strGeneName  + '\n')
+			premarkers.write(re.sub("(.{80})","\\1\n",dictGOIGenes[key],re.DOTALL)  + '\n')
+			iCount = iCount+1
 
 ##################################################################################
 ##Step Seven: Print the TM's, 
@@ -437,35 +392,30 @@ Sample gene in premarkers.txt looks like:
 MT+++++LET+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++S++++++
 ++++++++CLINETEKFLNIWIESNVSF++++++YKSDLLEYKDT+++++++++++++G+++++++++++++++++++++
 ++++++++++++++++++++++++++++++++++++++++++++QNIVDSVNEWDLNLK
-"""     
-
+"""	 
 
 fOut = open(args.sMarkers, 'w') 
 iMLength = args.iMLength
 iTotLength = args.iTotLength
 
-for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):    
-    iCount = 1
-    iRemSeq = iTotLength
-    
-    mtch = re.search('\+',str(gene.seq))
-    if not mtch:
-        strMarker = str(gene.seq)
-        geneMarker = SeqRecord(Seq(strMarker[0:min(iRemSeq,len(strMarker))]),id = gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
-        SeqIO.write(geneMarker, fOut,"fasta")
-        iRemSeq = iRemSeq - len(geneMarker.seq)
+for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):	
+	iCount = 1
+	iRemSeq = iTotLength
+	
+	mtch = re.search('\+',str(gene.seq))
+	if not mtch:
+		strMarker = str(gene.seq)
+		geneMarker = SeqRecord(Seq(strMarker[0:min(iRemSeq,len(strMarker))]),id = gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
+		SeqIO.write(geneMarker, fOut,"fasta")
+		iRemSeq = iRemSeq - len(geneMarker.seq)
 
-    else:
-        for strMarker in (re.split('\+*',str(gene.seq))):
-            if (iRemSeq>=iMLength and len(strMarker) >= iMLength ):
-                geneMarker = SeqRecord(Seq(strMarker[0:min(iRemSeq,len(strMarker))]),id = gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
-                SeqIO.write(geneMarker, fOut,"fasta")
-                iCount+=1
-                iRemSeq = iRemSeq - len(geneMarker)
-    
-
-
-
+	else:
+		for strMarker in (re.split('\++',str(gene.seq))):
+			if (iRemSeq>=iMLength and len(strMarker) >= iMLength ):
+				geneMarker = SeqRecord(Seq(strMarker[0:min(iRemSeq,len(strMarker))]),id = gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
+				SeqIO.write(geneMarker, fOut,"fasta")
+				iCount+=1
+				iRemSeq = iRemSeq - len(geneMarker)
 
 #Print QM's
 #Each QM_tuple has the values: (name, window, overlapvalue)
@@ -473,8 +423,8 @@ for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):
 atupQMFinal = []
 
 for tup in atupQM:
-    if tup[0] in dictQuasiClust.values():
-        atupQMFinal.append(tup)
-        
-fOut = open(args.sMarkers, 'a') 
-pb.PrintQuasiMarkers(atupQMFinal,fOut)
+	if tup[0] in dictQuasiClust.values():
+		atupQMFinal.append(tup)
+
+with open(args.sMarkers, 'a') as fOut:
+	pb.PrintQuasiMarkers(atupQMFinal,fOut)

@@ -10,9 +10,13 @@ import datetime
 import shutil
 import tarfile
 
+import src
+
 import Bio
 from Bio.Seq import Seq
 from Bio import SeqIO
+
+c_strUSEARCH	= "usearch"
 
 parser = argparse.ArgumentParser(description='ShortBRED Quantify \n This program takes a set of protein family markers and wgs file as input, and produces a relative abundance table.')
 
@@ -45,21 +49,19 @@ args = parser.parse_args()
 
 ################################################################################
 #Make temp directory
-dirTmp = args.strTmp
-if not os.path.exists(dirTmp):
-    os.makedirs(dirTmp)
+dirTmp = src.check_create_dir( args.strTmp )
 
-if(args.strHits==""):
-    strHitsFile = args.strTmp + os.sep + "SBhits.txt"
-
+strHitsFile = args.strHits or ( args.strTmp + os.sep + "SBhits.txt" )
 
 ###############################################################################
 #Functions
 
 def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB):
 
-	subprocess.check_call(["time","-o", strMarkers + ".time","usearch6", "--usearch_local", strWGS, "--db", strDB, "--id", str(args.dID),"--blast6out", strBlastOut,"--threads", str(args.iThreads)])
-	return
+	subprocess.check_call(["time","-o", strMarkers + ".time",
+		c_strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
+		"--id", str(args.dID),"--blast6out", strBlastOut,
+		"--threads", str(args.iThreads)])
 
 def StoreHitCounts(strBlastOut,strValidHits,dictMarkerLen,dictHitCounts):
 	#Take the code to put information in dictionaries here. Then we'll only need to create the dictionaries once
@@ -67,84 +69,79 @@ def StoreHitCounts(strBlastOut,strValidHits,dictMarkerLen,dictHitCounts):
 
 	#strBlastOut - BLAST-formatted output from USEARCH
 	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
-    #dictMarkerLen - Contains each marker/centroid length
+	#dictMarkerLen - Contains each marker/centroid length
 	#dictHitCounts - Contains each family's hit count
 
-	fileHits = open(strValidHits,'a')
+	csvwHits = csv.writer( open(strValidHits,'a'), csv.excel_tab )
 
 	#Go through the usearch output, for each prot family, record the number of valid hits
 	for aLine in csv.reader( open(strBlastOut), csv.excel_tab ):
 
 		#Pick appropriate ID and Length criteria, based on whether marker is a TM or QM
-	    mtchTM = re.search(r'_TM.*',aLine[1])
-	    if (mtchTM):
-	        dID = args.dTMID
-	        iAln = min(dictMarkerLen[aLine[1]] ,args.iAlnMax)
-	    else:
-	        dID = args.dQMID
-	        iAln = args.iAlnLength
+		mtchTM = re.search(r'_TM',aLine[1])
+		if (mtchTM):
+			dID = args.dTMID
+			iAln = min(dictMarkerLen[aLine[1]] ,args.iAlnMax)
+		else:
+			dID = args.dQMID
+			iAln = args.iAlnLength
 
 		#If using ShortBRED Markers (and not centroids)...
-	    if args.strCentroids=="N":
+		if args.strCentroids=="N":
 			#Get the Family Name
-	        mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])
-	        strProtFamily = mtchProtStub.group(1)
+			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])
+			strProtFamily = mtchProtStub.group(1)
 
 			#If hit satisfies criteria, add it to dictHitCounts's count of hits for that family, write the result to fileHits.
-	        if (int(aLine[3])>= iAln and (float(aLine[2])/100.0) >= dID):
-	            iCountHits = dictHitCounts.setdefault(strProtFamily,0)
-	            iCountHits = iCountHits+1
-	            dictHitCounts[strProtFamily] = iCountHits
-	            fileHits.write('\t'.join(aLine) + '\n')
+			if (int(aLine[3])>= iAln and (float(aLine[2])/100) >= dID):
+				iCountHits = dictHitCounts.setdefault(strProtFamily,0)
+				iCountHits = iCountHits+1
+				dictHitCounts[strProtFamily] = iCountHits
+				csvwHits.writerow( aLine )
 
 		#If using centroids (Typically only used for evaluation purposes.)....
-	    else:
+		else:
 			#print "CENTROID CODE RAN - LINE 1"
 			strProtFamily = aLine[1]
 
 			if (int(aLine[3])>= iAln):
-		            iCountHits = dictHitCounts.setdefault(strProtFamily,0)
-		            iCountHits = iCountHits+1
-		            dictHitCounts[strProtFamily] = iCountHits
-		            #print "CENTROID CODE RAN - LINE 2"
-		            fileHits.write('\t'.join(aLine) + '\n')
-
-	fileHits.close()
-	return
+					iCountHits = dictHitCounts.setdefault(strProtFamily,0)
+					iCountHits = iCountHits+1
+					dictHitCounts[strProtFamily] = iCountHits
+					#print "CENTROID CODE RAN - LINE 2"
+					csvwHits.writerow( aLine )
 
 def PrintResults(strResults,dictHitCounts, dictMarkerLenAll,dictMarkerLen):
 	#strResults - Name of text file with final ShortBRED Counts
 	#strBlastOut - BLAST-formatted output from USEARCH
 	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
 	#dictMarkerLenAll - Contains the sum of marker lengths for all markers in a family
-    #dictMarkerLen - Contains each marker/centroid length
+	#dictMarkerLen - Contains each marker/centroid length
 
-    #Print Name, Normalized Count, Hit Count, Marker Length to std out
-	fileResults = open(strResults,'w')
+	#Print Name, Normalized Count, Hit Count, Marker Length to std out
+	csvwResults = csv.writer( open(strResults,'w'), csv.excel_tab )
 	#print dictHitCounts.keys()
 	for strProt in dictHitCounts.keys():
-	    fileResults.write(strProt + "\t" + str(float(dictHitCounts[strProt])/dictMarkerLenAll[strProt]) + "\t" + str(dictHitCounts[strProt]) + "\t" + str(dictMarkerLenAll[strProt]) + "\n")
-	fileResults.close()
+		csvwResults.writerow( [strProt, float(dictHitCounts[strProt])/dictMarkerLenAll[strProt],
+			dictHitCounts[strProt], dictMarkerLenAll[strProt]] )
 
 ##############################################################################
 # Log the parameters
 
-log = open(str(dirTmp + os.sep + args.strMarkers+ ".log"), "w")
-log.write("ShortBRED log \n" + datetime.date.today().ctime() + "\n SEARCH PARAMETERS \n")
-log.write("Match ID:" + str(args.dID) + "\n")
-log.write("Alignment Length:" + str(args.iAlnLength) + "\n")
-log.write("TM id:" + str(args.dTMID) + "\n")
-log.write("QM id:" + str(args.dQMID) + "\n")
-if args.strCentroids=="N":
-    log.write("Sequences: Markers")
-else:
-    log.write("Sequences: Centroids")
-
-log.close()
-
+with open(str(dirTmp + os.sep + args.strMarkers+ ".log"), "w") as log:
+	log.write("ShortBRED log \n" + datetime.date.today().ctime() + "\n SEARCH PARAMETERS \n")
+	log.write("Match ID:" + str(args.dID) + "\n")
+	log.write("Alignment Length:" + str(args.iAlnLength) + "\n")
+	log.write("TM id:" + str(args.dTMID) + "\n")
+	log.write("QM id:" + str(args.dQMID) + "\n")
+	if args.strCentroids=="N":
+		log.write("Sequences: Markers")
+	else:
+		log.write("Sequences: Centroids")
 
 ##############################################################################
 #Initialize Dictionaries
+
 dictBLAST = {}
 dictMarkerLen = {}
 dictMarkerLenAll = {}
@@ -157,7 +154,7 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 	if args.strCentroids=="N":
 		mtchStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',seq.id)
 		strStub = mtchStub.group(1)
-    #For Centroids...
+	#For Centroids...
 	else:
 		strStub = seq.id
 	dictMarkerLenAll[strStub] = len(seq) + dictMarkerLenAll.get(strStub,0)
@@ -168,14 +165,15 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 
 #Make a database from the markers
 strDBName = str(dirTmp) + os.sep + str(args.strMarkers) + ".udb"
-p = subprocess.check_call(["usearch6", "--makeudb_usearch", str(args.strMarkers), "--output", strDBName])
+
+p = subprocess.check_call([c_strUSEARCH, "--makeudb_usearch", args.strMarkers,
+	"--output", strDBName])
 
 #If WGS is in a fasta file...
-if( args.fbz2file==False):
+if args.fbz2file == False:
 	RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = args.strBlast )
 	StoreHitCounts(strBlastOut = args.strBlast,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
 	PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
-
 #If WGS is in a tar file...
 else:
 	iReadsForFile = 2000000
@@ -199,16 +197,14 @@ else:
 				RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
 				StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
 
-
 				fileFASTA = open(strFASTAName, 'w')
 				iFileCount +=1
 				SeqIO.write(seq, fileFASTA, "fasta")
 				iCount = 1
-
+	fileFASTA.close()
 	RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
 	StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
 	PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
-	fileFASTA.close()
 	tarWGS.close()
 
 

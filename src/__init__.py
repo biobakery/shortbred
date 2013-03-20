@@ -5,3 +5,10 @@ Created on Wed Sep 26 14:33:52 2012
 @author: jim
 """
 
+import os
+
+def check_create_dir( strDir ):
+	
+	if not os.path.exists( strDir ):
+		os.makedirs( strDir )
+	return strDir
