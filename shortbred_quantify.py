@@ -198,12 +198,12 @@ astrFileList = []
 if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
 	tarWGS = tarfile.open(args.strWGS,strExtractMethod)
 	astrFileList = tarWGS.getnames()
-	print(tarWGS.getnames)
+	#print(tarWGS.getnames)
 else:
 	astrFileList.append(args.strWGS)
 
-print "Compression: ", strExtractMethod
-print astrFileList
+#print "Compression: ", strExtractMethod
+#print astrFileList
 
 
 #Note: I would like to add code here along the lines of
@@ -225,7 +225,7 @@ for strFile in astrFileList:
 		for seq in SeqIO.parse(streamWGS, "fasta"):
 			SeqIO.write(seq,fileFASTA,"fasta")
 			iCount+=1
-			print iCount
+			#print iCount
 			if (iCount>=iReadsForFile):
 				fileFASTA.close()
 
@@ -259,7 +259,7 @@ PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLe
 **** print (aggregate) results
 """
 
-print iCount
+#print iCount
 
 """
     	for seq in SeqIO.parse(tarWGS.extractfile(wgsFile), "fasta"):
