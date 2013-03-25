@@ -54,7 +54,9 @@ dirTmp = src.check_create_dir( args.strTmp )
 strHitsFile = args.strHits or ( args.strTmp + os.sep + "SBhits.txt" )
 
 ###############################################################################
-#Functions
+
+
+
 
 def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB):
 
@@ -128,7 +130,7 @@ def PrintResults(strResults,dictHitCounts, dictMarkerLenAll,dictMarkerLen):
 ##############################################################################
 # Log the parameters
 
-with open(str(dirTmp + os.sep + args.strMarkers+ ".log"), "w") as log:
+with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "w") as log:
 	log.write("ShortBRED log \n" + datetime.date.today().ctime() + "\n SEARCH PARAMETERS \n")
 	log.write("Match ID:" + str(args.dID) + "\n")
 	log.write("Alignment Length:" + str(args.iAlnLength) + "\n")
@@ -149,6 +151,8 @@ dictMarkerLenAll = {}
 ###############################################################################
 #Sum up the marker lengths by family, put them in a dictionary.
 
+
+
 for seq in SeqIO.parse(args.strMarkers, "fasta"):
 	#For ShortBRED Markers...
 	if args.strCentroids=="N":
@@ -164,28 +168,101 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 # Make the USEARCH Database, run USEARCH, Print the ShortBRED Counts
 
 #Make a database from the markers
-strDBName = str(dirTmp) + os.sep + str(args.strMarkers) + ".udb"
+strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".udb"
 
 p = subprocess.check_call([c_strUSEARCH, "--makeudb_usearch", args.strMarkers,
 	"--output", strDBName])
 
-#If WGS is in a fasta file...
-if args.fbz2file == False:
-	RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = args.strBlast )
-	StoreHitCounts(strBlastOut = args.strBlast,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
-	PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
-#If WGS is in a tar file...
+
+#Check the extension on the WGS fasta file
+if args.strWGS.find(".tar.bz2") > -1:
+	strExtractMethod = 'r:bz2'
+elif args.strWGS.find(".tar.gz") > -1:
+	strExtractMethod = 'r:gz'
+elif args.strWGS.find(".gz") > -1:
+	strExtractMethod = 'gz'
+elif args.strWGS.find(".bz2") > -1:
+	strExtractMethod = 'bz2'
 else:
-	iReadsForFile = 2000000
-	iCount = 0
-	iFileCount = 1
+	strExtractMethod = ""
 
-	strFASTAName = str(dirTmp) + os.sep + 'fasta.fna'
-	fileFASTA = open(strFASTAName, 'w')
+iReadsForFile = 5000000
+iCount = 0
+iFileCount = 1
+strFASTAName = str(dirTmp) + os.sep + 'fasta.fna'
+fileFASTA = open(strFASTAName, 'w')
 
-	tarWGS = tarfile.open(args.strWGS,'r:bz2')
-	for wgsFile in tarWGS.getnames():
-		for seq in SeqIO.parse(tarWGS.extractfile(wgsFile), "fasta"):
+astrFileList = []
+
+#Get the list of files inside the tar file
+if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
+	tarWGS = tarfile.open(args.strWGS,strExtractMethod)
+	astrFileList = tarWGS.getnames()
+	print(tarWGS.getnames)
+else:
+	astrFileList.append(args.strWGS)
+
+print "Compression: ", strExtractMethod
+print astrFileList
+
+
+#Note: I would like to add code here along the lines of
+#if(strExtractMethod=="" and OneFile and FileISSmall):
+#   Pass to usearch without processing.
+
+#Open each one with the appropriate method
+for strFile in astrFileList:
+		if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
+			streamWGS = tarWGS.extractfile(strFile)
+		elif strExtractMethod== 'gz':
+			streamWGS = gzip.open(strFile, 'rb')
+		elif strExtractMethod== 'bz2':
+			streamWGS =  bz2.BZ2File(strFile)
+		else:
+			streamWGS = open(strFile,'r')
+
+
+		for seq in SeqIO.parse(streamWGS, "fasta"):
+			SeqIO.write(seq,fileFASTA,"fasta")
+			iCount+=1
+			print iCount
+			if (iCount>=iReadsForFile):
+				fileFASTA.close()
+
+				#Run Usearch, store results
+				strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
+				RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
+				StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+
+				#Reset count, make new file
+				iCount = 0
+				iFileCount+=1
+				fileFASTA = open(strFASTAName, 'w')
+
+
+		if(iCount>0):
+			fileFASTA.close()
+			#Run Usearch, store results
+			strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
+			RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
+			StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+
+PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
+
+"""
+***** copy to tmp fasta
+***** if count exceeds iReadsForFile
+****** stop
+***** close tmp fasta
+***** run usearch
+***** store counts
+**** print (aggregate) results
+"""
+
+print iCount
+
+"""
+    	for seq in SeqIO.parse(tarWGS.extractfile(wgsFile), "fasta"):
 			if (iCount< iReadsForFile):
 				SeqIO.write(seq, fileFASTA, "fasta")
 				iCount+=1
@@ -206,5 +283,24 @@ else:
 	StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
 	PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
 	tarWGS.close()
+
+
+
+
+#If WGS is in a fasta file...
+if args.fbz2file == False:
+	RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = args.strBlast )
+	StoreHitCounts(strBlastOut = args.strBlast,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+	PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
+
+#If WGS is in a tar file...
+else:
+
+
+
+
+	tarWGS = tarfile.open(args.strWGS,'r:bz2')
+	for wgsFile in tarWGS.getnames():
+"""
 
 
