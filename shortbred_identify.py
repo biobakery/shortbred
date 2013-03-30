@@ -1,15 +1,42 @@
 #!/usr/bin/env python
+#####################################################################################
+#Copyright (C) <2013> Jim Kaminski and the Huttenhower Lab
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy of
+#this software and associated documentation files (the "Software"), to deal in the
+#Software without restriction, including without limitation the rights to use, copy,
+#modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+#and to permit persons to whom the Software is furnished to do so, subject to
+#the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all copies
+#or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+#INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+#PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+#HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+#SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# This file is a component of ShortBRED (Short, Better REad Database)
+# authored by the Huttenhower lab at the Harvard School of Public Health
+# (contact Jim Kaminski, jjk451@mail.harvard.edu).
+#####################################################################################
 
 #Jim Kaminski
 #Huttenhower Lab
 
+
 import sys
 import csv
 import argparse
+from argparse import RawTextHelpFormatter
 import subprocess
 import re
 import os
-import datetime 
+import time
+import datetime
 
 import src
 import src.process_blast
@@ -28,63 +55,70 @@ c_strTIME	= "time"
 ###############################################################################
 #COMMAND LINE ARGUMENTS
 
-parser = argparse.ArgumentParser(description='ShortBRED Identify \n This program produces a set of markers for your genes of interest.')
+parser = argparse.ArgumentParser(description='ShortBRED Identify: \n This program produces a set of markers for your proteins of interest. \n \
+The minimum input files required to run the program are: \n \
+\t [--goi] 1) A fasta file of proteins, for which you want to build markers. \n \
+\t [--ref] 2) A fasta file of reference proteins  \n \
+The program will output a file fasta file of markers [--markers]. \n \n\
+Example: \n \
+\t$ ./shortbred_identify.py --goi  prots.faa --ref refprots.faa --markers markers.faa \n \
+Please note that a large number of comparisons can take several hours to run. [Example: 2,000 prots of interest against a reference set of 5,000,000 prots]  \n \n \
+It is also possible to use an existing BLAST protein database as your reference set, or modify parameters from an earlier ShortBRED run. \
+Please see the documentation for more details.',formatter_class=RawTextHelpFormatter)
 
 
 #INPUT Files
 #Mode 1: For initial run: goi genes, ref genes, (map_in)
 #Mode 2: For initial run with a blastdb: goi genes, ref fb, (map_in)
-#Mode 3: For later runs: goi clust, goi blast output, ref blast output, map 
+#Mode 3: For later runs: goi clust, goi blast output, ref blast output, map
 
 #(map_in) is required for Mode 3, and is an optional input for Modes 1 and 2. If supplied in modes 1 and 2, ShortBRED will map proteins to families according to the pairs in map_in.
+#(map_in) is required in Mode 3 because it contains
 
-#(map_in) is required in Mode 3 because it contains 
- 
-parser.add_argument('--goi', type=str, dest='sGOIProts',default= "", help='Enter the path and name of the proteins of interest file.')
-parser.add_argument('--ref', type=str, dest='sRefProts',default= "", help='Enter the path and name of the file containing reference protein sequences.')
-
-parser.add_argument('--refdb', type=str, dest='dirRefDB', default= "",help='Enter the path and name for  the blastdb of reference proteins.')
-
-parser.add_argument('--goiblast', type=str, default = "", dest='sGOIBlast', help='Enter the path and name of the blast results from the goi-to-goi search.')
-parser.add_argument('--refblast', type=str, dest='sRefBlast', default= "", help='Enter the path and name of the blast results from the goi-to-ref search.')
-parser.add_argument('--goiclust', type=str, default ="", dest='sClust', help='Enter the path and name of the clustered genes of interest file.')
-parser.add_argument('--map_in', type=str, dest='sMapIn',default="", help='Enter the path and name of the two column file connecting proteins to families.')
+grpInput = parser.add_argument_group('Input:')
+grpInput.add_argument('--goi', type=str, dest='sGOIProts',default= "", help='Enter the path and name of the proteins of interest file.')
+grpInput.add_argument('--ref', type=str, dest='sRefProts',default= "", help='Enter the path and name of the file containing reference protein sequences.')
+grpInput.add_argument('--refdb', type=str, dest='dirRefDB', default= "",help='Can be specified in place of reference proteins [--ref]. Enter the path and name for a blastdb of reference proteins.')
+#OUTPUT
+#Markers, and marker-to-prot_family map
+parser.add_argument('--markers', type=str, default="markers.faa", dest='sMarkers', help='Enter name and path for the marker output file')
 
 
-# DANIELA NOTE: Put these first 7 elements in one list. Easier to check whether the user 
-# had supplied incorrect parameters. Determine control flow based on that.
+parser.add_argument('--goiblast', type=str, default = "", dest='sGOIBlast', help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the blast results from the goi-to-goi search.')
+parser.add_argument('--refblast', type=str, dest='sRefBlast', default= "", help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the blast results from the goi-to-ref search.')
+parser.add_argument('--goiclust', type=str, default ="", dest='sClust', help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the clustered genes of interest file.')
+parser.add_argument('--map_in', type=str, dest='sMapIn',default="", help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the two column file connecting proteins to families.')
+
+
 
 # DB NOTE: Put in a few examples there. Maybe even provide a few sample fasta files.
 #	That will help the user out a great deal. They can see how this will work for different
 #	Parameters, etc.
 
 
-#OUTPUT
-#Markers, and marker-to-prot_family map
-parser.add_argument('--markers', type=str, default="markers.faa", dest='sMarkers', help='Enter name and path for the marker output file')
-
-#DB NOTE - fix the naming system here
 parser.add_argument('--map_out', type=str, default="gene-centroid.uc", dest='sMap', help='Enter name and path for the output map file')
 
 
 #PARAMETERS
+grpParam = parser.add_argument_group('Parameters:')
 #Clustering
-parser.add_argument('--clustid',default = .90, type=float, dest='dClustID', help='Enter the identity cutoff for clustering the genes of interest. Examples: .90, .85, .10,...')
-parser.add_argument('--qclustid',default = .90, type=float, dest='dQClustID', help='Enter the identity cutoff for clustering the quasi-markers. Examples: .90, .85, .10,...')
+grpParam.add_argument('--clustid',default = .90, type=float, dest='dClustID', help='Enter the identity cutoff for clustering the genes of interest. Examples: .90, .85, .10,...')
+grpParam.add_argument('--qclustid',default = .90, type=float, dest='dQClustID', help='Enter the identity cutoff for clustering the quasi-markers. Examples: .90, .85, .10,...')
+grpParam.add_argument('--consthresh',default = .70, type=float, dest='dConsThresh', help='Enter the consensus threshold for assigning AA\'s in the family alignments to the consensus sequences. The default is .70. Examples: .60, .70, .80,...')
 
 #BLAST Search
-parser.add_argument('--threads', type=int, default=1, dest='iThreads', help='Enter the number of threads to use.')
-parser.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity minimum for a short, high-identity region. Examples: .90, .85, .10,...')
-parser.add_argument('--len', default = .10, type=float, dest='dL', help='Enter the length maximum for a short, high-identity region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
+grpParam.add_argument('--threads', type=int, default=1, dest='iThreads', help='Enter the number of threads to use.')
+grpParam.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity minimum for a short, high-identity region. Examples: .90, .85, .10,...')
+grpParam.add_argument('--len', default = .10, type=float, dest='dL', help='Enter the length maximum for a short, high-identity region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
 
 #Markers
-parser.add_argument('--markerlength', type=int, default=20, dest='iMLength', help='Enter the minimum marker length.')
-parser.add_argument('--totlength', default = 200, type=int, dest='iTotLength', help='Enter the maximum length for the combined markers for a gene. Default is 200')
-parser.add_argument('--qthresh', type=int, dest='iThresh',default=30, help='Enter a maximum quasi-score.')
+grpParam.add_argument('--markerlength', type=int, default=20, dest='iMLength', help='Enter the minimum marker length.')
+grpParam.add_argument('--totlength', default = 200, type=int, dest='iTotLength', help='Enter the maximum length for the combined markers for a gene. Default is 200')
+grpParam.add_argument('--qthresh', type=int, dest='iThresh',default=1, help='Enter a maximum quasi-score.')
 
 
 #Tmp Directory
-parser.add_argument('--tmpdir', default =os.getcwd() +os.sep + "tmp", type=str, dest='sTmp', help='Set directory for temporary output files.')
+grpParam.add_argument('--tmpdir', default ="", type=str, dest='sTmp', help='Set directory for temporary output files.')
 
 
 args = parser.parse_args()
@@ -93,12 +127,15 @@ args = parser.parse_args()
 #Preliminary: Create temporary folder, open log file
 
 dirTmp = args.sTmp
+if(dirTmp==""):
+	# dirTmp gets a pid and timestamp. (This is to avoid overwriting files if
+	# someone launches multiple instances of the program.)
+    dirTmp = ("tmp" + str(os.getpid()) + '%.0f' % round((time.time()*1000), 1))
 
 dirTime = src.check_create_dir( dirTmp + os.sep + "time" )
 dirQuasi = src.check_create_dir( dirTmp + os.sep + "quasi" )
 
-#DB Note - You could name the log file after the markers. 
-
+#In the future, will use the logging module in Python.
 log = open(dirTmp + os.sep +"log.txt", "w")
 log.write("ShortBRED log \n" + datetime.date.today().ctime() + "\n MARKER PARAMETERS \n")
 log.write("ClustID:" + str(args.dClustID) + "\n")
@@ -145,64 +182,38 @@ if(iMode==1 or iMode==2):
 
 	dirClust = src.check_create_dir( dirTmp + os.sep + "clust" )
 	dirClustDB = src.check_create_dir( dirTmp + os.sep + "clustdb" )
-	   
+
 	strClustFile = dirClust + os.sep + "clust.faa"
 	strClustDB = dirClustDB + os.sep + "goidb"
-	
+
 	#DB Note: clean up strMap
-	strMap = os.path.splitext(strClustFile)[0]	
-	
-	#If user supplied a map, cluster by those families.
-	#Else: cluster the entire file and make map file.
-	
-	if(args.sMapIn!=""):
-		"""
-		dictFams = {}
-		for astrLine in csv.reader( open(args.sMapIn), csv.excel_tab ):
-			#dictFams[protein]=[family]		
-			dictFams[str(astrLine[1]).strip()]=str(astrLine[0]).strip()
-		
-		
-		#Create subfolders for user-defined families
-		dirFams = dirClust + os.sep + "fams"
-		strClustPath = dirClust + os.sep + "clust.faa" 
-		
-		#DB Note - Probably erase this.
-		strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
-		
-	
-		if not os.path.exists(dirFams):
-			os.makedirs(dirFams)
-	
-		pb.MakeFamilyFastaFiles(dictFams, args.sGOIProts, dirFams)
-		pb.ClusterFams(dirClust)
-		"""
-	else:
-		"""
-		Old Code to cluster in usearch
-		subprocess.check_call(["time", "-o", dirTime + os.sep + "goiclust.time","usearch6", "--cluster_fast", str(args.sGOIProts), "--uc", strMap + ".uc", "--id", str(args.dClustID),"--centroids", strClustFile,"--maxaccepts","0","--maxrejects","0"])
-		strMapFile = dirClust + os.sep + "clust.map"
-		pb.printMap(strMap+".uc",strMapFile )
-		"""
-		#Cluster in cdhit
-		subprocess.check_call([c_strTIME, "-o",
-			  dirTime + os.sep + "goiclust.time",
-			  c_strCDHIT, "-i", str(args.sGOIProts),
-				"-o", strClustFile, "-d", "0",
-				"-c", str(args.dClustID), "-b", "10","-g", "1"])
-		strMapFile = dirClust + os.sep + "clust.map"
-		pb.GetCDHitMap( strClustFile + ".clstr", strMapFile )
-		
-		#Create a folder called "clust/fams", will hold a fasta file for each CD-HIT cluster
-		dirFams = src.check_create_dir( dirClust + os.sep + "fams" )
-		strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
-	
-		#Make a fasta file for each CD-HIT cluster
-		pb.MakeFamilyFastaFiles( strMapFile, str(args.sGOIProts), dirFams)
-		
-		#Call USEARCH to get consensus seq for each cluster,overwrite the CD-HIT cluster file 
-		pb.ClusterFams(dirClust, args.dClustID,strClustFile )
-	
+	strMap = os.path.splitext(strClustFile)[0]
+
+	print "Clustering GOI sequences..."
+	#Cluster in cdhit
+	subprocess.check_call([c_strTIME, "-o",
+		  dirTime + os.sep + "goiclust.time",
+		  c_strCDHIT, "-i", str(args.sGOIProts),
+			"-o", strClustFile, "-d", "0",
+			"-c", str(args.dClustID), "-b", "10","-g", "1"])
+	strMapFile = dirClust + os.sep + "clust.map"
+	pb.GetCDHitMap( strClustFile + ".clstr", strMapFile )
+	print "GOI protein sequences clustered."
+
+	print "Creating folders for each protein family..."
+	#Create a folder called "clust/fams", will hold a fasta file for each CD-HIT cluster
+	dirFams = src.check_create_dir( dirClust + os.sep + "fams" )
+	strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
+
+	print "Making a fasta file for each protein family..."
+	#Make a fasta file for each CD-HIT cluster
+	pb.MakeFamilyFastaFiles( strMapFile, str(args.sGOIProts), dirFams)
+
+	print "Aligning sequences in each family, producing consensus sequences..."
+	#Call MUSCLE + EMBOSS_CONS OR DUMB CONSENSUS to get consensus seq for each cluster,overwrite the CD-HIT cluster file
+	pb.ClusterFams(dirClust, args.dClustID,strClustFile,args.dConsThresh )
+
+	print "Making BLAST database for the GOI Protein Sequences..."
 	#Make database from goi centroids
 	subprocess.check_call([c_strTIME, "-o", dirTime + os.sep + "goidb.time",
 		"makeblastdb", "-in", strClustFile, "-out", strClustDB,
@@ -216,13 +227,9 @@ if(iMode==1 or iMode==2):
 if(iMode==1):
 	if (args.sRefBlast == "" and args.dirRefDB == "" and args.sRefProts!=""):
 		dirRefDB = src.check_create_dir( dirTmp + os.sep + "refdb" )
-		strRefDBPath = dirRefDB + os.sep + "refdb"	
-		
-		#Recent edits to cluster the reference database ahead of time
-		"""	  
-		subprocess.check_call(["time", "-o",dirTime + os.sep + "refclust.time","usearch6", "--cluster_fast", str(args.sRefProts), "--uc",  "ref.uc", "--id", str(args.dClustID),"--centroids", strClustFile])		
-		"""
-		
+		strRefDBPath = dirRefDB + os.sep + "refdb"
+
+		print "Making BLAST database for the Reference Protein Sequences..."
 		subprocess.check_call([c_strTIME, "-o", dirTime + os.sep + "refdb.time",
 			"makeblastdb", "-in", str(args.sRefProts),"-out", strRefDBPath,
 			"-dbtype", "prot", "-logfile", dirTmp + os.sep +  "refdb.log"])
@@ -235,11 +242,11 @@ if(iMode==1):
 
 #DB note - rename selfblast.txt goiblast.txt
 
-#If refdb supplied, use that name. 
+#If refdb supplied, use that name.
 if(iMode==1 or iMode==2):
 	if (args.dirRefDB!=""):
 		strRefDBPath = str(args.dirRefDB)
-	
+
 	dirBlastResults = src.check_create_dir( dirTmp + os.sep + "blastresults" )
 	strBlastRef = dirBlastResults + os.sep + "refblast.txt"
 	strBlastSelf = dirBlastResults + os.sep + "selfblast.txt"
@@ -249,13 +256,16 @@ if(iMode==1 or iMode==2):
 		"-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000",
 		"-max_target_seqs", "100000", "-num_descriptions", "100000",
 		"-num_threads",str(args.iThreads)]
-	
+
+
 	#Blast clust file against goidb
+ 	print "BLASTing the GOI sequences against themselves..."
 	subprocess.check_call(["time", "-o", dirTime + os.sep +"goisearch.time",
 		"blastp", "-query", strClustFile, "-db", strClustDB,
 		"-out", strBlastSelf] + astrBlastParams)
-	
+
 	#Blast clust file against refdb
+ 	print "BLASTing the GOI sequences against the Reference Protein Sequences..."
 	subprocess.check_call(["time", "-o", dirTime + os.sep +"refsearch.time",
 		"blastp", "-query", strClustFile, "-db",strRefDBPath,
 		"-out", strBlastRef] + astrBlastParams)
@@ -274,35 +284,44 @@ dictFams = {}
 
 for astrLine in csv.reader(open(strMapFile),delimiter='\t'):
 	dictFams[astrLine[1]]=astrLine[0]
-		
+
 dictGOIGenes = pb.getGeneData(open(strClustFile))
 
-#Get short, high-identity hits
+#Get short, high-identity hits in reference proteins
 sys.stderr.write( "Finding overlap with reference database...")
-dictRefCounts = pb.getOverlapCounts(strBlastRef, args.dID, 0, args.dL, 0, 0)
+dictRefCounts, dictRefHits = pb.getOverlapCounts(strBlastRef, args.dID, 0, args.dL, 0, 0,bSaveHitInfo=False)
+
+#Get high-identity hits of *all lengths* in GOI database
 sys.stderr.write( "Finding overlap with goi database...")
-dictGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, 0, args.dL, 0, 0)
+dictGOICounts, dictGOIHits  = pb.getOverlapCounts(strBlastSelf, args.dID, 0, 1.0, 0, 0,bSaveHitInfo=True)
 dictGOICounts = pb.MarkX(dictGOIGenes,dictGOICounts)
 
+
+"""
 #Get medium, high-identity hits - keep edges
-dictBigGOICounts = pb.getOverlapCounts(strBlastSelf, args.dID, args.dL +.01, .80, args.iMLength/2, 0)
+dictBigGOICounts, dictBigGOIHits = pb.getOverlapCounts(strBlastSelf, args.dID, args.dL +.01, .80, args.iMLength/2, 0, bSaveHitInfo=True)
 #Note on 11/1/2012 - for higher precision, could be done for the reference set as well?
+"""
 
 #If a gene has 0 valid hits in the ref OR GOI databases, make an array of 0's
-#so the program knows that nothing overlapped with the gene.
+#(length of the gene) so the program knows that nothing overlapped with the gene.
+
 for dictCounts in (dictRefCounts, dictGOICounts):
 	setNotInCounts = set(dictGOIGenes.keys()).difference(set(dictCounts.keys()))
-	
+
 	if len(setNotInCounts)>0:
 		for sGene in setNotInCounts:
 			dictCounts[sGene] = [0]*len(dictGOIGenes[sGene])
 
 #Get dict of counts for (Ref+GOI)
 dictAllCounts = {}
-setRefGOI = set(dictGOICounts.keys()).union(set(dictRefCounts.keys())) 
+setRefGOI = set(dictGOICounts.keys()).union(set(dictRefCounts.keys()))
 
 for sGene in setRefGOI:
-	aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]),dictBigGOICounts.get(sGene,[0]))]
+	#Old, removed dictvigGOICounts
+	#aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]),dictBigGOICounts.get(sGene,[0]))]
+	#New
+	aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]))]
 	dictAllCounts[sGene] = aiSum
 
 ###########################################################################
@@ -336,7 +355,7 @@ for key in setHasMarkers:
 #####################################################################################################
 #Step Six: Cluster the Quasi-Markers. Remap the proteins they represent to the centroid marker for each cluster.
 
-atupQM = atupQuasiMarkers1 
+atupQM = atupQuasiMarkers1
 atupQM = sorted(atupQM, key=lambda tup: tup[0])
 
 strQuasiFN = dirQuasi+ os.sep + "quasi.faa"
@@ -348,17 +367,17 @@ fQuasi.close()
 
 subprocess.check_call(["cd-hit", "-i", strQuasiFN,"-o",strQuasiClust,
 	"-d", "0", "-c", str(args.dQClustID), "-b", "10","-g", "1","-aL","1.0"])
-		
+
 pb.GetCDHitMap( strQuasiClust+".clstr", strQuasiMap)
 
 dictQuasiClust = {}
 for astrLine in csv.reader( open(strQuasiMap), csv.excel_tab ):
-			
+
 			mtchMarker = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[1])
 			strMarker = mtchMarker.group(1)
 			mtchFam = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[0])
 			strFam = mtchFam.group(1)
-			
+
 			dictQuasiClust[strMarker] = strFam
 
 for qckey, qcvalue in dictQuasiClust.items():
@@ -373,16 +392,16 @@ with open(dirTmp + os.sep + "final.map",'w') as fFinalMap:
 #Print AA with overlap area removed to premarkers.txt
 strGeneName = ""
 iCount = 0
-with open(args.sTmp + os.sep + 'premarkers.txt', 'w') as premarkers:
+with open(dirTmp + os.sep + 'premarkers.txt', 'w') as premarkers:
 	for key in dictGOIGenes:
 		if key in setHasMarkers:
-			strGeneName = ">" + key + "_TM"	
+			strGeneName = ">" + key + "_TM"
 			premarkers.write(strGeneName  + '\n')
 			premarkers.write(re.sub("(.{80})","\\1\n",dictGOIGenes[key],re.DOTALL)  + '\n')
 			iCount = iCount+1
 
 ##################################################################################
-##Step Seven: Print the TM's, 
+#Step Seven: Print the TM's,
 
 #Print the TM's.
 #Go through premarkers.txt, find regions satisying user criteria.
@@ -392,16 +411,16 @@ Sample gene in premarkers.txt looks like:
 MT+++++LET+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++S++++++
 ++++++++CLINETEKFLNIWIESNVSF++++++YKSDLLEYKDT+++++++++++++G+++++++++++++++++++++
 ++++++++++++++++++++++++++++++++++++++++++++QNIVDSVNEWDLNLK
-"""	 
+"""
 
-fOut = open(args.sMarkers, 'w') 
+fOut = open(args.sMarkers, 'w')
 iMLength = args.iMLength
 iTotLength = args.iTotLength
 
-for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):	
+for gene in SeqIO.parse(open(dirTmp + os.sep + 'premarkers.txt'), "fasta"):
 	iCount = 1
 	iRemSeq = iTotLength
-	
+
 	mtch = re.search('\+',str(gene.seq))
 	if not mtch:
 		strMarker = str(gene.seq)
@@ -422,6 +441,25 @@ for gene in SeqIO.parse(open(args.sTmp + os.sep + 'premarkers.txt'), "fasta"):
 
 atupQMFinal = []
 
+
+"""
+for tupInfo in dictGOIHits["AAA25717"]:
+	print tupInfo
+
+print "Normal GOI Hits"
+pb.UpdateQMHeader(atupQM[0],dictGOIHits[atupQM[0][0]])
+print "Normal Ref Hits"
+pb.UpdateQMHeader(atupQM[0],dictRefHits[atupQM[0][0]])
+print "Big GOI Hits"
+pb.UpdateQMHeader(atupQM[0],dictBigGOIHits[atupQM[0][0]])
+
+
+print "Gene Name:"
+print atupQM[0][0]
+
+print "Window:"
+print(dictAllCounts[atupQM[0][0]])
+"""
 for tup in atupQM:
 	if tup[0] in dictQuasiClust.values():
 		atupQMFinal.append(tup)

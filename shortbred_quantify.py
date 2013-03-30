@@ -1,5 +1,28 @@
 #!/usr/bin/env python
-
+#####################################################################################
+#Copyright (C) <2013> Jim Kaminski and the Huttenhower Lab
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy of
+#this software and associated documentation files (the "Software"), to deal in the
+#Software without restriction, including without limitation the rights to use, copy,
+#modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+#and to permit persons to whom the Software is furnished to do so, subject to
+#the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all copies
+#or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+#INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+#PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+#HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+#SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# This file is a component of ShortBRED (Short, Better REad Database)
+# authored by the Huttenhower lab at the Harvard School of Public Health
+# (contact Jim Kaminski, jjk451@mail.harvard.edu).
+#####################################################################################
 import sys
 import argparse
 import subprocess
@@ -9,6 +32,7 @@ import os
 import datetime
 import shutil
 import tarfile
+import time
 
 import src
 
@@ -29,7 +53,7 @@ parser.add_argument('--results', type=str, dest='strResults', default = "results
 parser.add_argument('--SBhits', type=str, dest='strHits', help='ShortBRED will print the hits it considers positives to this file.', default="")
 parser.add_argument('--blastout', type=str, dest='strBlast', default="out.blast",help='Enter the name of the blast-formatted output file from USEARCH.')
 
-parser.add_argument('--tmp', type=str, dest='strTmp', default =os.getcwd() +os.sep + "tmp",help='Enter the path and name of the tmp directory.')
+parser.add_argument('--tmp', type=str, dest='strTmp', default ="",help='Enter the path and name of the tmp directory.')
 
 #Parameters - Matching Settings
 parser.add_argument('--id', type=float, dest='dID', help='Enter the percent identity for the match', default = .95)
@@ -42,6 +66,7 @@ parser.add_argument('--alnTM', type=int, dest='iAlnMax', help='Enter a bound for
 parser.add_argument('--bz2', type=bool, dest='fbz2file', help='Set to True if using a tar.bz2 file', default = False)
 parser.add_argument('--threads', type=int, dest='iThreads', help='Enter the number of CPUs available for USEARCH.', default=1)
 parser.add_argument('--notmarkers', type=str, dest='strCentroids',default="N", help='This flag is used when testing centroids for evaluation purposes.')
+parser.add_argument('--small', type=bool, dest='bSmall',default=False, help='This flag is used to indicate the input file is small enough for USEARCH.')
 
 #parser.add_argument('--length', type=int, dest='iLength', help='Enter the minimum length of the markers.')
 
@@ -49,9 +74,15 @@ args = parser.parse_args()
 
 ################################################################################
 #Make temp directory
-dirTmp = src.check_create_dir( args.strTmp )
+dirTmp = args.strTmp
+if(dirTmp==""):
+	# dirTmp gets a pid and timestamp. (This is to avoid overwriting files if
+	# someone launches multiple instances of the program.)
+    dirTmp = ("tmp" + str(os.getpid()) + '%.0f' % round((time.time()*1000), 1))
 
-strHitsFile = args.strHits or ( args.strTmp + os.sep + "SBhits.txt" )
+dirTmp = src.check_create_dir( dirTmp )
+
+strHitsFile = args.strHits or ( dirTmp + os.sep + "SBhits.txt" )
 
 ###############################################################################
 
@@ -122,6 +153,7 @@ def PrintResults(strResults,dictHitCounts, dictMarkerLenAll,dictMarkerLen):
 
 	#Print Name, Normalized Count, Hit Count, Marker Length to std out
 	csvwResults = csv.writer( open(strResults,'w'), csv.excel_tab )
+	csvwResults.writerow(["Family","Normalized Count","Hits","Total Family Marker Length"])
 	#print dictHitCounts.keys()
 	for strProt in dictHitCounts.keys():
 		csvwResults.writerow( [strProt, float(dictHitCounts[strProt])/dictMarkerLenAll[strProt],
@@ -173,79 +205,90 @@ strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".ud
 p = subprocess.check_call([c_strUSEARCH, "--makeudb_usearch", args.strMarkers,
 	"--output", strDBName])
 
+strBlast = args.strBlast
 
-#Check the extension on the WGS fasta file
-if args.strWGS.find(".tar.bz2") > -1:
-	strExtractMethod = 'r:bz2'
-elif args.strWGS.find(".tar.gz") > -1:
-	strExtractMethod = 'r:gz'
-elif args.strWGS.find(".gz") > -1:
-	strExtractMethod = 'gz'
-elif args.strWGS.find(".bz2") > -1:
-	strExtractMethod = 'bz2'
+if (args.bSmall == True):
+	RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = strBlast )
+	StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+
 else:
-	strExtractMethod = ""
-
-iReadsForFile = 5000000
-iCount = 0
-iFileCount = 1
-strFASTAName = str(dirTmp) + os.sep + 'fasta.fna'
-fileFASTA = open(strFASTAName, 'w')
-
-astrFileList = []
-
-#Get the list of files inside the tar file
-if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
-	tarWGS = tarfile.open(args.strWGS,strExtractMethod)
-	astrFileList = tarWGS.getnames()
-	#print(tarWGS.getnames)
-else:
-	astrFileList.append(args.strWGS)
-
-#print "Compression: ", strExtractMethod
-#print astrFileList
 
 
-#Note: I would like to add code here along the lines of
-#if(strExtractMethod=="" and OneFile and FileISSmall):
-#   Pass to usearch without processing.
+	#Check the extension on the WGS fasta file
+	if args.strWGS.find(".tar.bz2") > -1:
+		strExtractMethod = 'r:bz2'
+	elif args.strWGS.find(".tar.gz") > -1:
+		strExtractMethod = 'r:gz'
+	elif args.strWGS.find(".gz") > -1:
+		strExtractMethod = 'gz'
+	elif args.strWGS.find(".bz2") > -1:
+		strExtractMethod = 'bz2'
+	else:
+		strExtractMethod = ""
 
-#Open each one with the appropriate method
-for strFile in astrFileList:
-		if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
-			streamWGS = tarWGS.extractfile(strFile)
-		elif strExtractMethod== 'gz':
-			streamWGS = gzip.open(strFile, 'rb')
-		elif strExtractMethod== 'bz2':
-			streamWGS =  bz2.BZ2File(strFile)
-		else:
-			streamWGS = open(strFile,'r')
+	iReadsForFile = 5000000
+	iCount = 0
+	iFileCount = 1
+	strFASTAName = str(dirTmp) + os.sep + 'fasta.fna'
+	fileFASTA = open(strFASTAName, 'w')
+
+	astrFileList = []
+
+	#Get the list of files inside the tar file
+	if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
+		tarWGS = tarfile.open(args.strWGS,strExtractMethod)
+		astrFileList = tarWGS.getnames()
+		#print(tarWGS.getnames)
+	else:
+		astrFileList.append(args.strWGS)
+
+	#print "Compression: ", strExtractMethod
+	#print astrFileList
 
 
-		for seq in SeqIO.parse(streamWGS, "fasta"):
-			SeqIO.write(seq,fileFASTA,"fasta")
-			iCount+=1
-			#print iCount
-			if (iCount>=iReadsForFile):
+	#Note: I would like to add code here along the lines of
+	#if(strExtractMethod=="" and OneFile and FileISSmall):
+	#   Pass to usearch without processing.
+
+	#Open each one with the appropriate method
+
+
+
+	for strFile in astrFileList:
+			if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
+				streamWGS = tarWGS.extractfile(strFile)
+			elif strExtractMethod== 'gz':
+				streamWGS = gzip.open(strFile, 'rb')
+			elif strExtractMethod== 'bz2':
+				streamWGS =  bz2.BZ2File(strFile)
+			else:
+				streamWGS = open(strFile,'r')
+
+
+			for seq in SeqIO.parse(streamWGS, "fasta"):
+				SeqIO.write(seq,fileFASTA,"fasta")
+				iCount+=1
+				#print iCount
+				if (iCount>=iReadsForFile):
+					fileFASTA.close()
+
+					#Run Usearch, store results
+					strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
+					RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
+					StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+
+					#Reset count, make new file
+					iCount = 0
+					iFileCount+=1
+					fileFASTA = open(strFASTAName, 'w')
+
+
+			if(iCount>0):
 				fileFASTA.close()
-
 				#Run Usearch, store results
 				strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
 				RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
 				StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
-
-				#Reset count, make new file
-				iCount = 0
-				iFileCount+=1
-				fileFASTA = open(strFASTAName, 'w')
-
-
-		if(iCount>0):
-			fileFASTA.close()
-			#Run Usearch, store results
-			strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
-			RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
-			StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
 
 PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
 
