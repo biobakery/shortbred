@@ -42,7 +42,8 @@ from Bio import SeqIO
 
 c_strUSEARCH	= "usearch"
 
-parser = argparse.ArgumentParser(description='ShortBRED Quantify \n This program takes a set of protein family markers and wgs file as input, and produces a relative abundance table.')
+parser = argparse.ArgumentParser(description='ShortBRED Quantify \n This program takes a set of protein family markers and wgs file as input, \
+and produces a relative abundance table.')
 
 #Input
 parser.add_argument('--markers', type=str, dest='strMarkers', help='Enter the path and name of the genes of interest file (protein seqs).')
@@ -72,6 +73,11 @@ parser.add_argument('--small', type=bool, dest='bSmall',default=False, help='Thi
 
 args = parser.parse_args()
 
+if (args.strMarkers == "" or args.strWGS==""):
+	parser.print_help( )
+	raise Exception( "Command line arguments incorrect, must provide:\n" +
+		"\t--markers AND --wgs, \n")
+
 ################################################################################
 #Make temp directory
 dirTmp = args.strTmp
@@ -82,7 +88,10 @@ if(dirTmp==""):
 
 dirTmp = src.check_create_dir( dirTmp )
 
-strHitsFile = args.strHits or ( dirTmp + os.sep + "SBhits.txt" )
+if args.strHits != "":
+	strHitsFile = args.strHits
+else:
+	strHitsFile = ( dirTmp + os.sep + "SBhits.txt" )
 
 ###############################################################################
 
@@ -256,10 +265,13 @@ else:
 
 	for strFile in astrFileList:
 			if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
+				sys.stderr.write("Unzipping tar file... This often takes several minutes. ")
 				streamWGS = tarWGS.extractfile(strFile)
 			elif strExtractMethod== 'gz':
+				sys.stderr.write("Unzipping gz file... This may several minutes. ")
 				streamWGS = gzip.open(strFile, 'rb')
 			elif strExtractMethod== 'bz2':
+				sys.stderr.write("Unzipping bz2 file... This may several minutes. ")
 				streamWGS =  bz2.BZ2File(strFile)
 			else:
 				streamWGS = open(strFile,'r')
@@ -292,6 +304,8 @@ else:
 
 PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
 
+if args.bSmall == False:
+	os.remove(strFASTAName)
 """
 ***** copy to tmp fasta
 ***** if count exceeds iReadsForFile

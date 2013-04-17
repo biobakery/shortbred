@@ -37,6 +37,7 @@ import re
 import os
 import time
 import datetime
+import math
 
 import src
 import src.process_blast
@@ -110,18 +111,26 @@ grpParam.add_argument('--consthresh',default = .70, type=float, dest='dConsThres
 grpParam.add_argument('--threads', type=int, default=1, dest='iThreads', help='Enter the number of threads to use.')
 grpParam.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity minimum for a short, high-identity region. Examples: .90, .85, .10,...')
 grpParam.add_argument('--len', default = .10, type=float, dest='dL', help='Enter the length maximum for a short, high-identity region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
+grpParam.add_argument('--minAln', default = 0, type=int, dest='iLenMin', help='Enter the minimum for a short, high-identity region. Examples: 10, 20, 30,... ')
 
 #Markers
 grpParam.add_argument('--markerlength', type=int, default=20, dest='iMLength', help='Enter the minimum marker length.')
 grpParam.add_argument('--totlength', default = 200, type=int, dest='iTotLength', help='Enter the maximum length for the combined markers for a gene. Default is 200')
 grpParam.add_argument('--qthresh', type=int, dest='iThresh',default=1, help='Enter a maximum quasi-score.')
-
+grpParam.add_argument('--qmlength', type=int, dest='iQMlength',default=30, help='Enter a minimum length for QM\'s.')
 
 #Tmp Directory
 grpParam.add_argument('--tmpdir', default ="", type=str, dest='sTmp', help='Set directory for temporary output files.')
 
 
 args = parser.parse_args()
+
+if args.iLenMin==0:
+	#If no minimum alignment length is given, use 80% of minimum marker length and round up.
+	iLenMin = math.ceil(args.iMLength*(.80))
+else:
+    iLenMin = args.iMLength
+
 
 ##############################################################################
 #Preliminary: Create temporary folder, open log file
@@ -253,7 +262,7 @@ if(iMode==1 or iMode==2):
 
 	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30",
 		"-ungapped","-comp_based_stats","F","-window_size","0",
-		"-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000",
+		"-xdrop_ungap","0.000001","-evalue","1e-3","-num_alignments","100000",
 		"-max_target_seqs", "100000", "-num_descriptions", "100000",
 		"-num_threads",str(args.iThreads)]
 
@@ -289,11 +298,11 @@ dictGOIGenes = pb.getGeneData(open(strClustFile))
 
 #Get short, high-identity hits in reference proteins
 sys.stderr.write( "Finding overlap with reference database...")
-dictRefCounts, dictRefHits = pb.getOverlapCounts(strBlastRef, args.dID, 0, args.dL, 0, 0,bSaveHitInfo=False)
+dictRefCounts, dictRefHits = pb.getOverlapCounts(strBlastRef, args.dID, iLenMin, args.dL, 0,bSaveHitInfo=True)
 
 #Get high-identity hits of *all lengths* in GOI database
 sys.stderr.write( "Finding overlap with goi database...")
-dictGOICounts, dictGOIHits  = pb.getOverlapCounts(strBlastSelf, args.dID, 0, 1.0, 0, 0,bSaveHitInfo=True)
+dictGOICounts, dictGOIHits  = pb.getOverlapCounts(strBlastSelf, args.dID, iLenMin, 1.0, 0,True)
 dictGOICounts = pb.MarkX(dictGOIGenes,dictGOICounts)
 
 
@@ -323,6 +332,8 @@ for sGene in setRefGOI:
 	#New
 	aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]))]
 	dictAllCounts[sGene] = aiSum
+
+
 
 ###########################################################################
 #Step Five: Look in AA overlap arrays in dictAllCounts for TM's and QM's
@@ -436,33 +447,27 @@ for gene in SeqIO.parse(open(dirTmp + os.sep + 'premarkers.txt'), "fasta"):
 				iCount+=1
 				iRemSeq = iRemSeq - len(geneMarker)
 
-#Print QM's
-#Each QM_tuple has the values: (name, window, overlapvalue)
+################################################################################
+# Debugging - Print out information on QM's
 
+# Reload Gene Sequences into dictionary
+dictGOIGenes = pb.getGeneData(open(strClustFile))
+
+# Output info to txt file
+strQMOut = dirTmp+os.sep+"QMtest.txt"
+
+atupQM = pb.UpdateQMHeader(atupQM,dictGOIHits,dictRefHits, strQMOut,dictGOIGenes)
+
+
+
+###############################################################################
 atupQMFinal = []
 
-
-"""
-for tupInfo in dictGOIHits["AAA25717"]:
-	print tupInfo
-
-print "Normal GOI Hits"
-pb.UpdateQMHeader(atupQM[0],dictGOIHits[atupQM[0][0]])
-print "Normal Ref Hits"
-pb.UpdateQMHeader(atupQM[0],dictRefHits[atupQM[0][0]])
-print "Big GOI Hits"
-pb.UpdateQMHeader(atupQM[0],dictBigGOIHits[atupQM[0][0]])
-
-
-print "Gene Name:"
-print atupQM[0][0]
-
-print "Window:"
-print(dictAllCounts[atupQM[0][0]])
-"""
 for tup in atupQM:
 	if tup[0] in dictQuasiClust.values():
 		atupQMFinal.append(tup)
 
+
 with open(args.sMarkers, 'a') as fOut:
 	pb.PrintQuasiMarkers(atupQMFinal,fOut)
+

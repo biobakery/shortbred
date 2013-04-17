@@ -205,9 +205,21 @@ def getGeneData ( fileFasta):
     return dictGeneData
 
 ##############################################################################
-def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, iRegionLength, bSaveHitInfo,dictFams={}):
-#Makes a dictionary of form (GeneID, [0,0,0,0,1,1...]), where the number indicates
-#the number of times an amino acid overlaps with a region in the blast output.
+def getOverlapCounts (fileBlast, dIDcutoff, iLengthMin, dLengthMax, iOffset, bSaveHitInfo):
+
+# Makes a dictionary of form (GeneID, [0,0,0,0,1,1...]), where the number indicates
+# the number of times an amino acid overlaps with a region in the blast output.
+
+# PARAMETERS
+# fileBlast - BLAST-formatted (fmt6) file of hits
+# dIDcutoff - Minimum ID for using a hit
+# iLengthMin - Lower bound for using a hit in AA's
+# dLengthMax - Upper bound for using a hit (AlignmentLength/QueryLength)
+# iOffset   - Number of AminoAcids at each end of valid hit which do NOT get +1 to their overlap counts
+# bSaveHitInfo - When true, this records the name of the *Target* hit, and the start and end of the hit on the *Query*
+
+
+
 
 #Read in the blast output line by line
 #When the program finds a new QueryGene:
@@ -248,9 +260,7 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
 		dBit = float(aLine[11])
 		iQLength = int(aLine[12])
 
-
 		#When the current queryID changes, add the last one, and switch to the next gene.
-		#DB Note - Edited so we do not add the blank strCurQuery on the first line.
 		if strQueryID != strCurQuery:
 			if iLine>1:
 				dictAAOverlapCounts.setdefault(strCurQuery, aiCounts)
@@ -265,17 +275,21 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
 
 		dMatchLength = (iAln) / float(iQLength)
 
+
 		#If it's valid overlap:
 		#   and 1 to each appopriate spot in the array
-		#   save the name of the overlapping gene, and it's start and end points
+		#   save the name of the overlapping gene, and its start and end points
 		#       Note: The latter region will include AA's outside what is marked as overlap, we still want that info.
 
-		if (dIdentity >= dIDcutoff) and (dMatchLength <= dLengthcutoff) and (strQueryID!=strSubId) and (dMatchLength >= dLengthMin):
+		if (dIdentity >= dIDcutoff) and (iAln >=iLengthMin) and (dMatchLength <= dLengthMax) and (strQueryID!=strSubId):
+			iOLCount = 0
 			for i in range(iQStart-1+iOffset, iQEnd-iOffset):
 				aiCounts[i]=aiCounts[i]+1
+				iOLCount += 1
 			if(bSaveHitInfo == True):
-				tupInfo = strSubId, iQStart, iQEnd
+				tupInfo = strSubId, iQStart, iQEnd, iSubStart,iSubEnd, iOLCount
 				atupHitsInfo.append(tupInfo)
+
 
 
 	dictAAOverlapCounts.setdefault(strCurQuery.strip(), aiCounts)
@@ -285,15 +299,16 @@ def getOverlapCounts (fileBlast, dIDcutoff, dLengthMin, dLengthcutoff, iOffset, 
 	return dictAAOverlapCounts, dictOverlapInfo
 	#tupAAandHits = (dictAAOverlapCounts, dictOverlapInfo)
 
+
+
 ###########################################################################
 def MarkX(dictGenes, dictOverlap):
 
     for strName in dictGenes:
 		for i in range(len(dictGenes[strName])):
 		    if dictGenes[strName][i]=="X" or dictGenes[strName][i]=="x":
-				dictOverlap[strName][i] = dictOverlap[strName][i] + 999
+				dictOverlap[strName][i] = dictOverlap[strName][i] + 999999
 
-    #print dictOverlap["ZP_03790349"]
     return dictOverlap
 
 
@@ -403,19 +418,21 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
 		#Error Checking
 
 		"""
-		print "Data"
-		print key
-		print "Integer Window"
-		print aiWindow
-		print "Adjusted Window"
-		print adAdjWindow
-		print "Start,End",iWinStart, iWinEnd
-		print adAdjWindow[iWinStart:iWinEnd]
-		print dictGenes[key][iWinStart:iWinEnd]
-		print "Quasi:",iQuasi
+		if key =="ZP_04318513":
+			print "Data"
+			print key
+			print "Integer Window"
+			print aiWindow
+			print "Adjusted Window"
+			print adAdjWindow
+			print "Start,End",iWinStart, iWinEnd
+			print adAdjWindow[iWinStart:iWinEnd]
+			print dictGenes[key][iWinStart:iWinEnd]
+			print "Quasi:",iQuasi
 		"""
 
-		tup = (key, dictGenes[key][iWinStart:iWinEnd],iQuasi, iWinStart,iWinEnd)
+
+		tup = (key, dictGenes[key][iWinStart:iWinEnd],iQuasi, iWinStart,iWinEnd,aiWindow[iWinStart:iWinEnd])
 		atupQM.append(tup)
 
 
@@ -435,34 +452,143 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
     return atupQM
 
 ######################################################################################
-def UpdateQMHeader(tupQM, atupHitInfo):
-	#atupHitInfo = [("OverlapGene1",iStartOverlapOnQuery,iEndOverlaponQuery), (..,..,..),..]
-    #Each QM_tuple has the values: (name, window, overlapvalue,iMarkerStart,iMarkerEnd)
-	print tupQM
+def GetQMOverlap(tupQM,atupHitInfo,fileOut,dictGOIGenes):
 
-	for tupHit in atupHitInfo:
-		if (tupHit[1] > tupQM[3]) and (tupHit[1] < tupQM[4]):
-			print tupHit
-		elif (tupHit[2] < tupQM[4]) and (tupHit[2] > tupQM[3]):
-			print tupHit
-	#print atupHitInfo
+		# Convert from Python array index to BLAST position.
+		# For example, if the QM comes from the first 20 AA's, it has Start=0 and End=20 for slice notation seq[Start:End]
+		# In blast output, it would be Start =1 End = 20
 
-	return
+		iMarkerStart = tupQM[3]+1
+		iMarkerEnd = tupQM[4]
+		iCounter = 1
+
+		# Initialize values used to determine the weights: how much each sequence overlaps the QM (including the original prot)
+		iTotalOverlap = 0
+		iCurOverlap = 0
+
+		# Print the QM AA's, add it to the overlap total
+		fileOut.write(str(tupQM[1]) + '\n')
+		#iTotalOverlap += len(tupQM[1])
+		iOriginalSeqOverlap = len(tupQM[1])
+
+
+		iCountOverlappingHits = 0
+		for tupHit in atupHitInfo:
+			bOverlapsMarker = False
+
+			# tupInfo = strSubId, iQStart, iQEnd, iSubStart,iSubEnd
+
+			strName = tupHit[0]
+
+			# Overlap location on the marker (in Blast format)
+			iOLMarkerStart = tupHit[1]
+			iOLMarkerEnd = tupHit[2]
+
+	        # Overlap location on the hit (in Blast format)
+			iOLHitStart = tupHit[3]
+			iOLHitEnd = tupHit[4]
+
+			iShift = iOLMarkerStart - iOLHitStart
+
+			# If the hit is before or after the QM ...
+			if (iOLMarkerStart > iMarkerEnd or iOLMarkerEnd < iMarkerStart):
+				bOverlapsMarker = False
+
+	        # If the overlapping hit begins within the QM...
+			elif (iMarkerStart <= iOLMarkerStart <= iMarkerEnd):
+				iOLMarkerEnd = min(iMarkerEnd,iOLMarkerEnd)
+				bOverlapsMarker = True
+
+	        # If the overlapping hit ends within the QM...
+			elif(iMarkerStart <= iOLMarkerEnd <= iMarkerEnd):
+				iOLMarkerStart = max(iMarkerStart,iOLMarkerStart)
+				bOverlapsMarker = True
+
+			# If the overlapping hit covers the marker, but doesn't begin or end in the marker, it *completely* overlaps it.
+			else:
+				iOLMarkerStart = iMarkerStart
+				iOLMarkerEnd = iMarkerEnd
+				bOverlapsMarker = True
+
+			if (bOverlapsMarker==True):
+				if(strName in dictGOIGenes.keys()):
+
+					# The overlapping data from the Marker
+					astrOverlapMarker = dictGOIGenes[tupQM[0]][(iMarkerStart):(iMarkerEnd)]
+
+					# The overlapping data from the hit
+					astrOverlap = dictGOIGenes[strName][(iOLMarkerStart-iShift-1):(iOLMarkerEnd-iShift)]
+
+					astrOverlap = str("*"*(iOLMarkerStart - iMarkerStart)) + astrOverlap + str("*"*(iMarkerEnd- iOLMarkerEnd))
+
+
+					# fileOut.write(astrOverlap + ' ' + strName + ' ' + str(iOLMarkerStart) +' '+str(iOLMarkerEnd) + ' '+str(iOLHitStart) + ' ' + str(iOLHitEnd) +' '+  str(tupHit[5]).zfill(3) + '\n')
+					fileOut.write(astrOverlap + ' ' + strName + '\n')
+
+				iTotalOverlap+=iOLMarkerEnd-(iOLMarkerStart-1)
+				iCountOverlappingHits +=1
+
+		dOriginalSeqWeight = iOriginalSeqOverlap / float(iTotalOverlap + iOriginalSeqOverlap)
+
+		fileOut.write( "Number of Overlapping Seqs: "+ str(iCountOverlappingHits) +'\n')
+		fileOut.write( "Sum of Overlapping AA: "+ str(iTotalOverlap) +'\n')
+		fileOut.write( "Original Sequence's Weight: "+ "{:3.2f}".format(dOriginalSeqWeight) +'\n' + '\n')
+
+		return iTotalOverlap
+
+####################################################################################
+
+
+def UpdateQMHeader(atupQM,dictGOIHits,dictRefHits,strQMOut,dictGOIGenes,bUpdateHeader=False):
+    #Each QM_tuple has the values: (name, window, overlapvalue,iMarkerStart,iMarkerEnd,aOverlap)
+
+
+	atupUpdatedQM = []
+
+	with open(strQMOut, 'w') as fQMOut:
+		for tupQM in atupQM:
+			fQMOut.write("***********************************************************************" + '\n')
+
+			# Write the QM out
+			fQMOut.write(">" + str(tupQM[0]) + "_QM" + str(tupQM[2]) + "_#" + '\n')
+			fQMOut.write(str(tupQM[1]) + '\n' + '\n')
+
+			fQMOut.write("Overlap array for QM (before ^(1/4) transformation):" + '\n' + str(tupQM[5]) + '\n' + '\n')
+
+			fQMOut.write("Overlap among GOI Seqs:" + '\n')
+			iGOIOverlap = GetQMOverlap(tupQM,dictGOIHits[tupQM[0]],fQMOut,dictGOIGenes)
+
+
+			if tupQM[0] in dictRefHits.keys():
+				fQMOut.write("Overlap among Ref Seqs:" + '\n')
+				iRefOverlap = GetQMOverlap(tupQM,dictRefHits[tupQM[0]],fQMOut,dictGOIGenes)
+			else:
+				iRefOverlap = 0
+
+
+			dFinalWeight = len(tupQM[1]) / float(iGOIOverlap + iRefOverlap + len(tupQM[1]))
+			strFinalWeight = "{:3.2f}".format(dFinalWeight)
+			fQMOut.write("Final weight: " + strFinalWeight + '\n\n')
+			aQM = list(tupQM) + [strFinalWeight]
+			atupUpdatedQM.append(aQM)
+
+	return atupUpdatedQM
 
 ###############################################################################
 def PrintQuasiMarkers(atupQM, fileOut):
-    iCounter = 0
-    strName = ""
+	iCounter = 0
+ 	strName = ""
 
 
-    for tup in atupQM:
+	for tup in atupQM:
 		if str(tup[0]) != strName:
-		    iCounter =1
+			iCounter =1
 		else:
-		    iCounter+=1
-		fileOut.write(">" + str(tup[0]) + "_QM" + str(tup[2]) + "_#" +str(iCounter).zfill(2) + '\n')
+			iCounter+=1
+		fileOut.write(">" + str(tup[0]) + "_QM" + str(tup[2]) + "_#" +str(iCounter).zfill(2) + "_w"  + '\n')
 		fileOut.write(str(tup[1]) + '\n')
+		#fileOut.write(str(tup))
 		strName = str(tup[0])
 
 
-    return
+	return
