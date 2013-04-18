@@ -352,6 +352,11 @@ sys.stderr.write( "Found first set of Quasi Markers...")
 #atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
 #sys.stderr.write( "Found second set of Quasi Markers...")
 
+print "LENGTH OF QUASI MARKERS"
+print len(atupQuasiMarkers1)
+if(len(atupQuasiMarkers1)) > 0:
+	bHasQuasi = True
+
 #Replace AA's with +'s in True Markers
 for key in setHasMarkers:
 	if dictAllCounts.has_key(key):
@@ -366,39 +371,40 @@ for key in setHasMarkers:
 #####################################################################################################
 #Step Six: Cluster the Quasi-Markers. Remap the proteins they represent to the centroid marker for each cluster.
 
-atupQM = atupQuasiMarkers1
-atupQM = sorted(atupQM, key=lambda tup: tup[0])
+if(bHasQuasi):
+	atupQM = atupQuasiMarkers1
+	atupQM = sorted(atupQM, key=lambda tup: tup[0])
 
-strQuasiFN = dirQuasi+ os.sep + "quasi.faa"
-strQuasiClust = dirQuasi+ os.sep + "quasiclust.faa"
-strQuasiMap = dirQuasi+ os.sep + "quasi.map"
-fQuasi = open(strQuasiFN,'w')
-pb.PrintQuasiMarkers(atupQM,fQuasi)
-fQuasi.close()
+	strQuasiFN = dirQuasi+ os.sep + "quasi.faa"
+	strQuasiClust = dirQuasi+ os.sep + "quasiclust.faa"
+	strQuasiMap = dirQuasi+ os.sep + "quasi.map"
+	fQuasi = open(strQuasiFN,'w')
+	pb.PrintQuasiMarkers(atupQM,fQuasi)
+	fQuasi.close()
 
-subprocess.check_call(["cd-hit", "-i", strQuasiFN,"-o",strQuasiClust,
-	"-d", "0", "-c", str(args.dQClustID), "-b", "10","-g", "1","-aL","1.0"])
+	subprocess.check_call(["cd-hit", "-i", strQuasiFN,"-o",strQuasiClust,
+		"-d", "0", "-c", str(args.dQClustID), "-b", "10","-g", "1","-aL","1.0"])
 
-pb.GetCDHitMap( strQuasiClust+".clstr", strQuasiMap)
+	pb.GetCDHitMap( strQuasiClust+".clstr", strQuasiMap)
 
-dictQuasiClust = {}
-for astrLine in csv.reader( open(strQuasiMap), csv.excel_tab ):
+	dictQuasiClust = {}
+	for astrLine in csv.reader( open(strQuasiMap), csv.excel_tab ):
 
-			mtchMarker = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[1])
-			strMarker = mtchMarker.group(1)
-			mtchFam = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[0])
-			strFam = mtchFam.group(1)
+				mtchMarker = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[1])
+				strMarker = mtchMarker.group(1)
+				mtchFam = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[0])
+				strFam = mtchFam.group(1)
 
-			dictQuasiClust[strMarker] = strFam
+				dictQuasiClust[strMarker] = strFam
 
-for qckey, qcvalue in dictQuasiClust.items():
-	for key in dictFams:
-		if (dictFams[key] == qckey):
-			dictFams[key] = qcvalue
+	for qckey, qcvalue in dictQuasiClust.items():
+		for key in dictFams:
+			if (dictFams[key] == qckey):
+				dictFams[key] = qcvalue
 
-with open(dirTmp + os.sep + "final.map",'w') as fFinalMap:
-	for prot, fam in sorted(dictFams.items(), key = lambda(prot, fam): (fam,prot)):
-			fFinalMap.write(fam + "\t" + prot + "\n")
+	with open(dirTmp + os.sep + "final.map",'w') as fFinalMap:
+		for prot, fam in sorted(dictFams.items(), key = lambda(prot, fam): (fam,prot)):
+				fFinalMap.write(fam + "\t" + prot + "\n")
 
 #Print AA with overlap area removed to premarkers.txt
 strGeneName = ""
@@ -449,25 +455,25 @@ for gene in SeqIO.parse(open(dirTmp + os.sep + 'premarkers.txt'), "fasta"):
 
 ################################################################################
 # Debugging - Print out information on QM's
+if(bHasQuasi):
+	# Reload Gene Sequences into dictionary
+	dictGOIGenes = pb.getGeneData(open(strClustFile))
 
-# Reload Gene Sequences into dictionary
-dictGOIGenes = pb.getGeneData(open(strClustFile))
+	# Output info to txt file
+	strQMOut = dirTmp+os.sep+"QMtest.txt"
 
-# Output info to txt file
-strQMOut = dirTmp+os.sep+"QMtest.txt"
-
-atupQM = pb.UpdateQMHeader(atupQM,dictGOIHits,dictRefHits, strQMOut,dictGOIGenes)
-
-
-
-###############################################################################
-atupQMFinal = []
-
-for tup in atupQM:
-	if tup[0] in dictQuasiClust.values():
-		atupQMFinal.append(tup)
+	atupQM = pb.UpdateQMHeader(atupQM,dictGOIHits,dictRefHits, strQMOut,dictGOIGenes)
 
 
-with open(args.sMarkers, 'a') as fOut:
-	pb.PrintQuasiMarkers(atupQMFinal,fOut)
+
+	###############################################################################
+	atupQMFinal = []
+
+	for tup in atupQM:
+		if tup[0] in dictQuasiClust.values():
+			atupQMFinal.append(tup)
+
+
+	with open(args.sMarkers, 'a') as fOut:
+		pb.PrintQuasiMarkers(atupQMFinal,fOut)
 
