@@ -165,7 +165,7 @@ def PrintResults(strResults,dictHitCounts, dictMarkerLenAll,dictMarkerLen,dReadL
 	csvwResults.writerow(["Family","Normalized Count","Hits","Total Family Marker Length"])
 	#print dictHitCounts.keys()
 	for strProt in dictHitCounts.keys():
-		dShortBREDCount = (float(dictHitCounts[strProt])/dictMarkerLenAll[strProt]) / (dAvgReadLength / float(iWGSReads))
+		dShortBREDCount = (float(dictHitCounts[strProt])/dictMarkerLenAll[strProt]) / (float(iWGSReads) /dReadLength)
 
 		csvwResults.writerow( [strProt, dShortBREDCount,
 			dictHitCounts[strProt], dictMarkerLenAll[strProt]] )
@@ -219,8 +219,15 @@ p = subprocess.check_call([c_strUSEARCH, "--makeudb_usearch", args.strMarkers,
 strBlast = args.strBlast
 
 if (args.bSmall == True):
+	iTotalReadCount = 0
+	dAvgReadLength = 0.0
 	RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = strBlast )
 	StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+
+	for seq in SeqIO.parse(args.strWGS, "fasta"):
+		iTotalReadCount+=1
+		dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
+
 
 else:
 

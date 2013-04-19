@@ -481,4 +481,4 @@ if(bHasQuasi):
 	with open(args.sMarkers, 'a') as fOut:
 		pb.PrintQuasiMarkers(atupQMFinal,fOut)
 
-print "\n Processing Complete! Markers saved to",args.sMarkers
+sys.stderr.write( "\n Processing Complete! Markers saved to " + args.sMarkers)
