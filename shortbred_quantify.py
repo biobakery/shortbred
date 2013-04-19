@@ -153,7 +153,7 @@ def StoreHitCounts(strBlastOut,strValidHits,dictMarkerLen,dictHitCounts):
 					#print "CENTROID CODE RAN - LINE 2"
 					csvwHits.writerow( aLine )
 
-def PrintResults(strResults,dictHitCounts, dictMarkerLenAll,dictMarkerLen):
+def PrintResults(strResults,dictHitCounts, dictMarkerLenAll,dictMarkerLen,dReadLength,iWGSReads):
 	#strResults - Name of text file with final ShortBRED Counts
 	#strBlastOut - BLAST-formatted output from USEARCH
 	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
@@ -165,7 +165,9 @@ def PrintResults(strResults,dictHitCounts, dictMarkerLenAll,dictMarkerLen):
 	csvwResults.writerow(["Family","Normalized Count","Hits","Total Family Marker Length"])
 	#print dictHitCounts.keys()
 	for strProt in dictHitCounts.keys():
-		csvwResults.writerow( [strProt, float(dictHitCounts[strProt])/dictMarkerLenAll[strProt],
+		dShortBREDCount = (float(dictHitCounts[strProt])/dictMarkerLenAll[strProt]) / (dAvgReadLength / float(iWGSReads))
+
+		csvwResults.writerow( [strProt, dShortBREDCount,
 			dictHitCounts[strProt], dictMarkerLenAll[strProt]] )
 
 ##############################################################################
@@ -178,9 +180,9 @@ with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "w")
 	log.write("TM id:" + str(args.dTMID) + "\n")
 	log.write("QM id:" + str(args.dQMID) + "\n")
 	if args.strCentroids=="N":
-		log.write("Sequences: Markers")
+		log.write("Sequences: Markers\n")
 	else:
-		log.write("Sequences: Centroids")
+		log.write("Sequences: Centroids\n")
 
 ##############################################################################
 #Initialize Dictionaries
@@ -237,6 +239,9 @@ else:
 
 	iReadsForFile = 5000000
 	iCount = 0
+	iTotalReadCount = 0
+	dAvgReadLength = 0.0
+
 	iFileCount = 1
 	strFASTAName = str(dirTmp) + os.sep + 'fasta.fna'
 	fileFASTA = open(strFASTAName, 'w')
@@ -280,6 +285,15 @@ else:
 			for seq in SeqIO.parse(streamWGS, "fasta"):
 				SeqIO.write(seq,fileFASTA,"fasta")
 				iCount+=1
+				iTotalReadCount+=1
+
+				# This tracks a running average of the read length. Illumina is typically constant,
+				# but 454 reads vary in size.
+
+				dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
+
+
+
 				#print iCount
 				if (iCount>=iReadsForFile):
 					fileFASTA.close()
@@ -302,7 +316,10 @@ else:
 				RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
 				StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
 
-PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
+PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen, dReadLength = dAvgReadLength, iWGSReads = iTotalReadCount)
+with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:
+	log.write("Total Reads Processed: " + str(iTotalReadCount) + "\n")
+	log.write("Average Read Length: " + str(dAvgReadLength) + "\n")
 
 if args.bSmall == False:
 	os.remove(strFASTAName)

@@ -198,7 +198,8 @@ if(iMode==1 or iMode==2):
 	#DB Note: clean up strMap
 	strMap = os.path.splitext(strClustFile)[0]
 
-	print "Clustering GOI sequences..."
+	print "Clustering proteins of interest...\n"
+	src.check_file(str(args.sGOIProts))
 	#Cluster in cdhit
 	subprocess.check_call([c_strTIME, "-o",
 		  dirTime + os.sep + "goiclust.time",
@@ -207,9 +208,9 @@ if(iMode==1 or iMode==2):
 			"-c", str(args.dClustID), "-b", "10","-g", "1"])
 	strMapFile = dirClust + os.sep + "clust.map"
 	pb.GetCDHitMap( strClustFile + ".clstr", strMapFile )
-	print "GOI protein sequences clustered."
+	print "Protein sequences clustered."
 
-	print "Creating folders for each protein family..."
+	print "Creating folders for each protein family...\n"
 	#Create a folder called "clust/fams", will hold a fasta file for each CD-HIT cluster
 	dirFams = src.check_create_dir( dirClust + os.sep + "fams" )
 	strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
@@ -222,7 +223,7 @@ if(iMode==1 or iMode==2):
 	#Call MUSCLE + EMBOSS_CONS OR DUMB CONSENSUS to get consensus seq for each cluster,overwrite the CD-HIT cluster file
 	pb.ClusterFams(dirClust, args.dClustID,strClustFile,args.dConsThresh )
 
-	print "Making BLAST database for the GOI Protein Sequences..."
+	print "Making BLAST database for the family consensus sequences..."
 	#Make database from goi centroids
 	subprocess.check_call([c_strTIME, "-o", dirTime + os.sep + "goidb.time",
 		"makeblastdb", "-in", strClustFile, "-out", strClustDB,
@@ -238,7 +239,8 @@ if(iMode==1):
 		dirRefDB = src.check_create_dir( dirTmp + os.sep + "refdb" )
 		strRefDBPath = dirRefDB + os.sep + "refdb"
 
-		print "Making BLAST database for the Reference Protein Sequences..."
+		print "Making BLAST database for the reference protein sequences..."
+		src.check_file(str(args.sRefProts))
 		subprocess.check_call([c_strTIME, "-o", dirTime + os.sep + "refdb.time",
 			"makeblastdb", "-in", str(args.sRefProts),"-out", strRefDBPath,
 			"-dbtype", "prot", "-logfile", dirTmp + os.sep +  "refdb.log"])
@@ -268,13 +270,13 @@ if(iMode==1 or iMode==2):
 
 
 	#Blast clust file against goidb
- 	print "BLASTing the GOI sequences against themselves..."
+ 	print "BLASTing the consensus family sequences against themselves..."
 	subprocess.check_call(["time", "-o", dirTime + os.sep +"goisearch.time",
 		"blastp", "-query", strClustFile, "-db", strClustDB,
 		"-out", strBlastSelf] + astrBlastParams)
 
 	#Blast clust file against refdb
- 	print "BLASTing the GOI sequences against the Reference Protein Sequences..."
+ 	print "BLASTing the consensus family sequences against the reference protein sequences..."
 	subprocess.check_call(["time", "-o", dirTime + os.sep +"refsearch.time",
 		"blastp", "-query", strClustFile, "-db",strRefDBPath,
 		"-out", strBlastRef] + astrBlastParams)
@@ -297,11 +299,11 @@ for astrLine in csv.reader(open(strMapFile),delimiter='\t'):
 dictGOIGenes = pb.getGeneData(open(strClustFile))
 
 #Get short, high-identity hits in reference proteins
-sys.stderr.write( "Finding overlap with reference database...")
+sys.stderr.write( "Finding overlap with reference database...\n")
 dictRefCounts, dictRefHits = pb.getOverlapCounts(strBlastRef, args.dID, iLenMin, args.dL, 0,bSaveHitInfo=True)
 
 #Get high-identity hits of *all lengths* in GOI database
-sys.stderr.write( "Finding overlap with goi database...")
+sys.stderr.write( "Finding overlap with family consensus database...\n")
 dictGOICounts, dictGOIHits  = pb.getOverlapCounts(strBlastSelf, args.dID, iLenMin, 1.0, 0,True)
 dictGOICounts = pb.MarkX(dictGOIGenes,dictGOICounts)
 
@@ -345,17 +347,19 @@ for sGene in setRefGOI:
 
 setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAllCounts.keys()), dictAllCounts, args.iMLength)
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
-sys.stderr.write( "Found True Markers...")
+sys.stderr.write( "Found True Markers...\n")
 atupQuasiMarkers1 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength,args.iThresh, args.iTotLength)
 
-sys.stderr.write( "Found first set of Quasi Markers...")
+
 #atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
 #sys.stderr.write( "Found second set of Quasi Markers...")
 
-print "LENGTH OF QUASI MARKERS"
-print len(atupQuasiMarkers1)
 if(len(atupQuasiMarkers1)) > 0:
 	bHasQuasi = True
+	sys.stderr.write( "Found first set of Quasi Markers...\n")
+else:
+	bHasQuasi = False
+	sys.stderr.write( "No Quasi Markers needed...\n")
 
 #Replace AA's with +'s in True Markers
 for key in setHasMarkers:
@@ -477,3 +481,4 @@ if(bHasQuasi):
 	with open(args.sMarkers, 'a') as fOut:
 		pb.PrintQuasiMarkers(atupQMFinal,fOut)
 
+print "\n Processing Complete! Markers saved to",args.sMarkers
