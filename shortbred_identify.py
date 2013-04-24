@@ -348,13 +348,20 @@ for sGene in setRefGOI:
 setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAllCounts.keys()), dictAllCounts, args.iMLength)
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 sys.stderr.write( "Found True Markers...\n")
-atupQuasiMarkers1 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength,args.iThresh, args.iTotLength)
 
+
+atupQuasiMarkers1 = pb.QMCheckShortRegion( setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion=args.iMLength,iMarkerLen=args.iMLength)
+setGotQM = zip(*atupQuasiMarkers1)[0]
+
+setLeftover = setLeftover.difference(setGotQM)
+atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength,args.iThresh, args.iTotLength)
+
+atupQuasiMarkers = atupQuasiMarkers1 + atupQuasiMarkers2
 
 #atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
 #sys.stderr.write( "Found second set of Quasi Markers...")
 
-if(len(atupQuasiMarkers1)) > 0:
+if(len(atupQuasiMarkers)) > 0:
 	bHasQuasi = True
 	sys.stderr.write( "Found first set of Quasi Markers...\n")
 else:
@@ -376,7 +383,7 @@ for key in setHasMarkers:
 #Step Six: Cluster the Quasi-Markers. Remap the proteins they represent to the centroid marker for each cluster.
 
 if(bHasQuasi):
-	atupQM = atupQuasiMarkers1
+	atupQM = atupQuasiMarkers
 	atupQM = sorted(atupQM, key=lambda tup: tup[0])
 
 	strQuasiFN = dirQuasi+ os.sep + "quasi.faa"
@@ -422,7 +429,7 @@ with open(dirTmp + os.sep + 'premarkers.txt', 'w') as premarkers:
 			iCount = iCount+1
 
 ##################################################################################
-#Step Seven: Print the TM's,
+#Step Seven: Print the TM's to a temp file
 
 #Print the TM's.
 #Go through premarkers.txt, find regions satisying user criteria.
@@ -434,7 +441,10 @@ MT+++++LET+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++S++++++
 ++++++++++++++++++++++++++++++++++++++++++++QNIVDSVNEWDLNLK
 """
 
-fOut = open(args.sMarkers, 'w')
+
+dirFrameCheck = src.check_create_dir( dirTmp + os.sep + "framecheck" )
+strTmpMarkers = dirFrameCheck + os.sep + "FirstMarkers.faa"
+fOut = open(strTmpMarkers, 'w')
 iMLength = args.iMLength
 iTotLength = args.iTotLength
 
@@ -472,13 +482,85 @@ if(bHasQuasi):
 
 	###############################################################################
 	atupQMFinal = []
-
+	# Gather the QM's that survived clustering.
 	for tup in atupQM:
 		if tup[0] in dictQuasiClust.values():
 			atupQMFinal.append(tup)
 
 
-	with open(args.sMarkers, 'a') as fOut:
-		pb.PrintQuasiMarkers(atupQMFinal,fOut)
+	# Print the final set of Quasi Markers
+	with open(strTmpMarkers, 'a') as fOut:
+		pb.PrintQuasiMarkers(atupQMFinal,fOut,True)
 
-sys.stderr.write( "\n Processing Complete! Markers saved to " + args.sMarkers)
+sys.stderr.write( "\nTmp markers saved to " + strTmpMarkers + "\n")
+
+
+################################################################################
+# Step Eight: Blastx nuc versions of markers against the GOI db (prots)
+# Process the results, flag any marker that hits something not in its family.
+
+
+
+# Reverse translate each candidate marker (back_translate)
+
+strFrameNucs = dirFrameCheck + os.sep + "MarkersAsNucs.fna"
+subprocess.check_call(["backtranseq", "-sequence", strTmpMarkers, "-out", strFrameNucs])
+
+"""
+I will change the above function to be a Python function so that we do not need
+EMBOSS. "back_translate" was deprecated from BioPython, so it was not an option.
+Perhaps I can find an old version online, and copy the function in here and cite
+the authors. If not, I can make something simple using the BioPython functions.
+"""
+
+#*** BLASTX the whole shebang against family consensus sequences
+
+
+if (iMode ==3):
+    # Make a db for the clustered goi file if needed.
+	strClustFile = args.sClust
+	strClustDB = dirTmp + os.sep + "clustdb" + os.sep + "goidb"
+
+	subprocess.check_call(["makeblastdb", "-in", strClustFile, "-out", strClustDB,
+			"-dbtype", "prot", "-logfile", dirTmp + os.sep + "goidb.log"])
+
+astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30",
+	"-ungapped",
+	"-xdrop_ungap","0.000001","-evalue","1e-3","-num_alignments","100000",
+	"-max_target_seqs", "100000", "-num_descriptions", "100000",
+	"-num_threads",str(args.iThreads)]
+"""
+Should I include something with "frame_shift_penalty"?
+"""
+
+strBlastNucsToGOI = dirFrameCheck + os.sep + "NucsToGOI.blast"
+#Blast clust file against goidb
+sys.stderr.write( "BLASTing the backtranslated marker nucleotides against family consensus sequences (blastx)...\n")
+subprocess.check_call(["blastx", "-query", strFrameNucs, "-db", strClustDB,
+	"-out", strBlastNucsToGOI] + astrBlastParams)
+
+strOffTargetHits = dirFrameCheck + os.sep + "OffTargetHits.txt"
+setProblemMarkers = pb.CheckOutOfFrame (strBlastNucsToGOI,.95, 32,dictFams, strOffTargetHits)
+
+sys.stderr.write("Number flagged as potential off-target markers: " + str(len(setProblemMarkers)) + "\n")
+
+strOffTargetMarkers = dirFrameCheck + os.sep + "ProblemMarkerList.txt"
+
+with open(strOffTargetMarkers, 'w') as fOut:
+	for strMarkerName in setProblemMarkers:
+		fOut.write(strMarkerName + "\n")
+
+# Remove any marker for which any rev-trans has a significant off-target hit
+
+# Here is a good spot to add functions producing basic stats on the Markers file
+with open(args.sMarkers,'w') as fOut:
+	for gene in SeqIO.parse(open(strTmpMarkers), "fasta"):
+		if gene.id not in setProblemMarkers:
+			SeqIO.write(gene, fOut,"fasta")
+
+sys.stderr.write( "\nProcessing complete! Final markers saved to " + args.sMarkers + "\n")
+
+
+
+
+
