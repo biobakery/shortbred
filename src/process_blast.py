@@ -91,22 +91,41 @@ def IsInHit( aiSeqQuery, aiSeqTarget):
 ###############################################################################
 def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegion=25,iMarkerLen=25):
 
-	#Update this function to look in dictRefHits as well!
+	# This function takes a set of protein sequences that need QM's, and returns one
+	# QM or nothing for each protein sequence.
+
+	# For each seq, it looks at the first string of (iShortRegion) AA's. If that
+	# region is not *completely* overlapped by any hit AND does not have more than one
+	# "X", use that as a QM, and expand it until it is (iMarkerLen) AA's long.
+
+	# If that region fails, slide down 1 amino acid, and look at the next set of
+	# AA's. If function fails to find any candidate, return nothing for that seq.
+
+
+
+
+	# Update this function to look in dictRefHits as well!
 
 	atupQM = []
 
 
 	for strGene in setGenes:
+		# Initialize counters and bool values for loop
 		iSeqLength = len(dictGenes[strGene])
 		iStart = 1
+
 		bHitEnd = False
 		bFoundRegion = False
 		bOverlapsSomeSeq = False
+
 		atupHitInfo = dictGOIHits[strGene]
 
-		#Add a function to check for X's. See why these new quasi-markers are bad.
+		# While the function has not found a QM, and has not hit the end of seq:
+		#   Look at the section that is iShortRegion long.
+		#   Check it against every hit in atupHitInfo.
+		#   If it none of them completely overlap it, and
 		while (bHitEnd == False and bFoundRegion == False):
-			#sys.stderr.write("Checking "+strGene + " " + str(iStart) + "\n")
+
 			#Start from position 1, check if [1,iShortRegion] does not overlap with anything
 			if ((iStart+iShortRegion-1) >= iSeqLength):
 				bHitEnd = True
@@ -116,10 +135,10 @@ def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegio
 			while (bOverlapsSomeSeq == False and bCheckedAllTup == False and len(atupHitInfo)>0):
 				tupHitInfo = atupHitInfo[iTupCounter]
 				bOverlapsSomeSeq = IsInHit([iStart,iStart+iShortRegion-1],[tupHitInfo[1],tupHitInfo[2]])
-				#sys.stderr.write(strGene+ " " + str(iStart) + " " + str(iStart+iShortRegion-1) + " " + str(tupHitInfo[1]) + " " +str(tupHitInfo[2])+"\n")
+
 				if(bOverlapsSomeSeq == False):
 					strSeq = dictGenes[strGene][iStart-1:iShortRegion+(iStart-1)]
-					if(strSeq.count("X")>1):
+					if(strSeq.count("X")>0):
 						bOverlapsSomeSeq = True
 				iTupCounter+=1
 				if(iTupCounter>=len(atupHitInfo)):
@@ -200,10 +219,10 @@ def ClusterFams(dirClust, dCLustID, strOutputFile, dThresh):
 		os.makedirs(dirUC)
 
 
-    print dirCentroids
-    print glob.glob(dirFams+os.sep+'*.faa')
+    #sys.stderr.write( dirCentroids + "\n")
+    #sys.stderr.write( str(glob.glob(dirFams+os.sep+'*.faa')) + "\n")
     for fileFasta in glob.glob(dirFams+os.sep+'*.faa'):
-		print "The file is ", fileFasta
+		#sys.stderr.write("The file is " + fileFasta + " \n")
 		fileClust = dirCentroids + os.sep + os.path.basename(fileFasta)
 		fileAlign = dirFams + os.sep + os.path.basename(fileFasta)+".aln"
 		strSeqID = os.path.basename(fileFasta)

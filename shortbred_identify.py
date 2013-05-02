@@ -198,7 +198,7 @@ if(iMode==1 or iMode==2):
 	#DB Note: clean up strMap
 	strMap = os.path.splitext(strClustFile)[0]
 
-	print "Clustering proteins of interest...\n"
+	sys.stderr.write( "Clustering proteins of interest...\n")
 	src.check_file(str(args.sGOIProts))
 	#Cluster in cdhit
 	subprocess.check_call([c_strTIME, "-o",
@@ -208,22 +208,22 @@ if(iMode==1 or iMode==2):
 			"-c", str(args.dClustID), "-b", "10","-g", "1"])
 	strMapFile = dirClust + os.sep + "clust.map"
 	pb.GetCDHitMap( strClustFile + ".clstr", strMapFile )
-	print "Protein sequences clustered."
+	sys.stderr.write( "Protein sequences clustered.")
 
-	print "Creating folders for each protein family...\n"
+	sys.stderr.write( "Creating folders for each protein family...\n")
 	#Create a folder called "clust/fams", will hold a fasta file for each CD-HIT cluster
 	dirFams = src.check_create_dir( dirClust + os.sep + "fams" )
 	strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
 
-	print "Making a fasta file for each protein family..."
+	sys.stderr.write( "Making a fasta file for each protein family...\n")
 	#Make a fasta file for each CD-HIT cluster
 	pb.MakeFamilyFastaFiles( strMapFile, str(args.sGOIProts), dirFams)
 
-	print "Aligning sequences in each family, producing consensus sequences..."
+	sys.stderr.write( "Aligning sequences in each family, producing consensus sequences...\n")
 	#Call MUSCLE + EMBOSS_CONS OR DUMB CONSENSUS to get consensus seq for each cluster,overwrite the CD-HIT cluster file
 	pb.ClusterFams(dirClust, args.dClustID,strClustFile,args.dConsThresh )
 
-	print "Making BLAST database for the family consensus sequences..."
+	sys.stderr.write("Making BLAST database for the family consensus sequences...\n")
 	#Make database from goi centroids
 	subprocess.check_call([c_strTIME, "-o", dirTime + os.sep + "goidb.time",
 		"makeblastdb", "-in", strClustFile, "-out", strClustDB,
@@ -239,7 +239,7 @@ if(iMode==1):
 		dirRefDB = src.check_create_dir( dirTmp + os.sep + "refdb" )
 		strRefDBPath = dirRefDB + os.sep + "refdb"
 
-		print "Making BLAST database for the reference protein sequences..."
+		sys.stderr.write("Making BLAST database for the reference protein sequences...\n")
 		src.check_file(str(args.sRefProts))
 		subprocess.check_call([c_strTIME, "-o", dirTime + os.sep + "refdb.time",
 			"makeblastdb", "-in", str(args.sRefProts),"-out", strRefDBPath,
@@ -262,21 +262,21 @@ if(iMode==1 or iMode==2):
 	strBlastRef = dirBlastResults + os.sep + "refblast.txt"
 	strBlastSelf = dirBlastResults + os.sep + "selfblast.txt"
 
-	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30",
-		"-ungapped","-comp_based_stats","F","-window_size","0",
+	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped",
+		"-comp_based_stats","F","-window_size","0",
 		"-xdrop_ungap","0.000001","-evalue","1e-3","-num_alignments","100000",
 		"-max_target_seqs", "100000", "-num_descriptions", "100000",
 		"-num_threads",str(args.iThreads)]
 
 
 	#Blast clust file against goidb
- 	print "BLASTing the consensus family sequences against themselves..."
+ 	sys.stderr.write( "BLASTing the consensus family sequences against themselves...\n")
 	subprocess.check_call(["time", "-o", dirTime + os.sep +"goisearch.time",
 		"blastp", "-query", strClustFile, "-db", strClustDB,
 		"-out", strBlastSelf] + astrBlastParams)
 
 	#Blast clust file against refdb
- 	print "BLASTing the consensus family sequences against the reference protein sequences..."
+ 	sys.stderr.write("BLASTing the consensus family sequences against the reference protein sequences...\n")
 	subprocess.check_call(["time", "-o", dirTime + os.sep +"refsearch.time",
 		"blastp", "-query", strClustFile, "-db",strRefDBPath,
 		"-out", strBlastRef] + astrBlastParams)
@@ -349,17 +349,21 @@ setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAll
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 sys.stderr.write( "Found True Markers...\n")
 
+#iShort = math.floor(args.iMLength*(.95))
+#sys.stderr.write("The Short region is " + str(int(iShort)) )
 
-atupQuasiMarkers1 = pb.QMCheckShortRegion( setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion=args.iMLength,iMarkerLen=args.iMLength)
+atupQuasiMarkers1 = pb.QMCheckShortRegion( setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iMLength*(.95))),iMarkerLen=args.iMLength)
 setGotQM = zip(*atupQuasiMarkers1)[0]
 
 setLeftover = setLeftover.difference(setGotQM)
-atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength,args.iThresh, args.iTotLength)
 
+
+# Change these lines to determine how QM's are made
+atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength,args.iThresh, args.iTotLength)
 atupQuasiMarkers = atupQuasiMarkers1 + atupQuasiMarkers2
 
-#atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength)
-#sys.stderr.write( "Found second set of Quasi Markers...")
+# atupQuasiMarkers = atupQuasiMarkers1
+
 
 if(len(atupQuasiMarkers)) > 0:
 	bHasQuasi = True
@@ -524,11 +528,18 @@ if (iMode ==3):
 	subprocess.check_call(["makeblastdb", "-in", strClustFile, "-out", strClustDB,
 			"-dbtype", "prot", "-logfile", dirTmp + os.sep + "goidb.log"])
 
-astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30",
+# Blastx crashes when attempting ungapped alignments on short reads
+if args.iMLength <30:
+	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30",
+		"-xdrop_ungap","0.000001","-evalue","1e-3","-num_alignments","100000",
+		"-max_target_seqs", "100000", "-num_descriptions", "100000",
+		"-num_threads",str(args.iThreads)]
+else:
+    astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30",
 	"-ungapped",
-	"-xdrop_ungap","0.000001","-evalue","1e-3","-num_alignments","100000",
-	"-max_target_seqs", "100000", "-num_descriptions", "100000",
-	"-num_threads",str(args.iThreads)]
+		"-xdrop_ungap","0.000001","-evalue","1e-3","-num_alignments","100000",
+		"-max_target_seqs", "100000", "-num_descriptions", "100000",
+		"-num_threads",str(args.iThreads)]
 """
 Should I include something with "frame_shift_penalty"?
 """
@@ -542,7 +553,7 @@ subprocess.check_call(["blastx", "-query", strFrameNucs, "-db", strClustDB,
 strOffTargetHits = dirFrameCheck + os.sep + "OffTargetHits.txt"
 setProblemMarkers = pb.CheckOutOfFrame (strBlastNucsToGOI,.95, 32,dictFams, strOffTargetHits)
 
-sys.stderr.write("Number flagged as potential off-target markers: " + str(len(setProblemMarkers)) + "\n")
+log.write("Number flagged as potential off-target markers: " + str(len(setProblemMarkers)) + "\n")
 
 strOffTargetMarkers = dirFrameCheck + os.sep + "ProblemMarkerList.txt"
 
@@ -552,15 +563,30 @@ with open(strOffTargetMarkers, 'w') as fOut:
 
 # Remove any marker for which any rev-trans has a significant off-target hit
 
-# Here is a good spot to add functions producing basic stats on the Markers file
+# Track marker statistics (#TM's,etc.) as processing, and print to log.
+
+iTM = 0
+iQM = 0
+setMarkerFamilies = set()
+setAllProtFamilies = set(dictFams.values())
+
 with open(args.sMarkers,'w') as fOut:
 	for gene in SeqIO.parse(open(strTmpMarkers), "fasta"):
 		if gene.id not in setProblemMarkers:
+			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',gene.id)
+			strMarkerProt = mtchProtStub.group(1)
+			if (gene.id.find("_TM")>0):
+				iTM+=1
+			if (gene.id.find("_QM")>0):
+				iQM+=1
+			setMarkerFamilies.add(strMarkerProt)
 			SeqIO.write(gene, fOut,"fasta")
 
 sys.stderr.write( "\nProcessing complete! Final markers saved to " + args.sMarkers + "\n")
 
-
-
+log.write("TM's: " + str(iTM) + "\n")
+log.write("QM's: " + str(iQM) + "\n")
+log.write("Families with Markers: " + str(len(setMarkerFamilies)) + "\n")
+log.write("Families without Markers: " + str(len(setAllProtFamilies.difference(setMarkerFamilies))) + "\n")
 
 
