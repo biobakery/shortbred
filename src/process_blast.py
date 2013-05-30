@@ -138,7 +138,7 @@ def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegio
 
 				if(bOverlapsSomeSeq == False):
 					strSeq = dictGenes[strGene][iStart-1:iShortRegion+(iStart-1)]
-					if(strSeq.count("X")>0):
+					if(strSeq.count("X")>1):
 						bOverlapsSomeSeq = True
 				iTupCounter+=1
 				if(iTupCounter>=len(atupHitInfo)):
@@ -702,12 +702,12 @@ def UpdateQMHeader(atupQM,dictGOIHits,dictRefHits,strQMOut,dictGOIGenes,bUpdateH
 
 			astrNewHeader = []
 			dPctOverlap =  len(strQMData) / float(iAllOverlap)
-			astrNewHeader.append(strQMName + '_w=' + "{:2.0f}".format(dPctOverlap * 100) + "%")
+			astrNewHeader.append(strQMName + '_w=' + "{:0.3f}".format(dPctOverlap))
 
 			for aLine in aaGOIOverlap:
 				strName, iOverlap = aLine[0],aLine[1]
 				dPctOverlap = iOverlap / float(iAllOverlap)
-				strName = strName + '_w=' + "{:2.0f}".format(dPctOverlap * 100) + "%"
+				strName = strName + '_w=' + "{:0.3f}".format(dPctOverlap)
 				astrNewHeader.append(strName)
 
 			strNewHeader = strQMName + "[" + ",".join(astrNewHeader) + "]"

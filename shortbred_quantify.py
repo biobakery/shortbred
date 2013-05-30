@@ -35,6 +35,7 @@ import tarfile
 import time
 
 import src
+import numpy
 
 import Bio
 from Bio.Seq import Seq
@@ -53,6 +54,8 @@ parser.add_argument('--wgs', type=str, dest='strWGS', help='Enter the path and n
 parser.add_argument('--results', type=str, dest='strResults', default = "results.txt",help='Enter the name of the results file.')
 parser.add_argument('--SBhits', type=str, dest='strHits', help='ShortBRED will print the hits it considers positives to this file.', default="")
 parser.add_argument('--blastout', type=str, dest='strBlast', default="out.blast",help='Enter the name of the blast-formatted output file from USEARCH.')
+parser.add_argument('--marker_results', type=str, dest='strMarkerResults', default="markers.tab",help='Enter the name of the output for marker level results.')
+
 
 parser.add_argument('--tmp', type=str, dest='strTmp', default ="",help='Enter the path and name of the tmp directory.')
 
@@ -105,14 +108,12 @@ def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB):
 		"--id", str(args.dID),"--blast6out", strBlastOut,
 		"--threads", str(args.iThreads)])
 
-def StoreHitCounts(strBlastOut,strValidHits,dictMarkerLen,dictHitCounts):
-	#Take the code to put information in dictionaries here. Then we'll only need to create the dictionaries once
-	#and can keep adding them to the dicts
-
+def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts):
 	#strBlastOut - BLAST-formatted output from USEARCH
 	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
 	#dictMarkerLen - Contains each marker/centroid length
 	#dictHitCounts - Contains each family's hit count
+
 
 	csvwHits = csv.writer( open(strValidHits,'a'), csv.excel_tab )
 
@@ -121,54 +122,179 @@ def StoreHitCounts(strBlastOut,strValidHits,dictMarkerLen,dictHitCounts):
 
 		#Pick appropriate ID and Length criteria, based on whether marker is a TM or QM
 		mtchTM = re.search(r'_TM',aLine[1])
+		#Changed so that QM's and TM's are treated the same.
+		"""
 		if (mtchTM):
 			dID = args.dTMID
 			iAln = min(dictMarkerLen[aLine[1]] ,args.iAlnMax)
 		else:
 			dID = args.dQMID
 			iAln = args.iAlnLength
+		"""
+		dID = args.dTMID
+		iAln = min(dictMarkerLen[aLine[1]] ,args.iAlnMax)
+
+		#If using centroids (Typically only used for evaluation purposes.)....
+		if args.strCentroids=="Y":
+			strProtFamily = aLine[1]
+
+			if (int(aLine[3])>= iAln):
+					dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) + 1
+					dictHitsForMarker[strProtFamily] = dictHitsForMarker.setdefault(strProtFamily,0) + 1
+					csvwHits.writerow( aLine )
 
 		#If using ShortBRED Markers (and not centroids)...
-		if args.strCentroids=="N":
+		else:
 			#Get the Family Name
 			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])
 			strProtFamily = mtchProtStub.group(1)
 
 			#If hit satisfies criteria, add it to dictHitCounts's count of hits for that family, write the result to fileHits.
 			if (int(aLine[3])>= iAln and (float(aLine[2])/100) >= dID):
-				iCountHits = dictHitCounts.setdefault(strProtFamily,0)
-				iCountHits = iCountHits+1
-				dictHitCounts[strProtFamily] = iCountHits
+				#Add 1 to count of hits for that marker
+				dictHitsForMarker[aLine[1]] = dictHitsForMarker.setdefault(aLine[1],0) + 1
+
+                #Add 1 to count of hits for that family
+				dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) +1
+
 				csvwHits.writerow( aLine )
 
-		#If using centroids (Typically only used for evaluation purposes.)....
+
+def ProcessHitData(atupHits):
+	strMarkerFile = args.strMarkerResults
+	if strMarkerFile == "":
+		strMarkerFile = dirTmp + os.sep + "markers.tab"
+	with open(strMarkerFile, 'w') as csvfileMarker:
+		csvwMarkerResults = csv.writer( csvfileMarker, csv.excel_tab )
+		csvwMarkerResults.writerow(["Family","Marker","Normalized Count","Hits","MarkerLength","ReadLength"])
+
+	strFamFile = args.strResults
+	if strFamFile == "":
+		strFamFile = dirTmp + os.sep + "families.tab"
+	with open(strFamFile, 'w') as csvfileFam:
+		csvwFamResults = csv.writer( csvfileFam, csv.excel_tab )
+		csvwFamResults.writerow(["Family","Count","Hits","TotMarkerLength"])
+
+	# Sort them by Family Name
+	atupHits.sort(key=lambda x: x[0])
+
+
+
+	strCurFam = ""
+	atupCurFamData = []
+
+
+	for tupRow in atupHits:
+		strFam = tupRow[0]
+		if strFam != strCurFam:
+			# Print results, start a new array for this family.
+			if strCurFam!="":
+				PrintStats(atupCurFamData, strMarkerFile,strFamFile)
+			strCurFam = strFam
+			atupCurFamData = []
+			atupCurFamData.append(tupRow)
 		else:
-			#print "CENTROID CODE RAN - LINE 1"
-			strProtFamily = aLine[1]
+			# Add to the current array.
+			atupCurFamData.append(tupRow)
 
-			if (int(aLine[3])>= iAln):
-					iCountHits = dictHitCounts.setdefault(strProtFamily,0)
-					iCountHits = iCountHits+1
-					dictHitCounts[strProtFamily] = iCountHits
-					#print "CENTROID CODE RAN - LINE 2"
-					csvwHits.writerow( aLine )
 
-def PrintResults(strResults,dictHitCounts, dictMarkerLenAll,dictMarkerLen,dReadLength,iWGSReads):
+	PrintStats(atupCurFamData, strMarkerFile,strFamFile)
+	return
+
+def PrintStats(atupCurFamData, strMarkerFile, strFamFile):
+
+
+	# We want two files:
+	# 1) stats by family
+	# 2) stats for each marker (sorted by family and marker.)
+	#for now...
+	#Sort by the marker
+	atupCurFamData.sort(key=lambda x: x[1])
+
+
+	with open(strMarkerFile, 'a') as csvfileMarker:
+		csvwMarkerResults = csv.writer( csvfileMarker, csv.excel_tab )
+		for tupRow in atupCurFamData:
+			csvwMarkerResults.writerow(tupRow)
+			strName = tupRow[0]
+
+	#Zip the tuples so that we perform operations on the columns.
+	atupZipped = zip(*atupCurFamData)
+
+
+	# Family Stats
+	try:
+		dMedian = numpy.median(list(atupZipped[2]))
+		iHits = sum(list(atupZipped[3]))
+		iMarkerLength = sum(list(atupZipped[4]))
+	except:
+         sys.stderr.write("Problem with results for set:",str(atupZipped))
+
+
+	# Print out the family results
+	with open(strFamFile, 'a') as csvfile:
+		csvwFamResults = csv.writer( csvfile, csv.excel_tab )
+		csvwFamResults.writerow([strName,dMedian,iHits,iMarkerLength])
+
+	return
+
+def PrintResults(strResults,dictHitCounts, dictHitsForMarker, dictMarkerLenAll,dictMarkerLen,dReadLength,iWGSReads):
 	#strResults - Name of text file with final ShortBRED Counts
 	#strBlastOut - BLAST-formatted output from USEARCH
 	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
 	#dictMarkerLenAll - Contains the sum of marker lengths for all markers in a family
 	#dictMarkerLen - Contains each marker/centroid length
 
-	#Print Name, Normalized Count, Hit Count, Marker Length to std out
-	csvwResults = csv.writer( open(strResults,'w'), csv.excel_tab )
-	csvwResults.writerow(["Family","Normalized Count","Hits","Total Family Marker Length"])
-	#print dictHitCounts.keys()
-	for strProt in dictHitCounts.keys():
-		dShortBREDCount = (float(dictHitCounts[strProt])/dictMarkerLenAll[strProt]) / (float(iWGSReads) /dReadLength)
+	atupMarkerCounts = []
 
+	#Print Name, Normalized Count, Hit Count, Marker Length to std out
+	#csvwResults = csv.writer( open(strResults,'w'), csv.excel_tab )
+	#csvwResults.writerow(["Marker","Normalized Count","Hits","MarkerLength","ReadLength"])
+
+	for strMarker in dictHitsForMarker.keys():
+		# Switching to Method 1
+		"""
+  			If marker length < average read length:
+                  Count = Hits /  [AvgReadLength - MarkerLenInNucs) / AvgReadLength]
+             else:
+                  Count = Hits /  [MarkerLenInNucs - AvgReadLength) / AvgReadLength]
+		"""
+		iMarkerNucs = dictMarkerLen[strMarker]*3
+		iAlnLength = args.iAlnMax*3
+		iHits = dictHitsForMarker[strMarker]
+
+		# Consider the problem as fitting shorter sequence into the longer sequence.
+		# We add 1 for the special case when the marker is as long as the read.
+		dCount = iHits/ ( (abs(dReadLength - iMarkerNucs)+1) / float(dReadLength))
+
+		# Normalize for metagenome depth
+		#dCount = (dCount / (iWGSReads))*1000
+		dCount = dCount * 1000 / (iWGSReads / 1e9)
+
+		if args.strCentroids=="Y":
+			strProtFamily = strMarker
+		else:
+			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
+			strProtFamily = mtchProtStub.group(1)
+
+
+		tupCount = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength)
+		atupMarkerCounts.append(tupCount)
+
+        ProcessHitData(atupMarkerCounts)
+
+
+
+	"""
+	OLD METHOD
+	for strProt in dictHitCounts.keys():
+		dShortBREDCount = (float(dictHitCounts[strProt])/(dictMarkerLenAll[strProt]) - (dictMarkerCount * (dAvgReadLength/3)) / (float(iWGSReads) /dReadLength))
 		csvwResults.writerow( [strProt, dShortBREDCount,
 			dictHitCounts[strProt], dictMarkerLenAll[strProt]] )
+	"""
+"""
+reads hitting markers / [total length of markers - (avg read length * # of markers longer than avg read length)]
+"""
 
 ##############################################################################
 # Log the parameters
@@ -179,10 +305,10 @@ with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "w")
 	log.write("Alignment Length:" + str(args.iAlnLength) + "\n")
 	log.write("TM id:" + str(args.dTMID) + "\n")
 	log.write("QM id:" + str(args.dQMID) + "\n")
-	if args.strCentroids=="N":
-		log.write("Sequences: Markers\n")
-	else:
+	if args.strCentroids=="Y":
 		log.write("Sequences: Centroids\n")
+	else:
+		log.write("Sequences: Markers\n")
 
 ##############################################################################
 #Initialize Dictionaries
@@ -190,21 +316,24 @@ with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "w")
 dictBLAST = {}
 dictMarkerLen = {}
 dictMarkerLenAll = {}
+dictMarkerCount = {}
+dictHitsForMarker = {}
 
 ###############################################################################
 #Sum up the marker lengths by family, put them in a dictionary.
 
-
-
 for seq in SeqIO.parse(args.strMarkers, "fasta"):
 	#For ShortBRED Markers...
-	if args.strCentroids=="N":
-		mtchStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',seq.id)
-		strStub = mtchStub.group(1)
+	if args.strCentroids=="Y":
+		strStub = seq.id
 	#For Centroids...
 	else:
-		strStub = seq.id
+		mtchStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',seq.id)
+		strStub = mtchStub.group(1)
+
 	dictMarkerLenAll[strStub] = len(seq) + dictMarkerLenAll.get(strStub,0)
+	dictMarkerCount[strStub] = dictMarkerCount.get(strStub,0) + 1
+	dictHitsForMarker[seq.id] = 0
  	dictMarkerLen[seq.id] = len(seq)
 
 ###############################################################################
@@ -222,7 +351,7 @@ if (args.bSmall == True):
 	iTotalReadCount = 0
 	dAvgReadLength = 0.0
 	RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = strBlast )
-	StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+	StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
 
 	for seq in SeqIO.parse(args.strWGS, "fasta"):
 		iTotalReadCount+=1
@@ -230,8 +359,6 @@ if (args.bSmall == True):
 
 
 else:
-
-
 	#Check the extension on the WGS fasta file
 	if args.strWGS.find(".tar.bz2") > -1:
 		strExtractMethod = 'r:bz2'
@@ -308,7 +435,7 @@ else:
 					#Run Usearch, store results
 					strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
 					RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
-					StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+					StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
 
 					#Reset count, make new file
 					iCount = 0
@@ -321,9 +448,9 @@ else:
 				#Run Usearch, store results
 				strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
 				RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
-				StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+				StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
 
-PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen, dReadLength = dAvgReadLength, iWGSReads = iTotalReadCount)
+PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen, dReadLength = dAvgReadLength, iWGSReads = iTotalReadCount)
 with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:
 	log.write("Total Reads Processed: " + str(iTotalReadCount) + "\n")
 	log.write("Average Read Length: " + str(dAvgReadLength) + "\n")

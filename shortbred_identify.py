@@ -117,7 +117,7 @@ grpParam.add_argument('--minAln', default = 0, type=int, dest='iLenMin', help='E
 grpParam.add_argument('--markerlength', type=int, default=20, dest='iMLength', help='Enter the minimum marker length.')
 grpParam.add_argument('--totlength', default = 200, type=int, dest='iTotLength', help='Enter the maximum length for the combined markers for a gene. Default is 200')
 grpParam.add_argument('--qthresh', type=int, dest='iThresh',default=1, help='Enter a maximum quasi-score.')
-grpParam.add_argument('--qmlength', type=int, dest='iQMlength',default=30, help='Enter a minimum length for QM\'s.')
+grpParam.add_argument('--qmlength', type=int, dest='iQMlength',default=33, help='Enter a minimum length for QM\'s.')
 
 #Tmp Directory
 grpParam.add_argument('--tmpdir', default ="", type=str, dest='sTmp', help='Set directory for temporary output files.')
@@ -264,7 +264,7 @@ if(iMode==1 or iMode==2):
 
 	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped",
 		"-comp_based_stats","F","-window_size","0",
-		"-xdrop_ungap","0.000001","-evalue","1e-3","-num_alignments","100000",
+		"-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000",
 		"-max_target_seqs", "100000", "-num_descriptions", "100000",
 		"-num_threads",str(args.iThreads)]
 
@@ -347,12 +347,14 @@ for sGene in setRefGOI:
 
 setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAllCounts.keys()), dictAllCounts, args.iMLength)
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
+setAll = setHasMarkers.union(setLeftover)
+
 sys.stderr.write( "Found True Markers...\n")
 
 #iShort = math.floor(args.iMLength*(.95))
 #sys.stderr.write("The Short region is " + str(int(iShort)) )
 
-atupQuasiMarkers1 = pb.QMCheckShortRegion( setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iMLength*(.95))),iMarkerLen=args.iMLength)
+atupQuasiMarkers1 = pb.QMCheckShortRegion(setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iQMlength*(.95))),iMarkerLen=args.iQMlength)
 setGotQM = zip(*atupQuasiMarkers1)[0]
 
 setLeftover = setLeftover.difference(setGotQM)
@@ -531,15 +533,20 @@ if (iMode ==3):
 # Blastx crashes when attempting ungapped alignments on short reads
 if args.iMLength <30:
 	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30",
-		"-xdrop_ungap","0.000001","-evalue","1e-3","-num_alignments","100000",
+	 #"-ungapped", "-xdrop_ungap","1",
+	 "-evalue","1e-3","-num_alignments","100000",
 		"-max_target_seqs", "100000", "-num_descriptions", "100000",
 		"-num_threads",str(args.iThreads)]
 else:
     astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30",
 	"-ungapped",
-		"-xdrop_ungap","0.000001","-evalue","1e-3","-num_alignments","100000",
+		"-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000",
 		"-max_target_seqs", "100000", "-num_descriptions", "100000",
 		"-num_threads",str(args.iThreads)]
+
+#New code for trying out new version of blastx. Throw this out later.
+astrBlastParams = ["-outfmt", "6 std qlen"]
+
 """
 Should I include something with "frame_shift_penalty"?
 """
@@ -567,8 +574,14 @@ with open(strOffTargetMarkers, 'w') as fOut:
 
 iTM = 0
 iQM = 0
+iQMJunction = 0
+
 setMarkerFamilies = set()
 setAllProtFamilies = set(dictFams.values())
+
+#TEMP CHANGE
+#Adding this line to keep off-target markers
+setProblemMarkers = set()
 
 with open(args.sMarkers,'w') as fOut:
 	for gene in SeqIO.parse(open(strTmpMarkers), "fasta"):
@@ -579,13 +592,19 @@ with open(args.sMarkers,'w') as fOut:
 				iTM+=1
 			if (gene.id.find("_QM")>0):
 				iQM+=1
+			if (gene.id.find("_QM99")>0):
+				iQMJunction+=1
 			setMarkerFamilies.add(strMarkerProt)
 			SeqIO.write(gene, fOut,"fasta")
 
 sys.stderr.write( "\nProcessing complete! Final markers saved to " + args.sMarkers + "\n")
 
+iQMMinimal = iQM - iQMJunction
+
 log.write("TM's: " + str(iTM) + "\n")
 log.write("QM's: " + str(iQM) + "\n")
+log.write("QM-Junctions: " + str(iQMJunction) + "\n")
+log.write("QM-Minimals: " + str(iQMMinimal) + "\n" + "\n")
 log.write("Families with Markers: " + str(len(setMarkerFamilies)) + "\n")
 log.write("Families without Markers: " + str(len(setAllProtFamilies.difference(setMarkerFamilies))) + "\n")
 
