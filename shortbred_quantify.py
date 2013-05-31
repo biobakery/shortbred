@@ -192,7 +192,8 @@ else:
 if (dFileInMB < c_iMaxSizeForDirectRun and strExtractMethod== ""):
 	args.bSmall = True
 	sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID )
-	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+	dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids)
 
 	for seq in SeqIO.parse(args.strWGS, "fasta"):
 		iTotalReadCount+=1
@@ -249,7 +250,8 @@ else:
 					#Run Usearch, store results
 					strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
 					sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
-					sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+					sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
+					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids)
 
 					#Reset count, make new file
 					iReadsInSmallFile = 0
@@ -262,7 +264,8 @@ else:
 				#Run Usearch, store results
 				strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
 				sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
-				sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+				sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids)
 
 sq.PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen, dReadLength = dAvgReadLength, iWGSReads = iTotalReadCount)
 

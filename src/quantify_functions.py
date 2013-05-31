@@ -46,7 +46,7 @@ def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID):
 
 
 
-def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID):
+def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck):
 	#strBlastOut - BLAST-formatted output from USEARCH
 	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
 	#dictMarkerLen - Contains each marker/centroid length
@@ -57,13 +57,11 @@ def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dict
 	#Go through the usearch output, for each prot family, record the number of valid hits
 	for aLine in csv.reader( open(strBlastOut), csv.excel_tab ):
 
-		mtchTM = re.search(r'_TM',aLine[1])
 
-		dID = args.dTMID
 		iAln = min(dictMarkerLen[aLine[1]] ,args.iAlnMax)
 
 		#If using centroids (Typically only used for evaluation purposes.)....
-		if args.strCentroids=="Y":
+		if strCentCheck=="Y":
 			strProtFamily = aLine[1]
 
 			if (int(aLine[3])>= iAln):
