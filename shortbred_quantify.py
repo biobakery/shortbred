@@ -35,26 +35,48 @@ import tarfile
 import time
 
 import src
+import src.quantify_functions
+sq = src.quantify_functions
+
 import numpy
 
 import Bio
 from Bio.Seq import Seq
 from Bio import SeqIO
 
+
+################################################################################
+# Constants
+
 c_strUSEARCH	= "usearch"
 
-parser = argparse.ArgumentParser(description='ShortBRED Quantify \n This program takes a set of protein family markers and wgs file as input, \
+c_iMaxSizeForDirectRun = 900 # File size in MB. Any WGS file smaller than this
+							 # does not need to made into smaller WGS files.
+
+c_iReadsForFile = 5000000 # Number of WGS reads to process at a time
+
+################################################################################
+# Args
+
+parser = argparse.ArgumentParser(description='ShortBRED Quantify \n \
+This program takes a set of protein family markers and wgs file as input, \
 and produces a relative abundance table.')
 
 #Input
-parser.add_argument('--markers', type=str, dest='strMarkers', help='Enter the path and name of the genes of interest file (protein seqs).')
-parser.add_argument('--wgs', type=str, dest='strWGS', help='Enter the path and name of the WGS file (nucleotide reads).')
+parser.add_argument('--markers', type=str, dest='strMarkers',
+help='Enter the path and name of the genes of interest file (protein seqs).')
+parser.add_argument('--wgs', type=str, dest='strWGS',
+help='Enter the path and name of the WGS file (nucleotide reads).')
 
 #Output
-parser.add_argument('--results', type=str, dest='strResults', default = "results.txt",help='Enter the name of the results file.')
-parser.add_argument('--SBhits', type=str, dest='strHits', help='ShortBRED will print the hits it considers positives to this file.', default="")
-parser.add_argument('--blastout', type=str, dest='strBlast', default="out.blast",help='Enter the name of the blast-formatted output file from USEARCH.')
-parser.add_argument('--marker_results', type=str, dest='strMarkerResults', default="markers.tab",help='Enter the name of the output for marker level results.')
+parser.add_argument('--results', type=str, dest='strResults', default = "results.txt",
+help='Enter the name of the results file.')
+parser.add_argument('--SBhits', type=str, dest='strHits',
+help='ShortBRED will print the hits it considers positives to this file.', default="")
+parser.add_argument('--blastout', type=str, dest='strBlast', default="out.blast",
+help='Enter the name of the blast-formatted output file from USEARCH.')
+parser.add_argument('--marker_results', type=str, dest='strMarkerResults', default="markers.tab",
+help='Enter the name of the output for marker level results.')
 
 
 parser.add_argument('--tmp', type=str, dest='strTmp', default ="",help='Enter the path and name of the tmp directory.')
@@ -81,6 +103,7 @@ if (args.strMarkers == "" or args.strWGS==""):
 	raise Exception( "Command line arguments incorrect, must provide:\n" +
 		"\t--markers AND --wgs, \n")
 
+
 ################################################################################
 #Make temp directory
 dirTmp = args.strTmp
@@ -95,206 +118,6 @@ if args.strHits != "":
 	strHitsFile = args.strHits
 else:
 	strHitsFile = ( dirTmp + os.sep + "SBhits.txt" )
-
-###############################################################################
-
-
-
-
-def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB):
-
-	subprocess.check_call(["time","-o", strMarkers + ".time",
-		c_strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
-		"--id", str(args.dID),"--blast6out", strBlastOut,
-		"--threads", str(args.iThreads)])
-
-def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts):
-	#strBlastOut - BLAST-formatted output from USEARCH
-	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
-	#dictMarkerLen - Contains each marker/centroid length
-	#dictHitCounts - Contains each family's hit count
-
-
-	csvwHits = csv.writer( open(strValidHits,'a'), csv.excel_tab )
-
-	#Go through the usearch output, for each prot family, record the number of valid hits
-	for aLine in csv.reader( open(strBlastOut), csv.excel_tab ):
-
-		#Pick appropriate ID and Length criteria, based on whether marker is a TM or QM
-		mtchTM = re.search(r'_TM',aLine[1])
-		#Changed so that QM's and TM's are treated the same.
-		"""
-		if (mtchTM):
-			dID = args.dTMID
-			iAln = min(dictMarkerLen[aLine[1]] ,args.iAlnMax)
-		else:
-			dID = args.dQMID
-			iAln = args.iAlnLength
-		"""
-		dID = args.dTMID
-		iAln = min(dictMarkerLen[aLine[1]] ,args.iAlnMax)
-
-		#If using centroids (Typically only used for evaluation purposes.)....
-		if args.strCentroids=="Y":
-			strProtFamily = aLine[1]
-
-			if (int(aLine[3])>= iAln):
-					dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) + 1
-					dictHitsForMarker[strProtFamily] = dictHitsForMarker.setdefault(strProtFamily,0) + 1
-					csvwHits.writerow( aLine )
-
-		#If using ShortBRED Markers (and not centroids)...
-		else:
-			#Get the Family Name
-			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])
-			strProtFamily = mtchProtStub.group(1)
-
-			#If hit satisfies criteria, add it to dictHitCounts's count of hits for that family, write the result to fileHits.
-			if (int(aLine[3])>= iAln and (float(aLine[2])/100) >= dID):
-				#Add 1 to count of hits for that marker
-				dictHitsForMarker[aLine[1]] = dictHitsForMarker.setdefault(aLine[1],0) + 1
-
-                #Add 1 to count of hits for that family
-				dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) +1
-
-				csvwHits.writerow( aLine )
-
-
-def ProcessHitData(atupHits):
-	strMarkerFile = args.strMarkerResults
-	if strMarkerFile == "":
-		strMarkerFile = dirTmp + os.sep + "markers.tab"
-	with open(strMarkerFile, 'w') as csvfileMarker:
-		csvwMarkerResults = csv.writer( csvfileMarker, csv.excel_tab )
-		csvwMarkerResults.writerow(["Family","Marker","Normalized Count","Hits","MarkerLength","ReadLength"])
-
-	strFamFile = args.strResults
-	if strFamFile == "":
-		strFamFile = dirTmp + os.sep + "families.tab"
-	with open(strFamFile, 'w') as csvfileFam:
-		csvwFamResults = csv.writer( csvfileFam, csv.excel_tab )
-		csvwFamResults.writerow(["Family","Count","Hits","TotMarkerLength"])
-
-	# Sort them by Family Name
-	atupHits.sort(key=lambda x: x[0])
-
-
-
-	strCurFam = ""
-	atupCurFamData = []
-
-
-	for tupRow in atupHits:
-		strFam = tupRow[0]
-		if strFam != strCurFam:
-			# Print results, start a new array for this family.
-			if strCurFam!="":
-				PrintStats(atupCurFamData, strMarkerFile,strFamFile)
-			strCurFam = strFam
-			atupCurFamData = []
-			atupCurFamData.append(tupRow)
-		else:
-			# Add to the current array.
-			atupCurFamData.append(tupRow)
-
-
-	PrintStats(atupCurFamData, strMarkerFile,strFamFile)
-	return
-
-def PrintStats(atupCurFamData, strMarkerFile, strFamFile):
-
-
-	# We want two files:
-	# 1) stats by family
-	# 2) stats for each marker (sorted by family and marker.)
-	#for now...
-	#Sort by the marker
-	atupCurFamData.sort(key=lambda x: x[1])
-
-
-	with open(strMarkerFile, 'a') as csvfileMarker:
-		csvwMarkerResults = csv.writer( csvfileMarker, csv.excel_tab )
-		for tupRow in atupCurFamData:
-			csvwMarkerResults.writerow(tupRow)
-			strName = tupRow[0]
-
-	#Zip the tuples so that we perform operations on the columns.
-	atupZipped = zip(*atupCurFamData)
-
-
-	# Family Stats
-	try:
-		dMedian = numpy.median(list(atupZipped[2]))
-		iHits = sum(list(atupZipped[3]))
-		iMarkerLength = sum(list(atupZipped[4]))
-	except:
-         sys.stderr.write("Problem with results for set:",str(atupZipped))
-
-
-	# Print out the family results
-	with open(strFamFile, 'a') as csvfile:
-		csvwFamResults = csv.writer( csvfile, csv.excel_tab )
-		csvwFamResults.writerow([strName,dMedian,iHits,iMarkerLength])
-
-	return
-
-def PrintResults(strResults,dictHitCounts, dictHitsForMarker, dictMarkerLenAll,dictMarkerLen,dReadLength,iWGSReads):
-	#strResults - Name of text file with final ShortBRED Counts
-	#strBlastOut - BLAST-formatted output from USEARCH
-	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
-	#dictMarkerLenAll - Contains the sum of marker lengths for all markers in a family
-	#dictMarkerLen - Contains each marker/centroid length
-
-	atupMarkerCounts = []
-
-	#Print Name, Normalized Count, Hit Count, Marker Length to std out
-	#csvwResults = csv.writer( open(strResults,'w'), csv.excel_tab )
-	#csvwResults.writerow(["Marker","Normalized Count","Hits","MarkerLength","ReadLength"])
-
-	for strMarker in dictHitsForMarker.keys():
-		# Switching to Method 1
-		"""
-  			If marker length < average read length:
-                  Count = Hits /  [AvgReadLength - MarkerLenInNucs) / AvgReadLength]
-             else:
-                  Count = Hits /  [MarkerLenInNucs - AvgReadLength) / AvgReadLength]
-		"""
-		iMarkerNucs = dictMarkerLen[strMarker]*3
-		iAlnLength = args.iAlnMax*3
-		iHits = dictHitsForMarker[strMarker]
-
-		# Consider the problem as fitting shorter sequence into the longer sequence.
-		# We add 1 for the special case when the marker is as long as the read.
-		dCount = iHits/ ( (abs(dReadLength - iMarkerNucs)+1) / float(dReadLength))
-
-		# Normalize for metagenome depth
-		#dCount = (dCount / (iWGSReads))*1000
-		dCount = dCount * 1000 / (iWGSReads / 1e9)
-
-		if args.strCentroids=="Y":
-			strProtFamily = strMarker
-		else:
-			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
-			strProtFamily = mtchProtStub.group(1)
-
-
-		tupCount = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength)
-		atupMarkerCounts.append(tupCount)
-
-        ProcessHitData(atupMarkerCounts)
-
-
-
-	"""
-	OLD METHOD
-	for strProt in dictHitCounts.keys():
-		dShortBREDCount = (float(dictHitCounts[strProt])/(dictMarkerLenAll[strProt]) - (dictMarkerCount * (dAvgReadLength/3)) / (float(iWGSReads) /dReadLength))
-		csvwResults.writerow( [strProt, dShortBREDCount,
-			dictHitCounts[strProt], dictMarkerLenAll[strProt]] )
-	"""
-"""
-reads hitting markers / [total length of markers - (avg read length * # of markers longer than avg read length)]
-"""
 
 ##############################################################################
 # Log the parameters
@@ -341,174 +164,113 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 
 #Make a database from the markers
 strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".udb"
+sq.MakedbUSEARCH (args.strMarkers, strDBName)
 
-p = subprocess.check_call([c_strUSEARCH, "--makeudb_usearch", args.strMarkers,
-	"--output", strDBName])
 
 strBlast = args.strBlast
 
-if (args.bSmall == True):
-	iTotalReadCount = 0
-	dAvgReadLength = 0.0
-	RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = strBlast )
-	StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+iTotalReadCount = 0
+dAvgReadLength  = 0.0
+
+dFileInMB = round(os.path.getsize(args.strWGS)/1048576.0,1)
+
+sys.stderr.write("The WGS file size is " + str(dFileInMB) + " MB \n")
+
+#Check the extension on the WGS fasta file, choose appropriate extraction method.
+if args.strWGS.find(".tar.bz2") > -1:
+	strExtractMethod = 'r:bz2'
+elif args.strWGS.find(".tar.gz") > -1:
+	strExtractMethod = 'r:gz'
+elif args.strWGS.find(".gz") > -1:
+	strExtractMethod = 'gz'
+elif args.strWGS.find(".bz2") > -1:
+	strExtractMethod = 'bz2'
+else:
+	strExtractMethod = ""
+
+# If the file is small and does not need to be extracted, just process directly in USEARCH.
+if (dFileInMB < c_iMaxSizeForDirectRun and strExtractMethod== ""):
+	args.bSmall = True
+	sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID )
+	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
 
 	for seq in SeqIO.parse(args.strWGS, "fasta"):
 		iTotalReadCount+=1
 		dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
 
-
+# Otherwise, break up the large file into several small fasta files, process each one.
 else:
-	#Check the extension on the WGS fasta file
-	if args.strWGS.find(".tar.bz2") > -1:
-		strExtractMethod = 'r:bz2'
-	elif args.strWGS.find(".tar.gz") > -1:
-		strExtractMethod = 'r:gz'
-	elif args.strWGS.find(".gz") > -1:
-		strExtractMethod = 'gz'
-	elif args.strWGS.find(".bz2") > -1:
-		strExtractMethod = 'bz2'
-	else:
-		strExtractMethod = ""
-
-	iReadsForFile = 5000000
-	iCount = 0
-	iTotalReadCount = 0
-	dAvgReadLength = 0.0
-
+	iReadsInSmallFile = 0
 	iFileCount = 1
+
 	strFASTAName = str(dirTmp) + os.sep + 'fasta.fna'
 	fileFASTA = open(strFASTAName, 'w')
 
-	astrFileList = []
+
 
 	#Get the list of files inside the tar file
 	if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
 		tarWGS = tarfile.open(args.strWGS,strExtractMethod)
 		astrFileList = tarWGS.getnames()
-		#print(tarWGS.getnames)
 	else:
+		astrFileList = []
 		astrFileList.append(args.strWGS)
 
-	#print "Compression: ", strExtractMethod
-	#print astrFileList
-
-
-	#Note: I would like to add code here along the lines of
-	#if(strExtractMethod=="" and OneFile and FileISSmall):
-	#   Pass to usearch without processing.
-
-	#Open each one with the appropriate method
-
-
-
+	# Open each file in astrFileList with the appropriate method, pass to stream WGS
 	for strFile in astrFileList:
 			if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
-				sys.stderr.write("Unzipping tar file... This often takes several minutes. ")
+				sys.stderr.write("Unpacking tar file... This often takes several minutes. ")
 				streamWGS = tarWGS.extractfile(strFile)
 			elif strExtractMethod== 'gz':
-				sys.stderr.write("Unzipping gz file... This may several minutes. ")
+				sys.stderr.write("Unpacking gz file... This may several minutes. ")
 				streamWGS = gzip.open(strFile, 'rb')
 			elif strExtractMethod== 'bz2':
-				sys.stderr.write("Unzipping bz2 file... This may several minutes. ")
+				sys.stderr.write("Unpacking bz2 file... This may several minutes. ")
 				streamWGS =  bz2.BZ2File(strFile)
 			else:
 				streamWGS = open(strFile,'r')
 
+			# While there are seqs in the current file (could be one of many if
+			# the original input is tar,bz,etc.) write seqs to a small, temporary,
+			# fasta file. Once the file has c_iReadsForFile, process it.
 
 			for seq in SeqIO.parse(streamWGS, "fasta"):
 				SeqIO.write(seq,fileFASTA,"fasta")
-				iCount+=1
+				iReadsInSmallFile+=1
 				iTotalReadCount+=1
 
-				# This tracks a running average of the read length. Illumina is typically constant,
-				# but 454 reads vary in size.
-
+				# Have a running average of the read length. This covers all of the reads in the original input file.
 				dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
 
 
-
-				#print iCount
-				if (iCount>=iReadsForFile):
+				if (iReadsInSmallFile>=c_iReadsForFile):
 					fileFASTA.close()
 
 					#Run Usearch, store results
 					strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
-					RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
-					StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+					sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
+					sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
 
 					#Reset count, make new file
-					iCount = 0
+					iReadsInSmallFile = 0
 					iFileCount+=1
 					fileFASTA = open(strFASTAName, 'w')
 
 
-			if(iCount>0):
+			if(iReadsInSmallFile>0):
 				fileFASTA.close()
 				#Run Usearch, store results
 				strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
-				RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
-				StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
+				sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
+				sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
 
-PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen, dReadLength = dAvgReadLength, iWGSReads = iTotalReadCount)
+sq.PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen, dReadLength = dAvgReadLength, iWGSReads = iTotalReadCount)
+
+# Add final details to log
 with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:
 	log.write("Total Reads Processed: " + str(iTotalReadCount) + "\n")
 	log.write("Average Read Length: " + str(dAvgReadLength) + "\n")
 
 if args.bSmall == False:
+	#Delete the small, temp fasta file.
 	os.remove(strFASTAName)
-"""
-***** copy to tmp fasta
-***** if count exceeds iReadsForFile
-****** stop
-***** close tmp fasta
-***** run usearch
-***** store counts
-**** print (aggregate) results
-"""
-
-#print iCount
-
-"""
-    	for seq in SeqIO.parse(tarWGS.extractfile(wgsFile), "fasta"):
-			if (iCount< iReadsForFile):
-				SeqIO.write(seq, fileFASTA, "fasta")
-				iCount+=1
-			else:
-				fileFASTA.close()
-				print iCount
-				print "Making a new fasta file..."
-				strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
-				RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
-				StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
-
-				fileFASTA = open(strFASTAName, 'w')
-				iFileCount +=1
-				SeqIO.write(seq, fileFASTA, "fasta")
-				iCount = 1
-	fileFASTA.close()
-	RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
-	StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
-	PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
-	tarWGS.close()
-
-
-
-
-#If WGS is in a fasta file...
-if args.fbz2file == False:
-	RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = args.strBlast )
-	StoreHitCounts(strBlastOut = args.strBlast,strValidHits=strHitsFile, dictMarkerLen=dictMarkerLen,dictHitCounts=dictBLAST)
-	PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictMarkerLen=dictMarkerLen)
-
-#If WGS is in a tar file...
-else:
-
-
-
-
-	tarWGS = tarfile.open(args.strWGS,'r:bz2')
-	for wgsFile in tarWGS.getnames():
-"""
-
-
