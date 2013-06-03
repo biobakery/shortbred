@@ -26,6 +26,9 @@
 
 import subprocess
 import csv
+import re
+import sys
+import math
 
 c_strUSEARCH	= "usearch"
 
@@ -44,60 +47,80 @@ def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID):
 		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,
 		"--threads", str(iThreads)])
 
+def Median(adValues):
+	adValues.sort()
+	iLen = len(adValues)
+	if iLen % 2==0:
+		dMedian = float(adValues[iLen/2] + adValues[(iLen/2)-1])/2.0
+	else:
+		dMedian = adValues[int(math.floor(iLen/2))]
+	return dMedian
 
 
 def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck):
-	#strBlastOut - BLAST-formatted output from USEARCH
-	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
-	#dictMarkerLen - Contains each marker/centroid length
-	#dictHitCounts - Contains each family's hit count
+# Reads in the USEARCH output (strBlastOut), marks which hits are valid (id>=dID &
+# len >= min(95% of read,dictMarkerLen[Marker]) and adds to count in dictHitsForMarker[strMarker].
+# Valid hits are also copied to the file in strValidHits. strCentCheck is used to flag centroids,
+# and handle their counting
 
 	csvwHits = csv.writer( open(strValidHits,'a'), csv.excel_tab )
 
+	sys.stderr.write("Processing USEARCH results... \n")
 	#Go through the usearch output, for each prot family, record the number of valid hits
 	for aLine in csv.reader( open(strBlastOut), csv.excel_tab ):
 
+		c_iAlnCentroids = 30
+		strMarker 	= aLine[1]
+		dHitID		= aLine[2]
+		iAlnLen     = int(aLine[3])
+		iReadLenAA  = int(aLine[12])
 
-		iAln = min(dictMarkerLen[aLine[1]] ,args.iAlnMax)
+		# A valid match must be as long as 95% of the read or the full marker.
+        # (Note that this in AA's.)
+
 
 		#If using centroids (Typically only used for evaluation purposes.)....
 		if strCentCheck=="Y":
-			strProtFamily = aLine[1]
+			strProtFamily = strMarker
 
-			if (int(aLine[3])>= iAln):
+			if ( (int(iAlnLen)>= c_iAlnCentroids) and ( float(dHitID)/100) >= dID):
 					dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) + 1
 					dictHitsForMarker[strProtFamily] = dictHitsForMarker.setdefault(strProtFamily,0) + 1
 					csvwHits.writerow( aLine )
 
 		#If using ShortBRED Markers (and not centroids)...
 		else:
+			iAlnMin = min(dictMarkerLen[strMarker] ,iReadLenAA*.95)
 			#Get the Family Name
-			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',aLine[1])
+			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
 			strProtFamily = mtchProtStub.group(1)
 
-			#If hit satisfies criteria, add it to dictHitCounts's count of hits for that family, write the result to fileHits.
-			if (int(aLine[3])>= iAln and (float(aLine[2])/100) >= dID):
-				#Add 1 to count of hits for that marker
-				dictHitsForMarker[aLine[1]] = dictHitsForMarker.setdefault(aLine[1],0) + 1
+			#If hit satisfies criteria, add it to counts, write out data to Hits file
+			if (int(iAlnLen)>= iAlnMin and (float(dHitID)/100) >= dID):
 
-                #Add 1 to count of hits for that family
+				#Add 1 to count of hits for that marker, and family
+				dictHitsForMarker[aLine[1]] = dictHitsForMarker.setdefault(aLine[1],0) + 1
 				dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) +1
 
 				csvwHits.writerow( aLine )
 	return
 
+"""
+CalculateCounts - Calculates the ShortBRED counts for each marker.
+ProcessHitData - Opens the marker and family results files for writing, calls
+PrintStats for each family.
+PrintStats -
+"""
 
-def ProcessHitData(atupHits):
-	strMarkerFile = args.strMarkerResults
-	if strMarkerFile == "":
-		strMarkerFile = dirTmp + os.sep + "markers.tab"
-	with open(strMarkerFile, 'w') as csvfileMarker:
+
+def ProcessHitData(atupHits,strMarkerResults,strFamFile):
+# Called by CalculateCounts. This function takes the set of ShortBRED marker results,
+# (atupHits) and calls PrintStats to print out their results to the Marker
+# (strMarkerResults) and Family results (strFamFile).
+	with open(strMarkerResults, 'w') as csvfileMarker:
 		csvwMarkerResults = csv.writer( csvfileMarker, csv.excel_tab )
 		csvwMarkerResults.writerow(["Family","Marker","Normalized Count","Hits","MarkerLength","ReadLength"])
 
-	strFamFile = args.strResults
-	if strFamFile == "":
-		strFamFile = dirTmp + os.sep + "families.tab"
 	with open(strFamFile, 'w') as csvfileFam:
 		csvwFamResults = csv.writer( csvfileFam, csv.excel_tab )
 		csvwFamResults.writerow(["Family","Count","Hits","TotMarkerLength"])
@@ -105,18 +128,15 @@ def ProcessHitData(atupHits):
 	# Sort them by Family Name
 	atupHits.sort(key=lambda x: x[0])
 
-
-
 	strCurFam = ""
 	atupCurFamData = []
-
 
 	for tupRow in atupHits:
 		strFam = tupRow[0]
 		if strFam != strCurFam:
 			# Print results, start a new array for this family.
 			if strCurFam!="":
-				PrintStats(atupCurFamData, strMarkerFile,strFamFile)
+				PrintStats(atupCurFamData,  strMarkerFile=strMarkerResults,strFamFile=strFamFile)
 			strCurFam = strFam
 			atupCurFamData = []
 			atupCurFamData.append(tupRow)
@@ -125,37 +145,35 @@ def ProcessHitData(atupHits):
 			atupCurFamData.append(tupRow)
 
 
-	PrintStats(atupCurFamData, strMarkerFile,strFamFile)
+	PrintStats(atupCurFamData, strMarkerFile=strMarkerResults,strFamFile=strFamFile)
 	return
 
 def PrintStats(atupCurFamData, strMarkerFile, strFamFile):
+# Called by ProcessHitData. This function takes the set of ShortBRED marker results
+# for one family(atupCurFamData), and appends their results to the Marker
+# (strMarkerResults) and Family results (strFamFile).
 
-
-	# We want two files:
-	# 1) stats by family
-	# 2) stats for each marker (sorted by family and marker.)
-	#for now...
-	#Sort by the marker
 	atupCurFamData.sort(key=lambda x: x[1])
 
-
+	# Print out the marker results
 	with open(strMarkerFile, 'a') as csvfileMarker:
 		csvwMarkerResults = csv.writer( csvfileMarker, csv.excel_tab )
 		for tupRow in atupCurFamData:
 			csvwMarkerResults.writerow(tupRow)
 			strName = tupRow[0]
 
+	#sys.stderr.write("Processing "+strName+"... \n")
 	#Zip the tuples so that we perform operations on the columns.
 	atupZipped = zip(*atupCurFamData)
 
 
 	# Family Stats
 	try:
-		dMedian = numpy.median(list(atupZipped[2]))
+		dMedian = Median(list(atupZipped[2]))
 		iHits = sum(list(atupZipped[3]))
 		iMarkerLength = sum(list(atupZipped[4]))
 	except:
-         sys.stderr.write("Problem with results for set:",str(atupZipped))
+         sys.stderr.write("Problem with results for set: " +str(atupZipped))
 
 
 	# Print out the family results
@@ -165,7 +183,7 @@ def PrintStats(atupCurFamData, strMarkerFile, strFamFile):
 
 	return
 
-def PrintResults(strResults,dictHitCounts, dictHitsForMarker, dictMarkerLenAll,dictMarkerLen,dReadLength,iWGSReads):
+def CalculateCounts(strResults,strMarkerResults, dictHitCounts, dictHitsForMarker, dictMarkerLenAll,dictMarkerLen,dReadLength,iWGSReads,strCentCheck):
 	#strResults - Name of text file with final ShortBRED Counts
 	#strBlastOut - BLAST-formatted output from USEARCH
 	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
@@ -178,6 +196,7 @@ def PrintResults(strResults,dictHitCounts, dictHitsForMarker, dictMarkerLenAll,d
 	#csvwResults = csv.writer( open(strResults,'w'), csv.excel_tab )
 	#csvwResults.writerow(["Marker","Normalized Count","Hits","MarkerLength","ReadLength"])
 
+	sys.stderr.write("Tabulating results for each marker... \n")
 	for strMarker in dictHitsForMarker.keys():
 		# Switching to Method 1
 		"""
@@ -187,7 +206,6 @@ def PrintResults(strResults,dictHitCounts, dictHitsForMarker, dictMarkerLenAll,d
                   Count = Hits /  [MarkerLenInNucs - AvgReadLength) / AvgReadLength]
 		"""
 		iMarkerNucs = dictMarkerLen[strMarker]*3
-		iAlnLength = args.iAlnMax*3
 		iHits = dictHitsForMarker[strMarker]
 
 		# Consider the problem as fitting shorter sequence into the longer sequence.
@@ -195,10 +213,9 @@ def PrintResults(strResults,dictHitCounts, dictHitsForMarker, dictMarkerLenAll,d
 		dCount = iHits/ ( (abs(dReadLength - iMarkerNucs)+1) / float(dReadLength))
 
 		# Normalize for metagenome depth
-		#dCount = (dCount / (iWGSReads))*1000
 		dCount = dCount * 1000 / (iWGSReads / 1e9)
 
-		if args.strCentroids=="Y":
+		if strCentCheck=="Y":
 			strProtFamily = strMarker
 		else:
 			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
@@ -208,6 +225,6 @@ def PrintResults(strResults,dictHitCounts, dictHitsForMarker, dictMarkerLenAll,d
 		tupCount = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength)
 		atupMarkerCounts.append(tupCount)
 
-		ProcessHitData(atupMarkerCounts)
+	ProcessHitData(atupMarkerCounts, strMarkerResults=strMarkerResults,strFamFile = strResults)
 
 	return

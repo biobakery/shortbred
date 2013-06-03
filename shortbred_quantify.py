@@ -114,10 +114,17 @@ if(dirTmp==""):
 
 dirTmp = src.check_create_dir( dirTmp )
 
+# Assign file names
 if args.strHits != "":
 	strHitsFile = args.strHits
 else:
 	strHitsFile = ( dirTmp + os.sep + "SBhits.txt" )
+
+
+strMarkerResults = args.strMarkerResults
+if strMarkerResults == "":
+	strMarkerResults = dirTmp + os.sep + "markers.tab"
+
 
 ##############################################################################
 # Log the parameters
@@ -267,7 +274,8 @@ else:
 				sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids)
 
-sq.PrintResults(strResults = args.strResults, dictHitCounts=dictBLAST, dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen, dReadLength = dAvgReadLength, iWGSReads = iTotalReadCount)
+sq.CalculateCounts(strResults = args.strResults, strMarkerResults=strMarkerResults,dictHitCounts=dictBLAST,
+dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen, dReadLength = dAvgReadLength, iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids)
 
 # Add final details to log
 with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:
@@ -277,3 +285,5 @@ with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a")
 if args.bSmall == False:
 	#Delete the small, temp fasta file.
 	os.remove(strFASTAName)
+
+sys.stderr.write("Processing complete. \n")
