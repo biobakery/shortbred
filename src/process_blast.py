@@ -107,12 +107,13 @@ def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegio
 	# Update this function to look in dictRefHits as well!
 
 	atupQM = []
-
+	c_iMaxMarkers = 3
 
 	for strGene in setGenes:
 		# Initialize counters and bool values for loop
 		iSeqLength = len(dictGenes[strGene])
 		iStart = 1
+		iMarkerCount =0
 
 		bHitEnd = False
 		bFoundRegion = False
@@ -120,16 +121,21 @@ def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegio
 
 		atupHitInfo = dictGOIHits[strGene]
 
-		# While the function has not found a QM, and has not hit the end of seq:
-		#   Look at the section that is iShortRegion long.
-		#   Check it against every hit in atupHitInfo.
-		#   If it none of them completely overlap it, and
-		while (bHitEnd == False and bFoundRegion == False):
+		# While the function has not hit the end of seq:
+		#   Take the first window of AA's that is iShortRegion long.
+		#   	Check the start and end of the window against every hit in atupHitInfo.
+		#   	If none of the hits completely overlap the window, and the window doesn't have more than one X:
+		#           bOverlapsSomeSeq==False, build a marker, incremenet Window MarkerLength AA's
+		#       Else:
+		#           bOverlapsSomeSeq==True, increment window one AA.
 
-			#Start from position 1, check if [1,iShortRegion] does not overlap with anything
+		while (bHitEnd == False and iMarkerCount<c_iMaxMarkers):
+
+			#Check if hit the end of the sequence.
 			if ((iStart+iShortRegion-1) >= iSeqLength):
 				bHitEnd = True
 
+			#Cycle through hits, check for overlap.
 			bCheckedAllTup = False
 			iTupCounter = 0
 			while (bOverlapsSomeSeq == False and bCheckedAllTup == False and len(atupHitInfo)>0):
@@ -145,9 +151,9 @@ def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegio
 					bCheckedAllTup = True
 
 
-
+			#Stopped checking, either because hit overlap or ran out of hits.
 			if(bOverlapsSomeSeq == False):
-				# Found region, add amino acids to each side until you hit 20
+				# Found region, add amino acids to each side until you hit iMarkerLen
 				bFoundRegion = True
 				iEnd = iStart + iShortRegion-1
 				iLength = iEnd - iStart +1
@@ -160,8 +166,14 @@ def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegio
 							iStart = iStart-1
 							iLength = iEnd - iStart +1
 
+
+				#Add the tuple, then move the window up (iMarkerLen) and try for more.
 				tupQM = (strGene, dictGenes[strGene][iStart-1:iEnd],99, iStart,iEnd,[0,0,0,0,0])
 				atupQM.append(tupQM)
+				iMarkerCount +=1
+
+				iStart = iStart+iMarkerLen
+				bOverlapsSomeSeq = False
 			else:
 				# Move the window up one space, try again
 				iStart = iStart+1
@@ -461,6 +473,9 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
 
     #A QM_tuple has 4 values (name, markers, overlapvalue,iOriginalLength)
 
+
+
+    iN = max(iN,12)
 
     atupQM = []
 

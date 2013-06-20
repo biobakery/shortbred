@@ -52,6 +52,7 @@ from Bio import SeqIO
 
 c_strCDHIT	= "cd-hit"
 c_strTIME	= "time"
+c_strBLASTP = "/n/home11/jkaminski/blast/ncbi-blast-2.2.28+/bin/blastp"
 
 ###############################################################################
 #COMMAND LINE ARGUMENTS
@@ -264,21 +265,21 @@ if(iMode==1 or iMode==2):
 
 	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped",
 		"-comp_based_stats","F","-window_size","0",
-		"-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000",
-		"-max_target_seqs", "100000", "-num_descriptions", "100000",
+		"-xdrop_ungap","1","-evalue","1e-3",
+		"-max_target_seqs", "1000000",
 		"-num_threads",str(args.iThreads)]
 
 
 	#Blast clust file against goidb
  	sys.stderr.write( "BLASTing the consensus family sequences against themselves...\n")
 	subprocess.check_call(["time", "-o", dirTime + os.sep +"goisearch.time",
-		"blastp", "-query", strClustFile, "-db", strClustDB,
+		c_strBLASTP, "-query", strClustFile, "-db", strClustDB,
 		"-out", strBlastSelf] + astrBlastParams)
 
 	#Blast clust file against refdb
  	sys.stderr.write("BLASTing the consensus family sequences against the reference protein sequences...\n")
 	subprocess.check_call(["time", "-o", dirTime + os.sep +"refsearch.time",
-		"blastp", "-query", strClustFile, "-db",strRefDBPath,
+		c_strBLASTP, "-query", strClustFile, "-db",strRefDBPath,
 		"-out", strBlastRef] + astrBlastParams)
 
 ##################################################################################################
@@ -293,10 +294,12 @@ if(iMode==1 or iMode==2):
 
 dictFams = {}
 
+
 for astrLine in csv.reader(open(strMapFile),delimiter='\t'):
 	dictFams[astrLine[1]]=astrLine[0]
 
 dictGOIGenes = pb.getGeneData(open(strClustFile))
+log.write("Initial Families:\t" + str(len(dictGOIGenes)) + "\n")
 
 #Get short, high-identity hits in reference proteins
 sys.stderr.write( "Finding overlap with reference database...\n")
@@ -349,6 +352,8 @@ setHasMarkers = pb.CheckForMarkers(set(dictGOIGenes.keys()).intersection(dictAll
 setLeftover = set(dictGOIGenes.keys()).difference(setHasMarkers)
 setAll = setHasMarkers.union(setLeftover)
 
+log.write("Families with True Markers:\t" + str(len(setHasMarkers)) + "\n")
+
 sys.stderr.write( "Found True Markers...\n")
 
 #iShort = math.floor(args.iMLength*(.95))
@@ -361,10 +366,9 @@ setLeftover = setLeftover.difference(setGotQM)
 
 
 # Change these lines to determine how QM's are made
-atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iMLength,args.iThresh, args.iTotLength)
+atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iQMlength,args.iThresh, args.iTotLength)
 atupQuasiMarkers = atupQuasiMarkers1 + atupQuasiMarkers2
-
-# atupQuasiMarkers = atupQuasiMarkers1
+sys.stderr.write("Found " +str(len(atupQuasiMarkers2)) + " quasi-markers.\n")
 
 
 if(len(atupQuasiMarkers)) > 0:
@@ -400,7 +404,7 @@ if(bHasQuasi):
 	fQuasi.close()
 
 	subprocess.check_call(["cd-hit", "-i", strQuasiFN,"-o",strQuasiClust,
-		"-d", "0", "-c", str(args.dQClustID), "-b", "10","-g", "1","-aL","1.0"])
+		"-d", "0", "-c", str(args.dQClustID), "-b", "8","-g", "1","-aL","1.0"])
 
 	pb.GetCDHitMap( strQuasiClust+".clstr", strQuasiMap)
 
@@ -413,7 +417,7 @@ if(bHasQuasi):
 				strFam = mtchFam.group(1)
 
 				dictQuasiClust[strMarker] = strFam
-
+	log.write("QM Families, before clustering:\t" +str(len(set(dictQuasiClust.keys()))) + "\n")
 	for qckey, qcvalue in dictQuasiClust.items():
 		for key in dictFams:
 			if (dictFams[key] == qckey):
@@ -422,6 +426,8 @@ if(bHasQuasi):
 	with open(dirTmp + os.sep + "final.map",'w') as fFinalMap:
 		for prot, fam in sorted(dictFams.items(), key = lambda(prot, fam): (fam,prot)):
 				fFinalMap.write(fam + "\t" + prot + "\n")
+
+log.write("QM Families, after clustering:\t" +str(len(set(dictQuasiClust.values()))) + "\n")
 
 #Print AA with overlap area removed to premarkers.txt
 strGeneName = ""
@@ -534,14 +540,14 @@ if (iMode ==3):
 if args.iMLength <30:
 	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30",
 	 #"-ungapped", "-xdrop_ungap","1",
-	 "-evalue","1e-3","-num_alignments","100000",
-		"-max_target_seqs", "100000", "-num_descriptions", "100000",
+	 "-evalue","1e-3",
+		"-max_target_seqs", "100000",
 		"-num_threads",str(args.iThreads)]
 else:
     astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30",
 	"-ungapped",
-		"-xdrop_ungap","1","-evalue","1e-3","-num_alignments","100000",
-		"-max_target_seqs", "100000", "-num_descriptions", "100000",
+		"-xdrop_ungap","1","-evalue","1e-3",
+		"-max_target_seqs", "100000",
 		"-num_threads",str(args.iThreads)]
 
 #New code for trying out new version of blastx. Throw this out later.
@@ -600,12 +606,14 @@ with open(args.sMarkers,'w') as fOut:
 sys.stderr.write( "\nProcessing complete! Final markers saved to " + args.sMarkers + "\n")
 
 iQMMinimal = iQM - iQMJunction
+iMarkers = iTM + iQMJunction + iQMMinimal
 
-log.write("TM's: " + str(iTM) + "\n")
-log.write("QM's: " + str(iQM) + "\n")
-log.write("QM-Junctions: " + str(iQMJunction) + "\n")
-log.write("QM-Minimals: " + str(iQMMinimal) + "\n" + "\n")
-log.write("Families with Markers: " + str(len(setMarkerFamilies)) + "\n")
-log.write("Families without Markers: " + str(len(setAllProtFamilies.difference(setMarkerFamilies))) + "\n")
+log.write("Total Markers:\t" + str(iMarkers) + "\n")
+log.write("True Markers:\t " + str(iTM) + "\n")
+log.write("QM-Junctions:\t " + str(iQMJunction) + "\n")
+log.write("QM-Minimals:\t " + str(iQMMinimal) + "\n\n")
+
+log.write("Families with Markers:\t " + str(len(setMarkerFamilies)) + "\n")
+log.write("Families without Markers:\t " + str(len(setAllProtFamilies.difference(setMarkerFamilies))) + "\n")
 
 

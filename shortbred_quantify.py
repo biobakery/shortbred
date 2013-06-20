@@ -73,7 +73,7 @@ parser.add_argument('--results', type=str, dest='strResults', default = "results
 help='Enter the name of the results file.')
 parser.add_argument('--SBhits', type=str, dest='strHits',
 help='ShortBRED will print the hits it considers positives to this file.', default="")
-parser.add_argument('--blastout', type=str, dest='strBlast', default="out.blast",
+parser.add_argument('--blastout', type=str, dest='strBlast', default="",
 help='Enter the name of the blast-formatted output file from USEARCH.')
 parser.add_argument('--marker_results', type=str, dest='strMarkerResults', default="markers.tab",
 help='Enter the name of the output for marker level results.')
@@ -83,10 +83,10 @@ parser.add_argument('--tmp', type=str, dest='strTmp', default ="",help='Enter th
 
 #Parameters - Matching Settings
 parser.add_argument('--id', type=float, dest='dID', help='Enter the percent identity for the match', default = .95)
-parser.add_argument('--tmid', type=float, dest='dTMID', help='Enter the percent identity for a TM match', default = .95)
-parser.add_argument('--qmid', type=float, dest='dQMID', help='Enter the percent identity for a QM match', default = .95)
-parser.add_argument('--alnlength', type=int, dest='iAlnLength', help='Enter the minimum alignment length. The default is 20', default = 20)
-parser.add_argument('--alnTM', type=int, dest='iAlnMax', help='Enter a bound for TM alignments, such that aln must be>= min(markerlength,alnTM)', default = 20)
+parser.add_argument('--pctlength', type=float, dest='dAlnLength', help='Enter the minimum alignment length. The default is 20', default = 0.95)
+#parser.add_argument('--tmid', type=float, dest='dTMID', help='Enter the percent identity for a TM match', default = .95)
+#parser.add_argument('--qmid', type=float, dest='dQMID', help='Enter the percent identity for a QM match', default = .95)
+#parser.add_argument('--alnTM', type=int, dest='iAlnMax', help='Enter a bound for TM alignments, such that aln must be>= min(markerlength,alnTM)', default = 20)
 
 #Parameters - Matching Various
 parser.add_argument('--bz2', type=bool, dest='fbz2file', help='Set to True if using a tar.bz2 file', default = False)
@@ -132,9 +132,7 @@ if strMarkerResults == "":
 with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "w") as log:
 	log.write("ShortBRED log \n" + datetime.date.today().ctime() + "\n SEARCH PARAMETERS \n")
 	log.write("Match ID:" + str(args.dID) + "\n")
-	log.write("Alignment Length:" + str(args.iAlnLength) + "\n")
-	log.write("TM id:" + str(args.dTMID) + "\n")
-	log.write("QM id:" + str(args.dQMID) + "\n")
+	log.write("Pct Length for Match:" + str(args.dAlnLength) + "\n")
 	if args.strCentroids=="Y":
 		log.write("Sequences: Centroids\n")
 	else:
@@ -173,8 +171,11 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".udb"
 sq.MakedbUSEARCH (args.strMarkers, strDBName)
 
-
-strBlast = args.strBlast
+#FIX THIS ONE!
+if (args.strBlast == ""):
+	strBlast = str(dirTmp) + os.sep + "full_results.tab"
+else:
+	strBlast = args.strBlast
 
 iTotalReadCount = 0
 dAvgReadLength  = 0.0
@@ -198,9 +199,9 @@ else:
 # If the file is small and does not need to be extracted, just process directly in USEARCH.
 if (dFileInMB < c_iMaxSizeForDirectRun and strExtractMethod== ""):
 	args.bSmall = True
-	sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID )
+	sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp )
 	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-	dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids)
+	dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength)
 
 	for seq in SeqIO.parse(args.strWGS, "fasta"):
 		iTotalReadCount+=1
@@ -212,7 +213,7 @@ else:
 	iFileCount = 1
 
 	strFASTAName = str(dirTmp) + os.sep + 'fasta.fna'
-	fileFASTA = open(strFASTAName, 'w')
+
 
 
 
@@ -242,40 +243,51 @@ else:
 			# the original input is tar,bz,etc.) write seqs to a small, temporary,
 			# fasta file. Once the file has c_iReadsForFile, process it.
 
-			for seq in SeqIO.parse(streamWGS, "fasta"):
-				SeqIO.write(seq,fileFASTA,"fasta")
-				iReadsInSmallFile+=1
-				iTotalReadCount+=1
 
-				# Have a running average of the read length. This covers all of the reads in the original input file.
-				dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
+			if strFile.find("fastq") > -1:
+				strFormat = "fastq"
+			elif strFile.find("fasta") > -1:
+				strFormat = "fasta"
+			else:
+				strFormat = "unknown"
+
+			if strFormat != "unknown":
+				fileFASTA = open(strFASTAName, 'w')
+				for seq in SeqIO.parse(streamWGS, strFormat):
+					SeqIO.write(seq,fileFASTA,"fasta")
+					iReadsInSmallFile+=1
+					iTotalReadCount+=1
+
+	    			# Have a running average of the read length. This covers all of the reads in the original input file.
+					dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
 
 
-				if (iReadsInSmallFile>=c_iReadsForFile):
+					if (iReadsInSmallFile>=c_iReadsForFile):
+						fileFASTA.close()
+
+						#Run Usearch, store results
+						strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
+						sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,iThreads=args.iThreads,dID=args.dID )
+						sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
+						dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength)
+
+						#Reset count, make new file
+						iReadsInSmallFile = 0
+						iFileCount+=1
+						fileFASTA = open(strFASTAName, 'w')
+
+
+				if(iReadsInSmallFile>0):
 					fileFASTA.close()
-
 					#Run Usearch, store results
 					strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
-					sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
-					sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
-					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids)
-
-					#Reset count, make new file
-					iReadsInSmallFile = 0
-					iFileCount+=1
-					fileFASTA = open(strFASTAName, 'w')
-
-
-			if(iReadsInSmallFile>0):
-				fileFASTA.close()
-				#Run Usearch, store results
-				strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
-				sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName )
-				sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids)
+					sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,iThreads=args.iThreads,dID=args.dID )
+					sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength)
 
 sq.CalculateCounts(strResults = args.strResults, strMarkerResults=strMarkerResults,dictHitCounts=dictBLAST,
-dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen, dReadLength = dAvgReadLength, iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids)
+dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+dReadLength = dAvgReadLength, iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength)
 
 # Add final details to log
 with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:

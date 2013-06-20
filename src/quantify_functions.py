@@ -29,8 +29,10 @@ import csv
 import re
 import sys
 import math
+import os
 
 c_strUSEARCH	= "usearch"
+c_iAlnCentroids = 30
 
 def MakedbUSEARCH ( strMarkers, strDBName):
 	p = subprocess.check_call([c_strUSEARCH, "--makeudb_usearch", strMarkers,
@@ -38,11 +40,11 @@ def MakedbUSEARCH ( strMarkers, strDBName):
 
 	return
 
-def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID):
+def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp):
 
 	strFields = "query+target+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql"
 
-	subprocess.check_call(["time","-o", strMarkers + ".time",
+	subprocess.check_call(["time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
 		c_strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
 		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,
 		"--threads", str(iThreads)])
@@ -56,54 +58,59 @@ def Median(adValues):
 		dMedian = adValues[int(math.floor(iLen/2))]
 	return dMedian
 
-
-def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck):
+def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength):
 # Reads in the USEARCH output (strBlastOut), marks which hits are valid (id>=dID &
 # len >= min(95% of read,dictMarkerLen[Marker]) and adds to count in dictHitsForMarker[strMarker].
 # Valid hits are also copied to the file in strValidHits. strCentCheck is used to flag centroids,
 # and handle their counting
 
-	csvwHits = csv.writer( open(strValidHits,'a'), csv.excel_tab )
 
-	sys.stderr.write("Processing USEARCH results... \n")
-	#Go through the usearch output, for each prot family, record the number of valid hits
-	for aLine in csv.reader( open(strBlastOut), csv.excel_tab ):
-
-		c_iAlnCentroids = 30
-		strMarker 	= aLine[1]
-		dHitID		= aLine[2]
-		iAlnLen     = int(aLine[3])
-		iReadLenAA  = int(aLine[12])
-
-		# A valid match must be as long as 95% of the read or the full marker.
-        # (Note that this in AA's.)
+	with open(strValidHits, 'a') as csvfileHits:
+		csvwHits = csv.writer( csvfileHits, csv.excel_tab )
 
 
-		#If using centroids (Typically only used for evaluation purposes.)....
-		if strCentCheck=="Y":
-			strProtFamily = strMarker
+		sys.stderr.write("Processing USEARCH results... \n")
+		#Go through the usearch output, for each prot family, record the number of valid
 
-			if ( (int(iAlnLen)>= c_iAlnCentroids) and ( float(dHitID)/100) >= dID):
-					dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) + 1
-					dictHitsForMarker[strProtFamily] = dictHitsForMarker.setdefault(strProtFamily,0) + 1
-					csvwHits.writerow( aLine )
+		with open(strBlastOut, 'r') as csvfileBlast:
+			for aLine in csv.reader( csvfileBlast, delimiter='\t' ):
 
-		#If using ShortBRED Markers (and not centroids)...
-		else:
-			iAlnMin = min(dictMarkerLen[strMarker] ,iReadLenAA*.95)
-			#Get the Family Name
-			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
-			strProtFamily = mtchProtStub.group(1)
 
-			#If hit satisfies criteria, add it to counts, write out data to Hits file
-			if (int(iAlnLen)>= iAlnMin and (float(dHitID)/100) >= dID):
+				strMarker 	= aLine[1]
+				dHitID		= aLine[2]
+				iAlnLen     = int(aLine[3])
+				iReadLenAA  = int(aLine[12])
 
-				#Add 1 to count of hits for that marker, and family
-				dictHitsForMarker[aLine[1]] = dictHitsForMarker.setdefault(aLine[1],0) + 1
-				dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) +1
+				# A valid match must be as long as 95% of the read or the full marker.
+		        # (Note that this in AA's.)
 
-				csvwHits.writerow( aLine )
+
+				#If using centroids (Typically only used for evaluation purposes.)....
+				if strCentCheck=="Y":
+					strProtFamily = strMarker
+
+					if ( (int(iAlnLen)>= c_iAlnCentroids) and ( float(dHitID)/100) >= dID):
+							dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) + 1
+							dictHitsForMarker[strProtFamily] = dictHitsForMarker.setdefault(strProtFamily,0) + 1
+							csvwHits.writerow( aLine )
+
+				#If using ShortBRED Markers (and not centroids)...
+				else:
+					iAlnMin = min(dictMarkerLen[strMarker] ,iReadLenAA*dAlnLength)
+					#Get the Family Name
+					mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
+					strProtFamily = mtchProtStub.group(1)
+
+					#If hit satisfies criteria, add it to counts, write out data to Hits file
+					if (int(iAlnLen)>= iAlnMin and (float(dHitID)/100) >= dID):
+
+						#Add 1 to count of hits for that marker, and family
+						dictHitsForMarker[aLine[1]] = dictHitsForMarker.setdefault(aLine[1],0) + 1
+						dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) +1
+
+						csvwHits.writerow( aLine )
 	return
+
 
 """
 CalculateCounts - Calculates the ShortBRED counts for each marker.
@@ -183,7 +190,7 @@ def PrintStats(atupCurFamData, strMarkerFile, strFamFile):
 
 	return
 
-def CalculateCounts(strResults,strMarkerResults, dictHitCounts, dictHitsForMarker, dictMarkerLenAll,dictMarkerLen,dReadLength,iWGSReads,strCentCheck):
+def CalculateCounts(strResults,strMarkerResults, dictHitCounts, dictHitsForMarker, dictMarkerLenAll,dictMarkerLen,dReadLength,iWGSReads,strCentCheck,dAlnLength):
 	#strResults - Name of text file with final ShortBRED Counts
 	#strBlastOut - BLAST-formatted output from USEARCH
 	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
@@ -198,29 +205,26 @@ def CalculateCounts(strResults,strMarkerResults, dictHitCounts, dictHitsForMarke
 
 	sys.stderr.write("Tabulating results for each marker... \n")
 	for strMarker in dictHitsForMarker.keys():
-		# Switching to Method 1
-		"""
-  			If marker length < average read length:
-                  Count = Hits /  [AvgReadLength - MarkerLenInNucs) / AvgReadLength]
-             else:
-                  Count = Hits /  [MarkerLenInNucs - AvgReadLength) / AvgReadLength]
-		"""
-		iMarkerNucs = dictMarkerLen[strMarker]*3
 		iHits = dictHitsForMarker[strMarker]
-
-		# Consider the problem as fitting shorter sequence into the longer sequence.
-		# We add 1 for the special case when the marker is as long as the read.
-		dCount = iHits/ ( (abs(dReadLength - iMarkerNucs)+1) / float(dReadLength))
-
-		# Normalize for metagenome depth
-		dCount = dCount * 1000 / (iWGSReads / 1e9)
-
+		iMarkerNucs = dictMarkerLen[strMarker]*3
 		if strCentCheck=="Y":
 			strProtFamily = strMarker
+			dCount = iHits / float(iMarkerNucs)
 		else:
+			# dCount = Hits per nucleotide of target sequence.
+			# Hits = iHits
+			# Amount of Target Seq Available = (abs(dReadLength - iMarkerNucs)+(.10*dReadLength))
+
+			"""
+			I still think of this as adjusting for the probability of hit.
+			P(hit) increases as abs(dReadLength - iMarkerNucs) grows because we are simply trying to fit the smaller of one into the larger of the other.
+			p(hit) increases as (c_dPctAdditionalTargetSeq*dReadLength) grows because that increases as required match length decreases.
+			"""
+			dPctAdditionalTargetSeq = (1.0 - dAlnLength)*2.0
+
+			dCount = iHits/ (abs(dReadLength - iMarkerNucs)+(dPctAdditionalTargetSeq*dReadLength))
 			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
 			strProtFamily = mtchProtStub.group(1)
-
 
 		tupCount = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength)
 		atupMarkerCounts.append(tupCount)
