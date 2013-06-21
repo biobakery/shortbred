@@ -42,7 +42,7 @@ def MakedbUSEARCH ( strMarkers, strDBName):
 
 def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp):
 
-	strFields = "query+target+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql"
+	strFields = "query+target+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql+tl+qs+ts"
 
 	subprocess.check_call(["time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
 		c_strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
@@ -58,7 +58,7 @@ def Median(adValues):
 		dMedian = adValues[int(math.floor(iLen/2))]
 	return dMedian
 
-def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength):
+def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,dAvgReadLen):
 # Reads in the USEARCH output (strBlastOut), marks which hits are valid (id>=dID &
 # len >= min(95% of read,dictMarkerLen[Marker]) and adds to count in dictHitsForMarker[strMarker].
 # Valid hits are also copied to the file in strValidHits. strCentCheck is used to flag centroids,
@@ -96,7 +96,7 @@ def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dict
 
 				#If using ShortBRED Markers (and not centroids)...
 				else:
-					iAlnMin = min(dictMarkerLen[strMarker] ,iReadLenAA*dAlnLength)
+					iAlnMin = min(dictMarkerLen[strMarker] ,(dAvgReadLen/3)*dAlnLength)
 					#Get the Family Name
 					mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
 					strProtFamily = mtchProtStub.group(1)
@@ -126,7 +126,7 @@ def ProcessHitData(atupHits,strMarkerResults,strFamFile):
 # (strMarkerResults) and Family results (strFamFile).
 	with open(strMarkerResults, 'w') as csvfileMarker:
 		csvwMarkerResults = csv.writer( csvfileMarker, csv.excel_tab )
-		csvwMarkerResults.writerow(["Family","Marker","Normalized Count","Hits","MarkerLength","ReadLength"])
+		csvwMarkerResults.writerow(["Family","Marker","Normalized Count","Hits","MarkerLength","ReadLength","HitSpace"])
 
 	with open(strFamFile, 'w') as csvfileFam:
 		csvwFamResults = csv.writer( csvfileFam, csv.excel_tab )
@@ -220,13 +220,33 @@ def CalculateCounts(strResults,strMarkerResults, dictHitCounts, dictHitsForMarke
 			P(hit) increases as abs(dReadLength - iMarkerNucs) grows because we are simply trying to fit the smaller of one into the larger of the other.
 			p(hit) increases as (c_dPctAdditionalTargetSeq*dReadLength) grows because that increases as required match length decreases.
 			"""
-			dPctAdditionalTargetSeq = (1.0 - dAlnLength)*2.0
+			dPctAdditionalTargetSeq = ((1.0 - dAlnLength)*2.0)*dReadLength
 
-			dCount = iHits/ (abs(dReadLength - iMarkerNucs)+(dPctAdditionalTargetSeq*dReadLength))
+			#Possible Hit Space = Think of this as the "effective" length of our marker.
+			#Any reads starting in the possible hit space should get a valid hit on the marker, anything else will not.
+			# Hits/Possible Hit Space ~ Hits/Nucleotide. We can't do just nucleotides because we have special rules for matching markers,
+			# depending on their length.
+
+			if (iMarkerNucs > (dReadLength*dAlnLength)):
+				iPossibleHitSpace = iMarkerNucs + dPctAdditionalTargetSeq -(dReadLength-1)
+				#iPossibleHitSpace = [start-dPctAdditionalTargetSeq,end- (trusted read length -1)]
+				#  Any reads dPctAdditionalTargetSeq to the left of the marker will have just enough of the marker to be valid hit.
+				#  Same for anything after that, until you get to (end-(readlength-1). Anything after that has some overlap, but not enough to be a valid hit.
+			else:
+				iPossibleHitSpace = dReadLength-iMarkerNucs -1
+				#iPossibleHitSpace = [start-(dReadlength-iMarkerNucs),end- (trusted read length -1)]
+				#  Any reads after (start-(dReadlength-iMarkerNucs)) will completely overlap the marker, and be a valid hit.
+				#  Same for anything after that, until you get to (start). Anything after that has some overlap, but not enough to be a valid hit.
+				#  Try this out as  [iMarkerNucs + 2*(dReadLength-iMarkerNucs) -(dReadLength-1)]
+				#
+				# Just in case, this one worked well.... iPossibleHitSpace = iMarkerNucs + 2*(dReadLength-iMarkerNucs) -(dReadLength-1)
+
+			dCount = iHits/iPossibleHitSpace
+
 			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
 			strProtFamily = mtchProtStub.group(1)
 
-		tupCount = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength)
+		tupCount = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength,iPossibleHitSpace)
 		atupMarkerCounts.append(tupCount)
 
 	ProcessHitData(atupMarkerCounts, strMarkerResults=strMarkerResults,strFamFile = strResults)

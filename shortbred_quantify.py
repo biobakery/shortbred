@@ -200,12 +200,14 @@ else:
 if (dFileInMB < c_iMaxSizeForDirectRun and strExtractMethod== ""):
 	args.bSmall = True
 	sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp )
-	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-	dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength)
-
+	iMin = 999
 	for seq in SeqIO.parse(args.strWGS, "fasta"):
 		iTotalReadCount+=1
 		dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
+		iMin = min(iMin,len(seq))
+	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+	dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,dAvgReadLen=dAvgReadLength)
+
 
 # Otherwise, break up the large file into several small fasta files, process each one.
 else:
@@ -253,6 +255,7 @@ else:
 
 			if strFormat != "unknown":
 				fileFASTA = open(strFASTAName, 'w')
+				iMin = 999
 				for seq in SeqIO.parse(streamWGS, strFormat):
 					SeqIO.write(seq,fileFASTA,"fasta")
 					iReadsInSmallFile+=1
@@ -260,6 +263,9 @@ else:
 
 	    			# Have a running average of the read length. This covers all of the reads in the original input file.
 					dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
+
+					# Track minimum...
+					iMin = min(len(seq),iMin)
 
 
 					if (iReadsInSmallFile>=c_iReadsForFile):
@@ -269,7 +275,7 @@ else:
 						strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
 						sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,iThreads=args.iThreads,dID=args.dID )
 						sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
-						dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength)
+						dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,dAvgReadLen=dAvgReadLength)
 
 						#Reset count, make new file
 						iReadsInSmallFile = 0
@@ -283,7 +289,7 @@ else:
 					strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
 					sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,iThreads=args.iThreads,dID=args.dID )
 					sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength)
+					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,dAvgReadLen=dAvgReadLength)
 
 sq.CalculateCounts(strResults = args.strResults, strMarkerResults=strMarkerResults,dictHitCounts=dictBLAST,
 dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
@@ -293,6 +299,7 @@ dReadLength = dAvgReadLength, iWGSReads = iTotalReadCount, strCentCheck=args.str
 with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:
 	log.write("Total Reads Processed: " + str(iTotalReadCount) + "\n")
 	log.write("Average Read Length: " + str(dAvgReadLength) + "\n")
+	log.write("Min Read Length: " + str(iMin) + "\n")
 
 if args.bSmall == False:
 	#Delete the small, temp fasta file.

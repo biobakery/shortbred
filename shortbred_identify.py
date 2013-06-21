@@ -359,7 +359,7 @@ sys.stderr.write( "Found True Markers...\n")
 #iShort = math.floor(args.iMLength*(.95))
 #sys.stderr.write("The Short region is " + str(int(iShort)) )
 
-atupQuasiMarkers1 = pb.QMCheckShortRegion(setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iQMlength*(.95))),iMarkerLen=args.iQMlength)
+atupQuasiMarkers1 = pb.QMCheckShortRegion(setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iQMlength*.95)),iMarkerLen=args.iQMlength)
 setGotQM = zip(*atupQuasiMarkers1)[0]
 
 setLeftover = setLeftover.difference(setGotQM)
