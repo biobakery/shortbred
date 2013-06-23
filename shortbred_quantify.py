@@ -33,6 +33,7 @@ import datetime
 import shutil
 import tarfile
 import time
+import math
 
 import src
 import src.quantify_functions
@@ -84,6 +85,8 @@ parser.add_argument('--tmp', type=str, dest='strTmp', default ="",help='Enter th
 #Parameters - Matching Settings
 parser.add_argument('--id', type=float, dest='dID', help='Enter the percent identity for the match', default = .95)
 parser.add_argument('--pctlength', type=float, dest='dAlnLength', help='Enter the minimum alignment length. The default is 20', default = 0.95)
+parser.add_argument('--minreadBP', type=float, dest='iMinReadBP', help='Enter the lower bound for read lengths that shortbred witll process', default = 90)
+parser.add_argument('--avgreadBP', type=float, dest='iAvgReadBP', help='Enter the average read length.', default = 100)
 #parser.add_argument('--tmid', type=float, dest='dTMID', help='Enter the percent identity for a TM match', default = .95)
 #parser.add_argument('--qmid', type=float, dest='dQMID', help='Enter the percent identity for a QM match', default = .95)
 #parser.add_argument('--alnTM', type=int, dest='iAlnMax', help='Enter a bound for TM alignments, such that aln must be>= min(markerlength,alnTM)', default = 20)
@@ -206,7 +209,9 @@ if (dFileInMB < c_iMaxSizeForDirectRun and strExtractMethod== ""):
 		dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
 		iMin = min(iMin,len(seq))
 	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-	dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,dAvgReadLen=dAvgReadLength)
+	dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.ceil(args.iMinReadBP/3)),
+	iAvgReadAA=int(math.ceil(args.iAvgReadBP/3)))
+
 
 
 # Otherwise, break up the large file into several small fasta files, process each one.
@@ -275,7 +280,8 @@ else:
 						strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
 						sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,iThreads=args.iThreads,dID=args.dID )
 						sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
-						dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,dAvgReadLen=dAvgReadLength)
+						dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.ceil(args.iMinReadBP/3)),
+						iAvgReadAA=int(math.ceil(args.iAvgReadBP/3)))
 
 						#Reset count, make new file
 						iReadsInSmallFile = 0
@@ -289,11 +295,12 @@ else:
 					strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
 					sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,iThreads=args.iThreads,dID=args.dID )
 					sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,dAvgReadLen=dAvgReadLength)
+					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.ceil(args.iMinReadBP/3)),
+					iAvgReadAA=int(math.ceil(args.iAvgReadBP/3)))
 
 sq.CalculateCounts(strResults = args.strResults, strMarkerResults=strMarkerResults,dictHitCounts=dictBLAST,
 dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-dReadLength = dAvgReadLength, iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength)
+dReadLength = float(args.iAvgReadBP), iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength)
 
 # Add final details to log
 with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:

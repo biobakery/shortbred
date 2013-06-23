@@ -58,7 +58,7 @@ def Median(adValues):
 		dMedian = adValues[int(math.floor(iLen/2))]
 	return dMedian
 
-def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,dAvgReadLen):
+def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA):
 # Reads in the USEARCH output (strBlastOut), marks which hits are valid (id>=dID &
 # len >= min(95% of read,dictMarkerLen[Marker]) and adds to count in dictHitsForMarker[strMarker].
 # Valid hits are also copied to the file in strValidHits. strCentCheck is used to flag centroids,
@@ -96,13 +96,13 @@ def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dict
 
 				#If using ShortBRED Markers (and not centroids)...
 				else:
-					iAlnMin = min(dictMarkerLen[strMarker] ,(dAvgReadLen/3)*dAlnLength)
+					iAlnMin = min(dictMarkerLen[strMarker] ,(iAvgReadAA)*dAlnLength)
 					#Get the Family Name
 					mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
 					strProtFamily = mtchProtStub.group(1)
 
 					#If hit satisfies criteria, add it to counts, write out data to Hits file
-					if (int(iAlnLen)>= iAlnMin and (float(dHitID)/100) >= dID):
+					if (int(iAlnLen)>= iAlnMin and (iReadLenAA >= iMinReadAA) and (float(dHitID)/100) >= dID):
 
 						#Add 1 to count of hits for that marker, and family
 						dictHitsForMarker[aLine[1]] = dictHitsForMarker.setdefault(aLine[1],0) + 1
@@ -211,15 +211,7 @@ def CalculateCounts(strResults,strMarkerResults, dictHitCounts, dictHitsForMarke
 			strProtFamily = strMarker
 			dCount = iHits / float(iMarkerNucs)
 		else:
-			# dCount = Hits per nucleotide of target sequence.
-			# Hits = iHits
-			# Amount of Target Seq Available = (abs(dReadLength - iMarkerNucs)+(.10*dReadLength))
-
-			"""
-			I still think of this as adjusting for the probability of hit.
-			P(hit) increases as abs(dReadLength - iMarkerNucs) grows because we are simply trying to fit the smaller of one into the larger of the other.
-			p(hit) increases as (c_dPctAdditionalTargetSeq*dReadLength) grows because that increases as required match length decreases.
-			"""
+			# Correction factor, since we only require dAlnLength of the reads to align. This results in (1-p)*2 Extra Read len on each side
 			dPctAdditionalTargetSeq = ((1.0 - dAlnLength)*2.0)*dReadLength
 
 			#Possible Hit Space = Think of this as the "effective" length of our marker.
@@ -241,11 +233,12 @@ def CalculateCounts(strResults,strMarkerResults, dictHitCounts, dictHitsForMarke
 				#
 				# Just in case, this one worked well.... iPossibleHitSpace = iMarkerNucs + 2*(dReadLength-iMarkerNucs) -(dReadLength-1)
 
-			dCount = iHits/iPossibleHitSpace
+			dCount = iHits/float(iPossibleHitSpace)
 
 			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
 			strProtFamily = mtchProtStub.group(1)
 
+		dCount =  dCount *  (1000 / (iWGSReads / 1e9))
 		tupCount = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength,iPossibleHitSpace)
 		atupMarkerCounts.append(tupCount)
 
