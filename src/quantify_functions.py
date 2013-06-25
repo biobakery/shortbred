@@ -96,7 +96,7 @@ def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dict
 
 				#If using ShortBRED Markers (and not centroids)...
 				else:
-					iAlnMin = min(dictMarkerLen[strMarker] ,(iAvgReadAA)*dAlnLength)
+					iAlnMin = min(dictMarkerLen[strMarker] ,math.floor((iAvgReadAA)*dAlnLength))
 					#Get the Family Name
 					mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
 					strProtFamily = mtchProtStub.group(1)
@@ -210,6 +210,7 @@ def CalculateCounts(strResults,strMarkerResults, dictHitCounts, dictHitsForMarke
 		if strCentCheck=="Y":
 			strProtFamily = strMarker
 			dCount = iHits / float(iMarkerNucs)
+			iPossibleHitSpace = float(iMarkerNucs)
 		else:
 			# Correction factor, since we only require dAlnLength of the reads to align. This results in (1-p)*2 Extra Read len on each side
 			dPctAdditionalTargetSeq = ((1.0 - dAlnLength)*2.0)*dReadLength

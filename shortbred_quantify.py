@@ -209,8 +209,8 @@ if (dFileInMB < c_iMaxSizeForDirectRun and strExtractMethod== ""):
 		dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
 		iMin = min(iMin,len(seq))
 	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-	dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.ceil(args.iMinReadBP/3)),
-	iAvgReadAA=int(math.ceil(args.iAvgReadBP/3)))
+	dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
+	iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
 
 
 
@@ -280,8 +280,8 @@ else:
 						strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
 						sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,iThreads=args.iThreads,dID=args.dID )
 						sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
-						dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.ceil(args.iMinReadBP/3)),
-						iAvgReadAA=int(math.ceil(args.iAvgReadBP/3)))
+						dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
+						iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
 
 						#Reset count, make new file
 						iReadsInSmallFile = 0
@@ -295,8 +295,8 @@ else:
 					strOutputName = str(dirTmp) + os.sep + "wgsout_" + str(iFileCount).zfill(2) + ".out"
 					sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,iThreads=args.iThreads,dID=args.dID )
 					sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.ceil(args.iMinReadBP/3)),
-					iAvgReadAA=int(math.ceil(args.iAvgReadBP/3)))
+					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
+					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
 
 sq.CalculateCounts(strResults = args.strResults, strMarkerResults=strMarkerResults,dictHitCounts=dictBLAST,
 dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
