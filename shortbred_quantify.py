@@ -32,6 +32,7 @@ import os
 import datetime
 import shutil
 import tarfile
+import gzip
 import time
 import math
 
@@ -203,7 +204,7 @@ else:
 if (dFileInMB < c_iMaxSizeForDirectRun and strExtractMethod== ""):
 	args.bSmall = True
 	sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=args.strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp )
-	iMin = 999
+	iMin = 999 #Can be any integer. Just a dummy to initialize iMin before calculations begin.
 	for seq in SeqIO.parse(args.strWGS, "fasta"):
 		iTotalReadCount+=1
 		dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)

@@ -361,6 +361,8 @@ sys.stderr.write( "Found True Markers...\n")
 
 atupQuasiMarkers1 = pb.QMCheckShortRegion(setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iQMlength*.95)),iMarkerLen=args.iQMlength)
 setGotQM = zip(*atupQuasiMarkers1)[0]
+sys.stderr.write( "Found "+str(len(atupQuasiMarkers1)) +" QM-Junction Markers...\n")
+
 
 setLeftover = setLeftover.difference(setGotQM)
 
@@ -368,7 +370,7 @@ setLeftover = setLeftover.difference(setGotQM)
 # Change these lines to determine how QM's are made
 atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iQMlength,args.iThresh, args.iTotLength)
 atupQuasiMarkers = atupQuasiMarkers1 + atupQuasiMarkers2
-sys.stderr.write("Found " +str(len(atupQuasiMarkers2)) + " quasi-markers.\n")
+sys.stderr.write("Found " +str(len(atupQuasiMarkers2)) + " QM-Minimals.\n")
 
 
 if(len(atupQuasiMarkers)) > 0:

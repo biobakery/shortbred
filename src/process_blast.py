@@ -110,6 +110,7 @@ def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegio
 	c_iMaxMarkers = 3
 
 	for strGene in setGenes:
+		#sys.stderr.write("Processing "+ strGene +" ...\n")
 		# Initialize counters and bool values for loop
 		iSeqLength = len(dictGenes[strGene])
 		iStart = 1
@@ -119,13 +120,16 @@ def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegio
 		bFoundRegion = False
 		bOverlapsSomeSeq = False
 
+		if (iSeqLength < iMarkerLen):
+			bHitEnd = True
+
 		atupHitInfo = dictGOIHits[strGene]
 
 		# While the function has not hit the end of seq:
 		#   Take the first window of AA's that is iShortRegion long.
 		#   	Check the start and end of the window against every hit in atupHitInfo.
 		#   	If none of the hits completely overlap the window, and the window doesn't have more than one X:
-		#           bOverlapsSomeSeq==False, build a marker, incremenet Window MarkerLength AA's
+		#           bOverlapsSomeSeq==False, build a marker, increment Window MarkerLength AA's
 		#       Else:
 		#           bOverlapsSomeSeq==True, increment window one AA.
 
@@ -176,6 +180,7 @@ def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegio
 				bOverlapsSomeSeq = False
 			else:
 				# Move the window up one space, try again
+				#sys.stderr.write(strGene + ", Start - End: " + str(iStart) + " - " + str(iEnd))
 				iStart = iStart+1
                 bOverlapsSomeSeq = False
 
