@@ -40,6 +40,39 @@ def MakedbUSEARCH ( strMarkers, strDBName):
 
 	return
 
+def CheckFormat ( strFile):
+	if strFile.find("fastq") > -1:
+		strFormat = "fastq"
+	elif strFile.find("fasta") > -1:
+		strFormat = "fasta"
+	else:
+		strFormat = "unknown"
+
+	return strFormat
+
+def CheckExtract(strWGS):
+	if strWGS.find(".tar.bz2") > -1:
+		strExtractMethod = 'r:bz2'
+	elif strWGS.find(".tar.gz") > -1:
+		strExtractMethod = 'r:gz'
+	elif strWGS.find(".gz") > -1:
+		strExtractMethod = 'gz'
+	elif strWGS.find(".bz2") > -1:
+		strExtractMethod = 'bz2'
+	else:
+		strExtractMethod = ""
+
+	return strExtractMethod
+
+def CheckSize(iSize, iMax):
+	dFileInMB = round(iSize/1048576.0,1)
+	if dFileInMB < iMax:
+		strSize = "small"
+	else:
+		strSize = "large"
+
+	return strSize
+
 def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp):
 
 	strFields = "query+target+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql+tl+qs+ts"
