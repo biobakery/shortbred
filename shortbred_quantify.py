@@ -196,9 +196,9 @@ An example:
 """
 astrWGS = args.strWGS
 
-print "\nList of files in WGS set:"
+sys.stderr.write( "\nList of files in WGS set:")
 for strWGS in astrWGS:
-	print strWGS
+	sys.stderr.write( strWGS + "\n")
 
 aaWGSInfo = []
 
@@ -230,11 +230,11 @@ for strWGS in astrWGS:
 		aaWGSInfo.append(astrFileInfo)
 
 
-print "\nList of files in WGS set (after unpacking tarfiles):"
+sys.stderr.write( "\nList of files in WGS set (after unpacking tarfiles):")
 for astrWGS in aaWGSInfo:
-	print astrWGS[0]
+	sys.stderr.write( astrWGS[0])
 
-print "\n\n"
+sys.stderr.write("\n\n")
 ##################################################################################
 # Step 3: Call USEARCH on each WGS file, (break into smaller files if needed), store hit counts.
 
@@ -253,7 +253,7 @@ for astrFileInfo in aaWGSInfo:
 	with open(strLog, "a") as log:
 		log.write(str(iWGSFileCount) + ": " + '\t'.join(astrFileInfo) + '\n')
 	iWGSReads = 0
-	print "Working on file " + str(iWGSFileCount) + " of " + str(len(aaWGSInfo))
+	sys.stderr.write( "Working on file " + str(iWGSFileCount) + " of " + str(len(aaWGSInfo)))
 
 	#If it's a small fasta file, just give it to USEARCH directly.
 	if strSize=="small" and strFormat=="fasta":
