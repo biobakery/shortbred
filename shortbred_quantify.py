@@ -79,7 +79,7 @@ parser.add_argument('--SBhits', type=str, dest='strHits',
 help='ShortBRED will print the hits it considers positives to this file.', default="")
 parser.add_argument('--blastout', type=str, dest='strBlast', default="",
 help='Enter the name of the blast-formatted output file from USEARCH.')
-parser.add_argument('--marker_results', type=str, dest='strMarkerResults', default="markers.tab",
+parser.add_argument('--marker_results', type=str, dest='strMarkerResults', default="",
 help='Enter the name of the output for marker level results.')
 
 
