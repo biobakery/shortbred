@@ -35,15 +35,16 @@ c_strUSEARCH	= "usearch"
 c_iAlnCentroids = 30
 
 def MakedbUSEARCH ( strMarkers, strDBName):
-	p = subprocess.check_call([c_strUSEARCH, "--makeudb_usearch", strMarkers,
-	"--output", strDBName])
-
+	#subprocess.check_call(c_strUSEARCH)
+	p = subprocess.check_call([c_strUSEARCH, "--makeudb_usearch", strMarkers,"--output", strDBName])
 	return
 
 def CheckFormat ( strFile):
 	if strFile.find("fastq") > -1:
 		strFormat = "fastq"
 	elif strFile.find("fasta") > -1:
+		strFormat = "fasta"
+	elif strFile.find(".fna") > -1:
 		strFormat = "fasta"
 	else:
 		strFormat = "unknown"

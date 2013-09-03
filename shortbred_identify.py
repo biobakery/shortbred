@@ -514,18 +514,18 @@ sys.stderr.write( "\nTmp markers saved to " + strTmpMarkers + "\n")
 # Process the results, flag any marker that hits something not in its family.
 
 
-
+"""
 # Reverse translate each candidate marker (back_translate)
 
 strFrameNucs = dirFrameCheck + os.sep + "MarkersAsNucs.fna"
 subprocess.check_call(["backtranseq", "-sequence", strTmpMarkers, "-out", strFrameNucs])
 
-"""
+
 I will change the above function to be a Python function so that we do not need
 EMBOSS. "back_translate" was deprecated from BioPython, so it was not an option.
 Perhaps I can find an old version online, and copy the function in here and cite
 the authors. If not, I can make something simple using the BioPython functions.
-"""
+
 
 #*** BLASTX the whole shebang against family consensus sequences
 
@@ -555,9 +555,9 @@ else:
 #New code for trying out new version of blastx. Throw this out later.
 astrBlastParams = ["-outfmt", "6 std qlen"]
 
-"""
-Should I include something with "frame_shift_penalty"?
-"""
+
+#Should I include something with "frame_shift_penalty"?
+
 
 strBlastNucsToGOI = dirFrameCheck + os.sep + "NucsToGOI.blast"
 #Blast clust file against goidb
@@ -579,7 +579,7 @@ with open(strOffTargetMarkers, 'w') as fOut:
 # Remove any marker for which any rev-trans has a significant off-target hit
 
 # Track marker statistics (#TM's,etc.) as processing, and print to log.
-
+"""
 iTM = 0
 iQM = 0
 iQMJunction = 0

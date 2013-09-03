@@ -232,7 +232,7 @@ for strWGS in astrWGS:
 
 sys.stderr.write( "\nList of files in WGS set (after unpacking tarfiles):")
 for astrWGS in aaWGSInfo:
-	sys.stderr.write( astrWGS[0])
+	sys.stderr.write( astrWGS[0]+" ")
 
 sys.stderr.write("\n\n")
 ##################################################################################
@@ -351,7 +351,8 @@ for astrFileInfo in aaWGSInfo:
 		log.write(str(iWGSReads) + '\n')
 
 	iWGSFileCount += 1
-	streamWGS.close()
+	if (strFormat != "fasta" or strSize != "small"):
+		streamWGS.close()
 	#Close the tarfile if you had one open.
 	if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
 		tarWGS.close()
@@ -368,7 +369,7 @@ with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a")
 	log.write("Average Read Length: " + str(dAvgReadLength) + "\n")
 	log.write("Min Read Length: " + str(iMin) + "\n")
 
-if args.bSmall == False:
+if strSize != "small":
 	#Delete the small, temp fasta file.
 	os.remove(strFASTAName)
 
