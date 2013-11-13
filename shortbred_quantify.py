@@ -328,14 +328,16 @@ for astrFileInfo in aaWGSInfo:
 
 		#Start the main loop to get everything in streamWGS -> small fasta file -> counted and stored
 		for seq in SeqIO.parse(streamWGS, strFormat):
-			SeqIO.write(seq,fileFASTA,"fasta")
-			iReadsInSmallFile+=1
-			iTotalReadCount+=1
-			iWGSReads+=1
+			#Added to keep usearch from hitting seqs that are too long.
+			if len(seq)< 50000:
+				SeqIO.write(seq,fileFASTA,"fasta")
+				iReadsInSmallFile+=1
+				iTotalReadCount+=1
+				iWGSReads+=1
 
-			# Have a running average of the read length. This covers all of the reads in the original input file.
-			dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
-			iMin = min(len(seq),iMin)
+				# Have a running average of the read length. This covers all of the reads in the original input file.
+				dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
+				iMin = min(len(seq),iMin)
 
 			#Close the temp fasta file once it has enough reads.
 			if (iReadsInSmallFile>=c_iReadsForFile):
