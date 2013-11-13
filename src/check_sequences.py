@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #####################################################################################
 #Copyright (C) <2013> Jim Kaminski and the Huttenhower Lab
 #
@@ -25,7 +25,7 @@
 #####################################################################################
 
 import Bio
-from Bio.Seq import Seq
+#from Bio.Seq import Seq
 from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO

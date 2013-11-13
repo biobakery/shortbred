@@ -42,6 +42,7 @@ import src.quantify_functions
 sq = src.quantify_functions
 
 import numpy
+import bz2
 
 import Bio
 from Bio.Seq import Seq
@@ -90,6 +91,8 @@ parser.add_argument('--id', type=float, dest='dID', help='Enter the percent iden
 parser.add_argument('--pctlength', type=float, dest='dAlnLength', help='Enter the minimum alignment length. The default is 20', default = 0.95)
 parser.add_argument('--minreadBP', type=float, dest='iMinReadBP', help='Enter the lower bound for read lengths that shortbred witll process', default = 90)
 parser.add_argument('--avgreadBP', type=float, dest='iAvgReadBP', help='Enter the average read length.', default = 100)
+parser.add_argument('--maxhits', type=float, dest='iMaxHits', help='Enter the number of markers allowed to hit read.', default = 1)
+parser.add_argument('--maxrejects', type=float, dest='iMaxRejects', help='Enter the number of markers allowed to hit read.', default = 32)
 #parser.add_argument('--tmid', type=float, dest='dTMID', help='Enter the percent identity for a TM match', default = .95)
 #parser.add_argument('--qmid', type=float, dest='dQMID', help='Enter the percent identity for a QM match', default = .95)
 #parser.add_argument('--alnTM', type=int, dest='iAlnMax', help='Enter a bound for TM alignments, such that aln must be>= min(markerlength,alnTM)', default = 20)
@@ -185,7 +188,7 @@ sq.MakedbUSEARCH (args.strMarkers, strDBName)
 
 ##################################################################################
 #Step 2: Get information on WGS file(s), put it into aaFileInfo.
-
+#sys.stderr.write( "\nExamining WGS data:")
 """
 aaFileInfo is array of string arrays, each with details on the file so ShortBRED
 knows how to process it efficiently. Each line has the format:
@@ -218,7 +221,17 @@ for strWGS in astrWGS:
 				strSize = sq.CheckSize(tarinfoFile.size, c_iMaxSizeForDirectRun)
 				astrFileInfo = [tarinfoFile.name, strFormat, strSize,strExtractMethod, strWGS ]
 				aaWGSInfo.append(astrFileInfo)
-    # Otherwise, get file details directly
+
+
+	elif (strExtractMethod== 'bz2'):
+		strWGSOut = strWGS.replace(".bz2","")
+		strFormat = sq.CheckFormat(strWGSOut)
+		# It is not possible to get bz2 filesize in advance, so we just assume it is large.
+		strSize = "large"
+		astrFileInfo = [strWGSOut, strFormat, strSize,strExtractMethod, strWGS ]
+		aaWGSInfo.append(astrFileInfo)
+
+	# Otherwise, get file details directly
 	else:
 		strFormat = sq.CheckFormat(strWGS)
 		dFileInMB = round(os.path.getsize(strWGS)/1048576.0,1)
@@ -257,7 +270,8 @@ for astrFileInfo in aaWGSInfo:
 
 	#If it's a small fasta file, just give it to USEARCH directly.
 	if strSize=="small" and strFormat=="fasta":
-		sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp )
+		sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
+		iAccepts=args.iMaxHits, iRejects=args.iMaxRejects )
 		sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 			dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
 			iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
@@ -295,7 +309,10 @@ for astrFileInfo in aaWGSInfo:
 			streamWGS = gzip.open(strWGS, 'rb')
 		elif strExtractMethod== 'bz2':
 			sys.stderr.write("Unpacking bz2 file... this may take several minutes. ")
-			streamWGS =  bz2.BZ2File(strWGS)
+			sys.stderr.write(strMainTar)
+			#tarWGS = tarfile.open(strMainTar,'r|bz2')
+			streamWGS = bz2.BZ2File(strMainTar,'r')
+			#streamWGS = tarWGS.extractfile(strWGS)
 		else:
 			streamWGS = open(strWGS,'r')
 
@@ -326,7 +343,8 @@ for astrFileInfo in aaWGSInfo:
 
 				#Run Usearch, store results
 				strOutputName = str(dirTmp) + os.sep + "wgs_" + str(iWGSFileCount).zfill(2) + "out_" + str(iFileCount).zfill(2) + ".out"
-				sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,iThreads=args.iThreads,dID=args.dID )
+				sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,
+				iThreads=args.iThreads,dID=args.dID, iAccepts=args.iMaxHits, iRejects=args.iMaxRejects  )
 				sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
 				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
 				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
@@ -342,7 +360,8 @@ for astrFileInfo in aaWGSInfo:
 
 			#Run Usearch, store results
 			strOutputName = str(dirTmp) + os.sep + "wgs_" + str(iWGSFileCount).zfill(2) + "out_" + str(iFileCount).zfill(2) + ".out"
-			sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,iThreads=args.iThreads,dID=args.dID )
+			sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,
+			iThreads=args.iThreads,dID=args.dID,iAccepts=args.iMaxHits, iRejects=args.iMaxRejects )
 			sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 			dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
 			iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
@@ -361,7 +380,7 @@ for astrFileInfo in aaWGSInfo:
 
 sq.CalculateCounts(strResults = args.strResults, strMarkerResults=strMarkerResults,dictHitCounts=dictBLAST,
 dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-dReadLength = float(args.iAvgReadBP), iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength)
+dReadLength = float(args.iAvgReadBP), iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,strFile = args.strWGS)
 
 # Add final details to log
 with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:

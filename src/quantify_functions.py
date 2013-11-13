@@ -74,14 +74,14 @@ def CheckSize(iSize, iMax):
 
 	return strSize
 
-def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp):
+def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects):
 
 	strFields = "query+target+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql+tl+qs+ts"
 
 	subprocess.check_call(["time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
 		c_strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
-		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,
-		"--threads", str(iThreads)])
+		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,"--maxaccepts",str(iAccepts),
+		"--maxrejects",str(iRejects),"--threads", str(iThreads)])
 
 def Median(adValues):
 	adValues.sort()
@@ -224,7 +224,8 @@ def PrintStats(atupCurFamData, strMarkerFile, strFamFile):
 
 	return
 
-def CalculateCounts(strResults,strMarkerResults, dictHitCounts, dictHitsForMarker, dictMarkerLenAll,dictMarkerLen,dReadLength,iWGSReads,strCentCheck,dAlnLength):
+def CalculateCounts(strResults,strMarkerResults, dictHitCounts, dictHitsForMarker, dictMarkerLenAll,dictMarkerLen,dReadLength,iWGSReads,strCentCheck,
+dAlnLength,strFile):
 	#strResults - Name of text file with final ShortBRED Counts
 	#strBlastOut - BLAST-formatted output from USEARCH
 	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
@@ -273,7 +274,11 @@ def CalculateCounts(strResults,strMarkerResults, dictHitCounts, dictHitsForMarke
 			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
 			strProtFamily = mtchProtStub.group(1)
 
-		dCount =  dCount *  (1000 / (iWGSReads / 1e9))
+		if iWGSReads >0:
+			dCount =  dCount *  (1000 / (iWGSReads / 1e9))
+		else:
+			dCount = 0
+			sys.stderr.write("WARNING: 0 Reads found in wgs file:" + strFile )
 		tupCount = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength,iPossibleHitSpace)
 		atupMarkerCounts.append(tupCount)
 
