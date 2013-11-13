@@ -46,6 +46,8 @@ def CheckFormat ( strFile):
 		strFormat = "fasta"
 	elif strFile.find(".fna") > -1:
 		strFormat = "fasta"
+	elif strFile.find(".faa") > -1:
+		strFormat = "fasta"
 	else:
 		strFormat = "unknown"
 
@@ -77,6 +79,15 @@ def CheckSize(iSize, iMax):
 def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects):
 
 	strFields = "query+target+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql+tl+qs+ts"
+
+	subprocess.check_call(["time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
+		c_strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
+		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,"--maxaccepts",str(iAccepts),
+		"--maxrejects",str(iRejects),"--threads", str(iThreads)])
+
+def RunUSEARCHGenome ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects):
+
+	strFields = "target+query+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql+tl+qs+ts"
 
 	subprocess.check_call(["time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
 		c_strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
