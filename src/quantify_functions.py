@@ -289,7 +289,7 @@ dAlnLength,strFile):
 			dCount =  dCount *  (1000 / (iWGSReads / 1e9))
 		else:
 			dCount = 0
-			sys.stderr.write("WARNING: 0 Reads found in wgs file:" + strFile )
+			sys.stderr.write("WARNING: 0 Reads found in file:" + strFile )
 		tupCount = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength,iPossibleHitSpace)
 		atupMarkerCounts.append(tupCount)
 

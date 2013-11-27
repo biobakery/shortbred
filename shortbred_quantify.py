@@ -71,6 +71,8 @@ parser.add_argument('--markers', type=str, dest='strMarkers',
 help='Enter the path and name of the genes of interest file (protein seqs).')
 parser.add_argument('--wgs', type=str, dest='strWGS',nargs='+',
 help='Enter the path and name of the WGS file (nucleotide reads).')
+parser.add_argument('--genome', type=str, dest='strGenome',
+help='Enter the path and name of the genome file (faa expected).')
 
 
 #Output
@@ -134,6 +136,22 @@ strMarkerResults = args.strMarkerResults
 if strMarkerResults == "":
 	strMarkerResults = dirTmp + os.sep + "markers.tab"
 
+##############################################################################
+# Determine if profiling WGS or Genome
+if args.strGenome!="" and args.strWGS==None:
+	strMethod = "genome"
+    #We assume that genomes will be a single fasta file, and that they will be
+	# smaller than 900 MB, the upper bound for passing a single file to usearch.
+	strSize = "small"
+	strFormat = "fasta"
+	sys.stderr.write("NOTE:\n\n When running against a bug genome, ShortBRED makes a \n\
+	usearch database from the bug genome and then blasts the markers against it. \n\
+	Please remember to increase \"maxhits\" to a large number, so that multiple \n\
+	markers can hit each bug sequence. \n\n")
+
+else:
+	strMethod = "wgs"
+
 
 ##############################################################################
 # Log the parameters
@@ -147,6 +165,12 @@ with open(strLog, "w") as log:
 		log.write("Sequences: Centroids\n")
 	else:
 		log.write("Sequences: Markers\n")
+	if strMethod=="genome":
+		print "Ran against the genome" + args.strGenome
+
+
+
+
 
 ##############################################################################
 #Initialize Dictionaries, Some Output Files
@@ -182,9 +206,13 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 	dictHitsForMarker[seq.id] = 0
  	dictMarkerLen[seq.id] = len(seq)
 
-#Make a database from the markers
-strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".udb"
-sq.MakedbUSEARCH (args.strMarkers, strDBName)
+#If profiling WGS, make a database from the markers.
+if strMethod=="wgs":
+	strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".udb"
+	sq.MakedbUSEARCH (args.strMarkers, strDBName)
+
+#If profiling genome, make a database from the genome reads in Step 3.
+
 
 ##################################################################################
 #Step 2: Get information on WGS file(s), put it into aaFileInfo.
@@ -197,192 +225,220 @@ knows how to process it efficiently. Each line has the format:
 An example:
     ['SRS011397/SRS011397.denovo_duplicates_marked.trimmed.1.fastq', 'fastq', 'large', 'r:bz2', '/n/CHB/data/hmp/wgs/samplesfqs/SRS011397.tar.bz2']
 """
-astrWGS = args.strWGS
+if strMethod=="wgs":
 
-sys.stderr.write( "\nList of files in WGS set:")
-for strWGS in astrWGS:
-	sys.stderr.write( strWGS + "\n")
+	astrWGS = args.strWGS
 
-aaWGSInfo = []
+	sys.stderr.write( "\nList of files in WGS set:")
+	for strWGS in astrWGS:
+		sys.stderr.write( strWGS + "\n")
 
-for strWGS in astrWGS:
-	strExtractMethod= sq.CheckExtract(strWGS)
+	aaWGSInfo = []
 
-	# If tar file, get details on members, and note corresponding tarfile
-	# Remember that a tarfile has a header block, and then data blocks
-	if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
-		tarWGS = tarfile.open(strWGS,strExtractMethod)
- 		atarinfoFiles = tarWGS.getmembers() #getmembers() returns tarInfo objects
-		tarWGS.close()
+	for strWGS in astrWGS:
+		strExtractMethod= sq.CheckExtract(strWGS)
 
-		for tarinfoFile in atarinfoFiles:
-			if tarinfoFile.isfile(): # This condition confirms that it is a file, not a header.
-				strFormat = sq.CheckFormat(tarinfoFile.name)
-				strSize = sq.CheckSize(tarinfoFile.size, c_iMaxSizeForDirectRun)
-				astrFileInfo = [tarinfoFile.name, strFormat, strSize,strExtractMethod, strWGS ]
-				aaWGSInfo.append(astrFileInfo)
+		# If tar file, get details on members, and note corresponding tarfile
+		# Remember that a tarfile has a header block, and then data blocks
+		if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
+			tarWGS = tarfile.open(strWGS,strExtractMethod)
+	 		atarinfoFiles = tarWGS.getmembers() #getmembers() returns tarInfo objects
+			tarWGS.close()
+
+			for tarinfoFile in atarinfoFiles:
+				if tarinfoFile.isfile(): # This condition confirms that it is a file, not a header.
+					strFormat = sq.CheckFormat(tarinfoFile.name)
+					strSize = sq.CheckSize(tarinfoFile.size, c_iMaxSizeForDirectRun)
+					astrFileInfo = [tarinfoFile.name, strFormat, strSize,strExtractMethod, strWGS ]
+					aaWGSInfo.append(astrFileInfo)
 
 
-	elif (strExtractMethod== 'bz2'):
-		strWGSOut = strWGS.replace(".bz2","")
-		strFormat = sq.CheckFormat(strWGSOut)
-		# It is not possible to get bz2 filesize in advance, so we just assume it is large.
-		strSize = "large"
-		astrFileInfo = [strWGSOut, strFormat, strSize,strExtractMethod, strWGS ]
-		aaWGSInfo.append(astrFileInfo)
-
-	# Otherwise, get file details directly
-	else:
-		strFormat = sq.CheckFormat(strWGS)
-		dFileInMB = round(os.path.getsize(strWGS)/1048576.0,1)
-		if dFileInMB < c_iMaxSizeForDirectRun:
-			strSize = "small"
-		else:
+		elif (strExtractMethod== 'bz2'):
+			strWGSOut = strWGS.replace(".bz2","")
+			strFormat = sq.CheckFormat(strWGSOut)
+			# It is not possible to get bz2 filesize in advance, so we just assume it is large.
 			strSize = "large"
-		astrFileInfo = [strWGS, strFormat, strSize,strExtractMethod, "no_tar" ]
-		aaWGSInfo.append(astrFileInfo)
+			astrFileInfo = [strWGSOut, strFormat, strSize,strExtractMethod, strWGS ]
+			aaWGSInfo.append(astrFileInfo)
+
+		# Otherwise, get file details directly
+		else:
+			strFormat = sq.CheckFormat(strWGS)
+			dFileInMB = round(os.path.getsize(strWGS)/1048576.0,1)
+			if dFileInMB < c_iMaxSizeForDirectRun:
+				strSize = "small"
+			else:
+				strSize = "large"
+			astrFileInfo = [strWGS, strFormat, strSize,strExtractMethod, "no_tar" ]
+			aaWGSInfo.append(astrFileInfo)
 
 
-sys.stderr.write( "\nList of files in WGS set (after unpacking tarfiles):")
-for astrWGS in aaWGSInfo:
-	sys.stderr.write( astrWGS[0]+" ")
+	sys.stderr.write( "\nList of files in WGS set (after unpacking tarfiles):")
+	for astrWGS in aaWGSInfo:
+		sys.stderr.write( astrWGS[0]+" ")
 
-sys.stderr.write("\n\n")
+	sys.stderr.write("\n\n")
 ##################################################################################
 # Step 3: Call USEARCH on each WGS file, (break into smaller files if needed), store hit counts.
-
+#         OR run USEARCH on each individual genome.
 # Initialize values for the sample
 iTotalReadCount = 0
 dAvgReadLength  = 0.0
 iMin = 999 #Can be any integer. Just a dummy to initialize iMin before calculations begin.
 iWGSFileCount = 1
 
-with open(strLog, "a") as log:
-	log.write('\t'.join(["# FileName","size","format","extract method","tar file (if part of one)"]) + '\n')
-	log.write("Reads processed" + "\n")
+if strMethod=="genome":
 
-for astrFileInfo in aaWGSInfo:
-	strWGS,strFormat,strSize,strExtractMethod,strMainTar = astrFileInfo
-	with open(strLog, "a") as log:
-		log.write(str(iWGSFileCount) + ": " + '\t'.join(astrFileInfo) + '\n')
+
+	strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strGenome)) + ".udb"
+	sq.MakedbUSEARCH (args.strGenome, strDBName)
+
+
+	sq.RunUSEARCHGenome(strMarkers=args.strGenome, strWGS=args.strMarkers,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
+	iAccepts=args.iMaxHits, iRejects=args.iMaxRejects )
+	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+		dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
+		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
+
 	iWGSReads = 0
-	sys.stderr.write( "Working on file " + str(iWGSFileCount) + " of " + str(len(aaWGSInfo)))
+	for seq in SeqIO.parse(args.strGenome, "fasta"):
+		iWGSReads+=1
+		iTotalReadCount+=1
+		dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
+		iMin = min(iMin,len(seq))
 
-	#If it's a small fasta file, just give it to USEARCH directly.
-	if strSize=="small" and strFormat=="fasta":
-		sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
-		iAccepts=args.iMaxHits, iRejects=args.iMaxRejects )
-		sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-			dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-			iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
+# Otherwise, profile wgs
+else:
+	with open(strLog, "a") as log:
+		log.write('\t'.join(["# FileName","size","format","extract method","tar file (if part of one)"]) + '\n')
+		log.write("Reads processed" + "\n")
+
+	for astrFileInfo in aaWGSInfo:
+		strWGS,strFormat,strSize,strExtractMethod,strMainTar = astrFileInfo
+		with open(strLog, "a") as log:
+			log.write(str(iWGSFileCount) + ": " + '\t'.join(astrFileInfo) + '\n')
+		iWGSReads = 0
+		sys.stderr.write( "Working on file " + str(iWGSFileCount) + " of " + str(len(aaWGSInfo)))
+
+		#If it's a small fasta file, just give it to USEARCH directly.
+		if strSize=="small" and strFormat=="fasta":
+			sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
+			iAccepts=args.iMaxHits, iRejects=args.iMaxRejects )
+			sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
+				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
 
 
-		for seq in SeqIO.parse(strWGS, "fasta"):
-			iWGSReads+=1
-			iTotalReadCount+=1
-			dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
-			iMin = min(iMin,len(seq))
-
-
-		"""
-		#Skip the file if the format is unknown.
-		elif strFormat == "unknown":
-			sys.stderr.write("WARNING: Skipped file with unknown format: " + strWGS + "\n")
-			with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:
-				log.write("WARNING: Skipped file with unknown format: " + strWGS + "\n")
-		"""
-
-	#Otherwise, convert the file as needed to into small fasta files. Call USEARCH and store the counts for each small file.
-	else:
-		iReadsInSmallFile = 0
-		iFileCount = 1
-
-		strFASTAName = str(dirTmp) + os.sep + 'fasta.fna'
-
-		#Unpack file with appropriate extract method
-		if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
-			sys.stderr.write("Unpacking tar file... this often takes several minutes. ")
-			tarWGS = tarfile.open(strMainTar,strExtractMethod)
-			streamWGS = tarWGS.extractfile(strWGS)
-		elif strExtractMethod== 'gz':
-			sys.stderr.write("Unpacking gz file... this may take several minutes. ")
-			streamWGS = gzip.open(strWGS, 'rb')
-		elif strExtractMethod== 'bz2':
-			sys.stderr.write("Unpacking bz2 file... this may take several minutes. ")
-			sys.stderr.write(strMainTar)
-			#tarWGS = tarfile.open(strMainTar,'r|bz2')
-			streamWGS = bz2.BZ2File(strMainTar,'r')
-			#streamWGS = tarWGS.extractfile(strWGS)
-		else:
-			streamWGS = open(strWGS,'r')
-
-		#Open file for writing
-		fileFASTA = open(strFASTAName, 'w')
-
-		#TEMPORARY TEST!
-		if strFormat=="unknown":
-			strFormat="fastq"
-		if streamWGS==None:
-			with open(strLog, "a") as log:
-				log.write("File was empty." + '\n')
-
-		#Start the main loop to get everything in streamWGS -> small fasta file -> counted and stored
-		for seq in SeqIO.parse(streamWGS, strFormat):
-			#Added to keep usearch from hitting seqs that are too long.
-			if len(seq)< 50000:
-				SeqIO.write(seq,fileFASTA,"fasta")
-				iReadsInSmallFile+=1
-				iTotalReadCount+=1
+			for seq in SeqIO.parse(strWGS, "fasta"):
 				iWGSReads+=1
-
-				# Have a running average of the read length. This covers all of the reads in the original input file.
+				iTotalReadCount+=1
 				dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
-				iMin = min(len(seq),iMin)
+				iMin = min(iMin,len(seq))
 
-			#Close the temp fasta file once it has enough reads.
-			if (iReadsInSmallFile>=c_iReadsForFile):
+
+			"""
+			#Skip the file if the format is unknown.
+			elif strFormat == "unknown":
+				sys.stderr.write("WARNING: Skipped file with unknown format: " + strWGS + "\n")
+				with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:
+					log.write("WARNING: Skipped file with unknown format: " + strWGS + "\n")
+			"""
+
+		#Otherwise, convert the file as needed to into small fasta files. Call USEARCH and store the counts for each small file.
+		else:
+			iReadsInSmallFile = 0
+			iFileCount = 1
+
+			strFASTAName = str(dirTmp) + os.sep + 'fasta.fna'
+
+			#Unpack file with appropriate extract method
+			if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
+				sys.stderr.write("Unpacking tar file... this often takes several minutes. ")
+				tarWGS = tarfile.open(strMainTar,strExtractMethod)
+				streamWGS = tarWGS.extractfile(strWGS)
+			elif strExtractMethod== 'gz':
+				sys.stderr.write("Unpacking gz file... this may take several minutes. ")
+				streamWGS = gzip.open(strWGS, 'rb')
+			elif strExtractMethod== 'bz2':
+				sys.stderr.write("Unpacking bz2 file... this may take several minutes. ")
+				sys.stderr.write(strMainTar)
+				#tarWGS = tarfile.open(strMainTar,'r|bz2')
+				streamWGS = bz2.BZ2File(strMainTar,'r')
+				#streamWGS = tarWGS.extractfile(strWGS)
+			else:
+				streamWGS = open(strWGS,'r')
+
+			#Open file for writing
+			fileFASTA = open(strFASTAName, 'w')
+
+			#TEMPORARY TEST!
+			if strFormat=="unknown":
+				strFormat="fastq"
+			if streamWGS==None:
+				with open(strLog, "a") as log:
+					log.write("File was empty." + '\n')
+
+			#Start the main loop to get everything in streamWGS -> small fasta file -> counted and stored
+			for seq in SeqIO.parse(streamWGS, strFormat):
+				#Added to keep usearch from hitting seqs that are too long.
+				if len(seq)< 50000:
+					SeqIO.write(seq,fileFASTA,"fasta")
+					iReadsInSmallFile+=1
+					iTotalReadCount+=1
+					iWGSReads+=1
+
+					# Have a running average of the read length. This covers all of the reads in the original input file.
+					dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
+					iMin = min(len(seq),iMin)
+
+				#Close the temp fasta file once it has enough reads.
+				if (iReadsInSmallFile>=c_iReadsForFile):
+					fileFASTA.close()
+
+					#Run Usearch, store results
+					strOutputName = str(dirTmp) + os.sep + "wgs_" + str(iWGSFileCount).zfill(2) + "out_" + str(iFileCount).zfill(2) + ".out"
+					sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,
+					iThreads=args.iThreads,dID=args.dID, iAccepts=args.iMaxHits, iRejects=args.iMaxRejects  )
+					sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
+					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
+					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
+
+					#Reset count, make new file
+					iReadsInSmallFile = 0
+					iFileCount+=1
+					fileFASTA = open(strFASTAName, 'w')
+
+
+			if(iReadsInSmallFile>0):
 				fileFASTA.close()
 
 				#Run Usearch, store results
 				strOutputName = str(dirTmp) + os.sep + "wgs_" + str(iWGSFileCount).zfill(2) + "out_" + str(iFileCount).zfill(2) + ".out"
 				sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,
-				iThreads=args.iThreads,dID=args.dID, iAccepts=args.iMaxHits, iRejects=args.iMaxRejects  )
-				sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
+				iThreads=args.iThreads,dID=args.dID,iAccepts=args.iMaxHits, iRejects=args.iMaxRejects )
+				sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
 				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
 
-				#Reset count, make new file
-				iReadsInSmallFile = 0
-				iFileCount+=1
-				fileFASTA = open(strFASTAName, 'w')
+		with open(strLog, "a") as log:
+			log.write(str(iWGSReads) + '\n')
 
-
-		if(iReadsInSmallFile>0):
-			fileFASTA.close()
-
-			#Run Usearch, store results
-			strOutputName = str(dirTmp) + os.sep + "wgs_" + str(iWGSFileCount).zfill(2) + "out_" + str(iFileCount).zfill(2) + ".out"
-			sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,
-			iThreads=args.iThreads,dID=args.dID,iAccepts=args.iMaxHits, iRejects=args.iMaxRejects )
-			sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-			dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-			iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
-
-	with open(strLog, "a") as log:
-		log.write(str(iWGSReads) + '\n')
-
-	iWGSFileCount += 1
-	if (strFormat != "fasta" or strSize != "small"):
-		streamWGS.close()
-	#Close the tarfile if you had one open.
-	if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
-		tarWGS.close()
+		iWGSFileCount += 1
+		if (strFormat != "fasta" or strSize != "small"):
+			streamWGS.close()
+		#Close the tarfile if you had one open.
+		if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
+			tarWGS.close()
 ##################################################################################
 # Step 4: Calculate ShortBRED Counts, print results, print log info.
+if strMethod=="genome":
+	strInputFile = args.strGenome
+elif strMethod=="wgs":
+	strInputFile=args.strWGS
 
 sq.CalculateCounts(strResults = args.strResults, strMarkerResults=strMarkerResults,dictHitCounts=dictBLAST,
 dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-dReadLength = float(args.iAvgReadBP), iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,strFile = args.strWGS)
+dReadLength = float(args.iAvgReadBP), iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,strFile = strInputFile)
 
 # Add final details to log
 with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:
