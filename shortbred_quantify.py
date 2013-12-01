@@ -51,9 +51,6 @@ from Bio import SeqIO
 
 ################################################################################
 # Constants
-
-c_strUSEARCH	= "usearch"
-
 c_iMaxSizeForDirectRun = 900 # File size in MB. Any WGS file smaller than this
 							 # does not need to made into smaller WGS files.
 
@@ -67,43 +64,47 @@ This program takes a set of protein family markers and wgs file as input, \
 and produces a relative abundance table.')
 
 #Input
-parser.add_argument('--markers', type=str, dest='strMarkers',
+grpInput = parser.add_argument_group('Input:')
+grpInput.add_argument('--markers', type=str, dest='strMarkers',
 help='Enter the path and name of the genes of interest file (protein seqs).')
-parser.add_argument('--wgs', type=str, dest='strWGS',nargs='+',
+grpInput.add_argument('--wgs', type=str, dest='strWGS',nargs='+',
 help='Enter the path and name of the WGS file (nucleotide reads).')
-parser.add_argument('--genome', type=str, dest='strGenome',
+grpInput.add_argument('--genome', type=str, dest='strGenome',
 help='Enter the path and name of the genome file (faa expected).')
 
 
 #Output
-parser.add_argument('--results', type=str, dest='strResults', default = "results.txt",
-help='Enter the name of the results file.')
-parser.add_argument('--SBhits', type=str, dest='strHits',
+grpOutput = parser.add_argument_group('Output:')
+grpOutput.add_argument('--results', type=str, dest='strResults', default = "results.tab",
+help='Enter a name for your results file.')
+grpOutput.add_argument('--SBhits', type=str, dest='strHits',
 help='ShortBRED will print the hits it considers positives to this file.', default="")
-parser.add_argument('--blastout', type=str, dest='strBlast', default="",
+grpOutput.add_argument('--blastout', type=str, dest='strBlast', default="",
 help='Enter the name of the blast-formatted output file from USEARCH.')
-parser.add_argument('--marker_results', type=str, dest='strMarkerResults', default="",
+grpOutput.add_argument('--marker_results', type=str, dest='strMarkerResults', default="",
 help='Enter the name of the output for marker level results.')
+grpOutput.add_argument('--tmp', type=str, dest='strTmp', default ="",help='Enter the path and name of the tmp directory.')
 
-
-parser.add_argument('--tmp', type=str, dest='strTmp', default ="",help='Enter the path and name of the tmp directory.')
+grpPrograms = parser.add_argument_group('Programs:')
+grpPrograms.add_argument('--usearch', default ="usearch", type=str, dest='strUSEARCH', help='Provide the path to usearch. Default call will be \"usearch\".')
 
 #Parameters - Matching Settings
-parser.add_argument('--id', type=float, dest='dID', help='Enter the percent identity for the match', default = .95)
-parser.add_argument('--pctlength', type=float, dest='dAlnLength', help='Enter the minimum alignment length. The default is 20', default = 0.95)
-parser.add_argument('--minreadBP', type=float, dest='iMinReadBP', help='Enter the lower bound for read lengths that shortbred witll process', default = 90)
-parser.add_argument('--avgreadBP', type=float, dest='iAvgReadBP', help='Enter the average read length.', default = 100)
-parser.add_argument('--maxhits', type=float, dest='iMaxHits', help='Enter the number of markers allowed to hit read.', default = 1)
-parser.add_argument('--maxrejects', type=float, dest='iMaxRejects', help='Enter the number of markers allowed to hit read.', default = 32)
+grpParam = parser.add_argument_group('Parameters:')
+grpParam.add_argument('--id', type=float, dest='dID', help='Enter the percent identity for the match', default = .95)
+grpParam.add_argument('--pctlength', type=float, dest='dAlnLength', help='Enter the minimum alignment length. The default is 20', default = 0.95)
+grpParam.add_argument('--minreadBP', type=float, dest='iMinReadBP', help='Enter the lower bound for read lengths that shortbred witll process', default = 90)
+grpParam.add_argument('--avgreadBP', type=float, dest='iAvgReadBP', help='Enter the average read length.', default = 100)
+grpParam.add_argument('--maxhits', type=float, dest='iMaxHits', help='Enter the number of markers allowed to hit read.', default = 1)
+grpParam.add_argument('--maxrejects', type=float, dest='iMaxRejects', help='Enter the number of markers allowed to hit read.', default = 32)
 #parser.add_argument('--tmid', type=float, dest='dTMID', help='Enter the percent identity for a TM match', default = .95)
 #parser.add_argument('--qmid', type=float, dest='dQMID', help='Enter the percent identity for a QM match', default = .95)
 #parser.add_argument('--alnTM', type=int, dest='iAlnMax', help='Enter a bound for TM alignments, such that aln must be>= min(markerlength,alnTM)', default = 20)
 
 #Parameters - Matching Various
-parser.add_argument('--bz2', type=bool, dest='fbz2file', help='Set to True if using a tar.bz2 file', default = False)
-parser.add_argument('--threads', type=int, dest='iThreads', help='Enter the number of CPUs available for USEARCH.', default=1)
-parser.add_argument('--notmarkers', type=str, dest='strCentroids',default="N", help='This flag is used when testing centroids for evaluation purposes.')
-parser.add_argument('--small', type=bool, dest='bSmall',default=False, help='This flag is used to indicate the input file is small enough for USEARCH.')
+grpParam.add_argument('--bz2', type=bool, dest='fbz2file', help='Set to True if using a tar.bz2 file', default = False)
+grpParam.add_argument('--threads', type=int, dest='iThreads', help='Enter the number of CPUs available for USEARCH.', default=1)
+grpParam.add_argument('--notmarkers', type=str, dest='strCentroids',default="N", help='This flag is used when testing centroids for evaluation purposes.')
+grpParam.add_argument('--small', type=bool, dest='bSmall',default=False, help='This flag is used to indicate the input file is small enough for USEARCH.')
 
 #parser.add_argument('--length', type=int, dest='iLength', help='Enter the minimum length of the markers.')
 
@@ -209,7 +210,7 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 #If profiling WGS, make a database from the markers.
 if strMethod=="wgs":
 	strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".udb"
-	sq.MakedbUSEARCH (args.strMarkers, strDBName)
+	sq.MakedbUSEARCH (args.strMarkers, strDBName,args.strUSEARCH)
 
 #If profiling genome, make a database from the genome reads in Step 3.
 
@@ -291,11 +292,11 @@ if strMethod=="genome":
 
 
 	strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strGenome)) + ".udb"
-	sq.MakedbUSEARCH (args.strGenome, strDBName)
+	sq.MakedbUSEARCH (args.strGenome, strDBName,args.strUSEARCH)
 
 
 	sq.RunUSEARCHGenome(strMarkers=args.strGenome, strWGS=args.strMarkers,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
-	iAccepts=args.iMaxHits, iRejects=args.iMaxRejects )
+	iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
 	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 		dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
 		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
@@ -323,7 +324,7 @@ else:
 		#If it's a small fasta file, just give it to USEARCH directly.
 		if strSize=="small" and strFormat=="fasta":
 			sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
-			iAccepts=args.iMaxHits, iRejects=args.iMaxRejects )
+			iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
 			sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
 				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
@@ -398,7 +399,7 @@ else:
 					#Run Usearch, store results
 					strOutputName = str(dirTmp) + os.sep + "wgs_" + str(iWGSFileCount).zfill(2) + "out_" + str(iFileCount).zfill(2) + ".out"
 					sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,
-					iThreads=args.iThreads,dID=args.dID, iAccepts=args.iMaxHits, iRejects=args.iMaxRejects  )
+					iThreads=args.iThreads,dID=args.dID, iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH  )
 					sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
 					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
 					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
@@ -415,7 +416,7 @@ else:
 				#Run Usearch, store results
 				strOutputName = str(dirTmp) + os.sep + "wgs_" + str(iWGSFileCount).zfill(2) + "out_" + str(iFileCount).zfill(2) + ".out"
 				sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,
-				iThreads=args.iThreads,dID=args.dID,iAccepts=args.iMaxHits, iRejects=args.iMaxRejects )
+				iThreads=args.iThreads,dID=args.dID,iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
 				sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
 				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))

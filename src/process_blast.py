@@ -218,7 +218,7 @@ def MakeFamilyFastaFiles ( strMapFile, fileFasta, dirOut):
 		f.close()
 
 ###############################################################################
-def ClusterFams(dirClust, dCLustID, strOutputFile, dThresh):
+def ClusterFams(dirClust, dCLustID, strOutputFile, dThresh,strMUSCLE):
 #Clusters all of the family files made by MakeFamilyFastaFiles.
 
     dirFams = dirClust + os.sep + "fams"
@@ -253,7 +253,7 @@ def ClusterFams(dirClust, dCLustID, strOutputFile, dThresh):
 
 		if iSeqCount>1:
 		    #Call muscle to produce an alignment
-			subprocess.check_call(["muscle", "-in", str(fileFasta), "-out", str(fileAlign)])
+			subprocess.check_call([strMUSCLE, "-in", str(fileFasta), "-out", str(fileAlign)])
 
             # Use BioPython's "dumb consensus" feature to get consensus sequence
 			algnFasta = AlignIO.read(str(fileAlign), "fasta")

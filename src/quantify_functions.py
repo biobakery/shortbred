@@ -31,12 +31,11 @@ import sys
 import math
 import os
 
-c_strUSEARCH	= "usearch"
+
 c_iAlnCentroids = 30
 
-def MakedbUSEARCH ( strMarkers, strDBName):
-	#subprocess.check_call(c_strUSEARCH)
-	p = subprocess.check_call([c_strUSEARCH, "--makeudb_usearch", strMarkers,"--output", strDBName])
+def MakedbUSEARCH ( strMarkers, strDBName,strUSEARCH):
+	p = subprocess.check_call([strUSEARCH, "--makeudb_usearch", strMarkers,"--output", strDBName])
 	return
 
 def CheckFormat ( strFile):
@@ -76,21 +75,21 @@ def CheckSize(iSize, iMax):
 
 	return strSize
 
-def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects):
+def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects,strUSEARCH):
 
 	strFields = "query+target+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql+tl+qs+ts"
 
 	subprocess.check_call(["time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
-		c_strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
+		strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
 		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,"--maxaccepts",str(iAccepts),
 		"--maxrejects",str(iRejects),"--threads", str(iThreads)])
 
-def RunUSEARCHGenome ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects):
+def RunUSEARCHGenome ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects,strUSEARCH):
 
 	strFields = "target+query+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql+tl+qs+ts"
 
 	subprocess.check_call(["time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
-		c_strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
+		strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
 		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,"--maxaccepts",str(iAccepts),
 		"--maxrejects",str(iRejects),"--threads", str(iThreads)])
 

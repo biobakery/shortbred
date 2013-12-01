@@ -50,9 +50,6 @@ from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO
 
-c_strCDHIT	= "cd-hit"
-c_strTIME	= "time"
-c_strBLASTP = "/n/home11/jkaminski/blast/ncbi-blast-2.2.28+/bin/blastp"
 
 ###############################################################################
 #COMMAND LINE ARGUMENTS
@@ -63,7 +60,7 @@ The minimum input files required to run the program are: \n \
 \t [--ref] 2) A fasta file of reference proteins  \n \
 The program will output a file fasta file of markers [--markers]. \n \n\
 Example: \n \
-\t$ ./shortbred_identify.py --goi  prots.faa --ref refprots.faa --markers markers.faa \n \
+\t$ ./ python shortbred_identify.py --goi example/input_prots.faa --ref example/ref_prots.faa --tmp tmp_example \n \
 Please note that a large number of comparisons can take several hours to run. [Example: 2,000 prots of interest against a reference set of 5,000,000 prots]  \n \n \
 It is also possible to use an existing BLAST protein database as your reference set, or modify parameters from an earlier ShortBRED run. \
 Please see the documentation for more details.',formatter_class=RawTextHelpFormatter)
@@ -77,20 +74,21 @@ Please see the documentation for more details.',formatter_class=RawTextHelpForma
 #(map_in) is required for Mode 3, and is an optional input for Modes 1 and 2. If supplied in modes 1 and 2, ShortBRED will map proteins to families according to the pairs in map_in.
 #(map_in) is required in Mode 3 because it contains
 
-grpInput = parser.add_argument_group('Input:')
+grpInput = parser.add_argument_group('Input')
 grpInput.add_argument('--goi', type=str, dest='sGOIProts',default= "", help='Enter the path and name of the proteins of interest file.')
 grpInput.add_argument('--ref', type=str, dest='sRefProts',default= "", help='Enter the path and name of the file containing reference protein sequences.')
 grpInput.add_argument('--refdb', type=str, dest='dirRefDB', default= "",help='Can be specified in place of reference proteins [--ref]. Enter the path and name for a blastdb of reference proteins.')
+grpInput.add_argument('--goiblast', type=str, default = "", dest='sGOIBlast', help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the blast results from the goi-to-goi search.')
+grpInput.add_argument('--refblast', type=str, dest='sRefBlast', default= "", help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the blast results from the goi-to-ref search.')
+grpInput.add_argument('--goiclust', type=str, default ="", dest='sClust', help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the clustered genes of interest file.')
+grpInput.add_argument('--map_in', type=str, dest='sMapIn',default="", help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the two column file connecting proteins to families.')
+
+
+
 #OUTPUT
 #Markers, and marker-to-prot_family map
-parser.add_argument('--markers', type=str, default="markers.faa", dest='sMarkers', help='Enter name and path for the marker output file')
-
-
-parser.add_argument('--goiblast', type=str, default = "", dest='sGOIBlast', help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the blast results from the goi-to-goi search.')
-parser.add_argument('--refblast', type=str, dest='sRefBlast', default= "", help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the blast results from the goi-to-ref search.')
-parser.add_argument('--goiclust', type=str, default ="", dest='sClust', help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the clustered genes of interest file.')
-parser.add_argument('--map_in', type=str, dest='sMapIn',default="", help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the two column file connecting proteins to families.')
-
+grpOutput = parser.add_argument_group('Output')
+grpOutput.add_argument('--markers', type=str, default="markers.faa", dest='sMarkers', help='Enter name and path for the marker output file')
 
 
 # DB NOTE: Put in a few examples there. Maybe even provide a few sample fasta files.
@@ -98,11 +96,11 @@ parser.add_argument('--map_in', type=str, dest='sMapIn',default="", help='Used w
 #	Parameters, etc.
 
 
-parser.add_argument('--map_out', type=str, default="gene-centroid.uc", dest='sMap', help='Enter name and path for the output map file')
+grpOutput.add_argument('--map_out', type=str, default="gene-centroid.uc", dest='sMap', help='Enter name and path for the output map file')
 
 
 #PARAMETERS
-grpParam = parser.add_argument_group('Parameters:')
+grpParam = parser.add_argument_group('Parameters')
 #Clustering
 grpParam.add_argument('--clustid',default = .90, type=float, dest='dClustID', help='Enter the identity cutoff for clustering the genes of interest. Examples: .90, .85, .10,...')
 grpParam.add_argument('--qclustid',default = .90, type=float, dest='dQClustID', help='Enter the identity cutoff for clustering the quasi-markers. Examples: .90, .85, .10,...')
@@ -124,7 +122,18 @@ grpParam.add_argument('--qmlength', type=int, dest='iQMlength',default=33, help=
 grpParam.add_argument('--tmpdir', default ="", type=str, dest='sTmp', help='Set directory for temporary output files.')
 
 
+grpPrograms = parser.add_argument_group('Programs')
+grpPrograms.add_argument('--usearch', default ="usearch", type=str, dest='strUSEARCH', help='Provide the path to usearch. Default call will be \"usearch\".')
+grpPrograms.add_argument('--muscle', default ="muscle", type=str, dest='strMUSCLE', help='Provide the path to muscle. Default call will be \"muscle\".')
+grpPrograms.add_argument('--cdhit', default ="cd-hit", type=str, dest='strCDHIT', help='Provide the path to usearch. Default call will be \"cd-hit\".')
+grpPrograms.add_argument('--blastp', default ="blastp", type=str, dest='strBLASTP', help='Provide the path to blastp. Default call will be \"blastp\".')
+
 args = parser.parse_args()
+
+c_strTIME	= "time"
+strCDHIT = args.strCDHIT
+strBLASTP = args.strBLASTP
+strMUSCLE = args.strMUSCLE
 
 if args.iLenMin==0:
 	#If no minimum alignment length is given, use 80% of minimum marker length and round up.
@@ -204,7 +213,7 @@ if(iMode==1 or iMode==2):
 	#Cluster in cdhit
 	subprocess.check_call([c_strTIME, "-o",
 		  dirTime + os.sep + "goiclust.time",
-		  c_strCDHIT, "-i", str(args.sGOIProts),
+		  strCDHIT, "-i", str(args.sGOIProts),
 			"-o", strClustFile, "-d", "0",
 			"-c", str(args.dClustID), "-b", "10","-g", "1"])
 	strMapFile = dirClust + os.sep + "clust.map"
@@ -222,7 +231,7 @@ if(iMode==1 or iMode==2):
 
 	sys.stderr.write( "Aligning sequences in each family, producing consensus sequences...\n")
 	#Call MUSCLE + EMBOSS_CONS OR DUMB CONSENSUS to get consensus seq for each cluster,overwrite the CD-HIT cluster file
-	pb.ClusterFams(dirClust, args.dClustID,strClustFile,args.dConsThresh )
+	pb.ClusterFams(dirClust, args.dClustID,strClustFile,args.dConsThresh,args.strMUSCLE )
 
 	sys.stderr.write("Making BLAST database for the family consensus sequences...\n")
 	#Make database from goi centroids
@@ -273,13 +282,13 @@ if(iMode==1 or iMode==2):
 	#Blast clust file against goidb
  	sys.stderr.write( "BLASTing the consensus family sequences against themselves...\n")
 	subprocess.check_call(["time", "-o", dirTime + os.sep +"goisearch.time",
-		c_strBLASTP, "-query", strClustFile, "-db", strClustDB,
+		strBLASTP, "-query", strClustFile, "-db", strClustDB,
 		"-out", strBlastSelf] + astrBlastParams)
 
 	#Blast clust file against refdb
  	sys.stderr.write("BLASTing the consensus family sequences against the reference protein sequences...\n")
 	subprocess.check_call(["time", "-o", dirTime + os.sep +"refsearch.time",
-		c_strBLASTP, "-query", strClustFile, "-db",strRefDBPath,
+		strBLASTP, "-query", strClustFile, "-db",strRefDBPath,
 		"-out", strBlastRef] + astrBlastParams)
 
 ##################################################################################################
@@ -360,25 +369,26 @@ sys.stderr.write( "Found True Markers...\n")
 #sys.stderr.write("The Short region is " + str(int(iShort)) )
 
 atupQuasiMarkers1 = pb.QMCheckShortRegion(setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iQMlength*.95)),iMarkerLen=args.iQMlength)
-setGotQM = zip(*atupQuasiMarkers1)[0]
-sys.stderr.write( "Found "+str(len(atupQuasiMarkers1)) +" QM-Junction Markers...\n")
 
 
-setLeftover = setLeftover.difference(setGotQM)
-
-
-# Change these lines to determine how QM's are made
-atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iQMlength,args.iThresh, args.iTotLength)
-atupQuasiMarkers = atupQuasiMarkers1 + atupQuasiMarkers2
-sys.stderr.write("Found " +str(len(atupQuasiMarkers2)) + " QM-Minimals.\n")
-
-
-if(len(atupQuasiMarkers)) > 0:
+if len(atupQuasiMarkers1)>0:
 	bHasQuasi = True
-	sys.stderr.write( "Found first set of Quasi Markers...\n")
+	#sys.stderr.write( "Making first set of Quasi Markers...\n")
+	sys.stderr.write( "Found "+str(len(atupQuasiMarkers1)) +" QM-Junction Markers...\n")
 else:
 	bHasQuasi = False
 	sys.stderr.write( "No Quasi Markers needed...\n")
+
+if bHasQuasi:
+	setGotQM = zip(*atupQuasiMarkers1)[0]
+	setLeftover = setLeftover.difference(setGotQM)
+
+	# Change these lines to determine how QM's are made
+	atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iQMlength,args.iThresh, args.iTotLength)
+	atupQuasiMarkers = atupQuasiMarkers1 + atupQuasiMarkers2
+	sys.stderr.write("Found " +str(len(atupQuasiMarkers2)) + " QM-Minimals.\n")
+
+
 
 #Replace AA's with +'s in True Markers
 for key in setHasMarkers:
@@ -429,7 +439,7 @@ if(bHasQuasi):
 		for prot, fam in sorted(dictFams.items(), key = lambda(prot, fam): (fam,prot)):
 				fFinalMap.write(fam + "\t" + prot + "\n")
 
-log.write("QM Families, after clustering:\t" +str(len(set(dictQuasiClust.values()))) + "\n")
+	log.write("QM Families, after clustering:\t" +str(len(set(dictQuasiClust.values()))) + "\n")
 
 #Print AA with overlap area removed to premarkers.txt
 strGeneName = ""
