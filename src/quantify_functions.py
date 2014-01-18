@@ -285,7 +285,7 @@ dAlnLength,strFile):
 			strProtFamily = mtchProtStub.group(1)
 
 		if iWGSReads >0:
-			dCount =  dCount *  (1000 / (iWGSReads / 1e9))
+			dCount =  dCount *  (1e12 / iWGSReads)
 		else:
 			dCount = 0
 			sys.stderr.write("WARNING: 0 Reads found in file:" + strFile )
