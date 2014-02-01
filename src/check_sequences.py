@@ -33,6 +33,11 @@ from Bio import SeqIO
 import re
 import sys
 import datetime
+import argparse
+
+parser = argparse.ArgumentParser(description='This program checks for short seqs, and nucleotide seqs.')
+parser.add_argument('--minlength', type=int, dest='iN', help='Enter the the minimum length for a sequence.',default =1)
+args = parser.parse_args()
 
 def getSeqs(fileFasta):
 
@@ -56,7 +61,8 @@ for x in aSeqs:
 
 #print new list to fasta file
 for seq in aSeqs:
-    SeqIO.write( seq, sys.stdout, "fasta")
+	if len(seq) > args.iN:
+		SeqIO.write( seq, sys.stdout, "fasta")
 
 
 
