@@ -498,7 +498,7 @@ if(bHasQuasi):
 	dictGOIGenes = pb.getGeneData(open(strClustFile))
 
 	# Output info to txt file
-	strQMOut = dirTmp+os.sep+"QMtest.txt"
+	strQMOut = dirTmp+os.sep+"QMInformation.txt"
 
 	atupQM = pb.UpdateQMHeader(atupQM,dictGOIHits,dictRefHits, strQMOut,dictGOIGenes)
 
