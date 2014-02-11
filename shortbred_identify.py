@@ -101,27 +101,27 @@ grpOutput.add_argument('--map_out', type=str, default="gene-centroid.uc", dest='
 
 #PARAMETERS
 grpParam = parser.add_argument_group('Parameters')
-#Clustering
+# Clustering
 grpParam.add_argument('--clustid',default = .90, type=float, dest='dClustID', help='Enter the identity cutoff for clustering the genes of interest. Examples: .90, .85, .10,...')
 grpParam.add_argument('--qclustid',default = .90, type=float, dest='dQClustID', help='Enter the identity cutoff for clustering the quasi-markers. Examples: .90, .85, .10,...')
 grpParam.add_argument('--consthresh',default = .70, type=float, dest='dConsThresh', help='Enter the consensus threshold for assigning AA\'s in the family alignments to the consensus sequences. The default is .70. Examples: .60, .70, .80,...')
 
-#BLAST Search
+# BLAST Search
 grpParam.add_argument('--threads', type=int, default=1, dest='iThreads', help='Enter the number of threads to use.')
 grpParam.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity minimum for a short, high-identity region. Examples: .90, .85, .10,...')
 grpParam.add_argument('--len', default = .10, type=float, dest='dL', help='Enter the length maximum for a short, high-identity region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
 grpParam.add_argument('--minAln', default = 0, type=int, dest='iLenMin', help='Enter the minimum for a short, high-identity region. Examples: 10, 20, 30,... ')
 
-#Markers
+# Markers
 grpParam.add_argument('--markerlength', type=int, default=20, dest='iMLength', help='Enter the minimum marker length.')
 grpParam.add_argument('--totlength', default = 200, type=int, dest='iTotLength', help='Enter the maximum length for the combined markers for a gene. Default is 200')
 grpParam.add_argument('--qthresh', type=int, dest='iThresh',default=1, help='Enter a maximum quasi-score.')
 grpParam.add_argument('--qmlength', type=int, dest='iQMlength',default=33, help='Enter a minimum length for QM\'s.')
 
-#Tmp Directory
+# Tmp Directory
 grpParam.add_argument('--tmpdir', default ="", type=str, dest='sTmp', help='Set directory for temporary output files.')
 
-
+# Programs
 grpPrograms = parser.add_argument_group('Programs')
 grpPrograms.add_argument('--usearch', default ="usearch", type=str, dest='strUSEARCH', help='Provide the path to usearch. Default call will be \"usearch\".')
 grpPrograms.add_argument('--muscle', default ="muscle", type=str, dest='strMUSCLE', help='Provide the path to muscle. Default call will be \"muscle\".')
@@ -341,7 +341,7 @@ dictAllCounts = {}
 setRefGOI = set(dictGOICounts.keys()).union(set(dictRefCounts.keys()))
 
 for sGene in setRefGOI:
-	#Old, removed dictvigGOICounts
+	#Old, removed dictforGOICounts
 	#aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]),dictBigGOICounts.get(sGene,[0]))]
 	#New
 	aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]))]
@@ -368,6 +368,7 @@ sys.stderr.write( "Found True Markers...\n")
 #iShort = math.floor(args.iMLength*(.95))
 #sys.stderr.write("The Short region is " + str(int(iShort)) )
 
+# Get Junction Markers
 atupQuasiMarkers1 = pb.QMCheckShortRegion(setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iQMlength*.95)),iMarkerLen=args.iQMlength)
 
 
@@ -402,7 +403,7 @@ for key in setHasMarkers:
 		dictGOIGenes[key] = "".join(astrGene)
 
 #####################################################################################################
-#Step Six: Cluster the Quasi-Markers. Remap the proteins they represent to the centroid marker for each cluster.
+#Step Six: Cluster the Quasi-Markers and Junction Markers. Remap the proteins they represent to the centroid marker for each cluster.
 
 if(bHasQuasi):
 	atupQM = atupQuasiMarkers
@@ -412,7 +413,7 @@ if(bHasQuasi):
 	strQuasiClust = dirQuasi+ os.sep + "quasiclust.faa"
 	strQuasiMap = dirQuasi+ os.sep + "quasi.map"
 	fQuasi = open(strQuasiFN,'w')
-	pb.PrintQuasiMarkers(atupQM,fQuasi)
+	pb.PrintQuasiMarkers(atupQM,fQuasi,bDetailed=False,bInitial=True)
 	fQuasi.close()
 
 	subprocess.check_call(["cd-hit", "-i", strQuasiFN,"-o",strQuasiClust,
@@ -453,7 +454,7 @@ with open(dirTmp + os.sep + 'premarkers.txt', 'w') as premarkers:
 			iCount = iCount+1
 
 ##################################################################################
-#Step Seven: Print the TM's to a temp file
+#Step Seven: Print the TM's to a temp file, print information on JM's and QM's.
 
 #Print the TM's.
 #Go through premarkers.txt, find regions satisying user criteria.
@@ -514,7 +515,7 @@ if(bHasQuasi):
 
 	# Print the final set of Quasi Markers
 	with open(strTmpMarkers, 'a') as fOut:
-		pb.PrintQuasiMarkers(atupQMFinal,fOut,True)
+		pb.PrintQuasiMarkers(atupQMFinal,fOut,True,False)
 
 sys.stderr.write( "\nTmp markers saved to " + strTmpMarkers + "\n")
 
@@ -610,14 +611,14 @@ with open(args.sMarkers,'w') as fOut:
 				iTM+=1
 			if (gene.id.find("_QM")>0):
 				iQM+=1
-			if (gene.id.find("_QM99")>0):
+			if (gene.id.find("_JM")>0):
 				iQMJunction+=1
 			setMarkerFamilies.add(strMarkerProt)
 			SeqIO.write(gene, fOut,"fasta")
 
 sys.stderr.write( "\nProcessing complete! Final markers saved to " + args.sMarkers + "\n")
 
-iQMMinimal = iQM - iQMJunction
+iQMMinimal = iQM
 iMarkers = iTM + iQMJunction + iQMMinimal
 
 log.write("Total Markers:\t" + str(iMarkers) + "\n")

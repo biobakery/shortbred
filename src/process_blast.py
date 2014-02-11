@@ -104,7 +104,7 @@ def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegio
 
 
 
-	# Update this function to look in dictRefHits as well!
+	# Possible update this function to look in dictRefHits as well.
 
 	atupQM = []
 	c_iMaxMarkers = 3
@@ -172,7 +172,7 @@ def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegio
 
 
 				#Add the tuple, then move the window up (iMarkerLen) and try for more.
-				tupQM = (strGene, dictGenes[strGene][iStart-1:iEnd],99, iStart,iEnd,[0,0,0,0,0])
+				tupQM = (strGene, dictGenes[strGene][iStart-1:iEnd],99, iStart,iEnd,"Junction Marker")
 				atupQM.append(tupQM)
 				iMarkerCount +=1
 
@@ -667,7 +667,7 @@ def GetQMOverlap(tupQM,atupHitInfo,fileOut,dictGOIGenes):
 
 	dOriginalSeqWeight = iOriginalSeqOverlap / float(iTotalOverlap + iOriginalSeqOverlap)
 
-	fileOut.write( "Number of Overlapping Seqs: "+ str(iCountOverlappingHits) +'\n')
+	fileOut.write( "Number of Overlapping Regions: "+ str(iCountOverlappingHits) +'\n')
 	fileOut.write( "Sum of Overlapping AA: "+ str(iTotalOverlap) +'\n')
 	fileOut.write( "Original Sequence's Weight: "+ "{:3.2f}".format(dOriginalSeqWeight) +'\n' + '\n')
 
@@ -693,11 +693,18 @@ def UpdateQMHeader(atupQM,dictGOIHits,dictRefHits,strQMOut,dictGOIGenes,bUpdateH
 
 			fQMOut.write("***********************************************************************" + '\n')
 
+
 			# Write the QM out
-			fQMOut.write(">" + strQMName + "_QM" + str(iQuasi) + "_#" + '\n')
+			if aiOverlapWindow == "Junction Marker":
+				strType = "JM"
+			else:
+				strType = "QM"
+
+			fQMOut.write(">" + strQMName + "_" + strType  + str(iQuasi) + "_#" + '\n')
 			fQMOut.write(str(tupQM[1]) + '\n' + '\n')
 
-			fQMOut.write("Overlap array for QM (before ^(1/4) transformation):" + '\n' + str(aiOverlapWindow) + '\n' + '\n')
+			if aiOverlapWindow != "Junction Marker":
+				fQMOut.write("Overlap array for QM (before ^(1/4) transformation):" + '\n' + str(aiOverlapWindow) + '\n' + '\n')
 
 			fQMOut.write("Overlap among GOI Seqs:" + '\n')
 			aaGOIOverlap = GetQMOverlap(tupQM,dictGOIHits[strQMName],fQMOut,dictGOIGenes)
@@ -736,13 +743,13 @@ def UpdateQMHeader(atupQM,dictGOIHits,dictRefHits,strQMOut,dictGOIGenes,bUpdateH
 			dFinalWeight = len(strQMData) / float(iGOIOverlap + iRefOverlap + len(strQMData))
 			strFinalWeight = "{:3.2f}".format(dFinalWeight)
 			fQMOut.write("Final weight: " + strFinalWeight + '\n\n')
-			aQM = [strQMName,strQMData,iQuasi,astrNewHeader]
+			aQM = [strQMName,strQMData,iQuasi,astrNewHeader,strType]
 			atupUpdatedQM.append(aQM)
 
 	return atupUpdatedQM
 
 ###############################################################################
-def PrintQuasiMarkers(atupQM, fileOut,bDetailed=False):
+def PrintQuasiMarkers(atupQM, fileOut,bDetailed=False,bInitial=False):
 	iCounter = 0
  	strName = ""
 
@@ -752,10 +759,17 @@ def PrintQuasiMarkers(atupQM, fileOut,bDetailed=False):
 			iCounter =1
 		else:
 			iCounter+=1
+
 		if(bDetailed==True):
-			fileOut.write(">" + str(tup[0]) + "_QM" + str(tup[2]) + "_#" +str(iCounter).zfill(2) + "__[" + ",".join(tup[3]) + "]" + '\n')
+			strType = tup[4]
+			if strType == "QM":
+				strQuasi = str(tup[2])
+			else:
+				strQuasi = ""
+			fileOut.write(">" + str(tup[0]) + "_" + strType + strQuasi + "_#" +str(iCounter).zfill(2) + "__[" + ",".join(tup[3]) + "]" + '\n')
 		else:
 			fileOut.write(">" + str(tup[0]) + "_QM" + str(tup[2]) + "_#" +str(iCounter).zfill(2) + "_w" + '\n')
+
 		fileOut.write(str(tup[1]) + '\n')
 		#fileOut.write(str(tup))
 		strName = str(tup[0])
