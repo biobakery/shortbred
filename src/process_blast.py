@@ -89,103 +89,148 @@ def IsInHit( aiSeqQuery, aiSeqTarget):
 	return bInHit
 
 ###############################################################################
-def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegion=25,iMarkerLen=25):
+def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegion=25,iMarkerLen=25,iXlimit=1):
 
 	# This function takes a set of protein sequences that need QM's, and returns one
 	# QM or nothing for each protein sequence.
 
 	# For each seq, it looks at the first string of (iShortRegion) AA's. If that
-	# region is not *completely* overlapped by any hit AND does not have more than one
-	# "X", use that as a QM, and expand it until it is (iMarkerLen) AA's long.
+	# region is not *completely* overlapped by any hit AND does not have  more than the X limit
+	# use that as a QM, and expand it until it is (iMarkerLen) AA's long or hits the limit
+	# for X's.
 
 	# If that region fails, slide down 1 amino acid, and look at the next set of
 	# AA's. If function fails to find any candidate, return nothing for that seq.
 
 
-
-
 	# Possible update this function to look in dictRefHits as well.
 
 	atupQM = []
-	c_iMaxMarkers = 3
+
+	# Maybe increase this to 200, then sort them by length at the end and use the biggest 3.
+	c_iMaxMarkers = 10000
+
 
 	for strGene in setGenes:
-		#sys.stderr.write("Processing "+ strGene +" ...\n")
+		atupPotentialJM = []
+		sys.stderr.write("Processing "+ strGene +" ...\n")
+
 		# Initialize counters and bool values for loop
 		iSeqLength = len(dictGenes[strGene])
 		iStart = 1
-		iMarkerCount =0
+		iMarkerCount = 0
 
 		bHitEnd = False
 		bFoundRegion = False
-		bOverlapsSomeSeq = False
 
+		# Check if sequence happens to be shorter than min marker length.
 		if (iSeqLength < iMarkerLen):
 			bHitEnd = True
 
+		# Load the hits against other consensus sequences.
 		atupHitInfo = dictGOIHits[strGene]
 
-		# While the function has not hit the end of seq:
-		#   Take the first window of AA's that is iShortRegion long.
-		#   	Check the start and end of the window against every hit in atupHitInfo.
-		#   	If none of the hits completely overlap the window, and the window doesn't have more than one X:
-		#           bOverlapsSomeSeq==False, build a marker, increment Window MarkerLength AA's
-		#       Else:
-		#           bOverlapsSomeSeq==True, increment window one AA.
-
 		while (bHitEnd == False and iMarkerCount<c_iMaxMarkers):
+			strSeq = dictGenes[strGene][iStart-1:(iStart-1)+iShortRegion]
 
 			#Check if hit the end of the sequence.
 			if ((iStart+iShortRegion-1) >= iSeqLength):
 				bHitEnd = True
-
-			#Cycle through hits, check for overlap.
-			bCheckedAllTup = False
-			iTupCounter = 0
-			while (bOverlapsSomeSeq == False and bCheckedAllTup == False and len(atupHitInfo)>0):
-				tupHitInfo = atupHitInfo[iTupCounter]
-				bOverlapsSomeSeq = IsInHit([iStart,iStart+iShortRegion-1],[tupHitInfo[1],tupHitInfo[2]])
-
-				if(bOverlapsSomeSeq == False):
-					strSeq = dictGenes[strGene][iStart-1:iShortRegion+(iStart-1)]
-					if(strSeq.count("X")>1):
-						bOverlapsSomeSeq = True
-				iTupCounter+=1
-				if(iTupCounter>=len(atupHitInfo)):
-					bCheckedAllTup = True
-
-
-			#Stopped checking, either because hit overlap or ran out of hits.
-			if(bOverlapsSomeSeq == False):
-				# Found region, add amino acids to each side until you hit iMarkerLen
-				bFoundRegion = True
-				iEnd = iStart + iShortRegion-1
-				iLength = iEnd - iStart +1
-
-				while iLength< iMarkerLen:
-					if(iEnd<iSeqLength):
-						iEnd+=1
-						iLength = iEnd - iStart +1
-					if(iLength < iMarkerLen and iStart>1):
-							iStart = iStart-1
-							iLength = iEnd - iStart +1
-
-
-				#Add the tuple, then move the window up (iMarkerLen) and try for more.
-				tupQM = (strGene, dictGenes[strGene][iStart-1:iEnd],99, iStart,iEnd,"Junction Marker")
-				atupQM.append(tupQM)
-				iMarkerCount +=1
-
-				iStart = iStart+iMarkerLen
-				bOverlapsSomeSeq = False
+			# Check if this seq is over the X limit. If yes, move up one.
+			elif(strSeq.count("X")>iXlimit):
+				iStart=iStart+1
 			else:
-				# Move the window up one space, try again
-				#sys.stderr.write(strGene + ", Start - End: " + str(iStart) + " - " + str(iEnd))
-				iStart = iStart+1
-                bOverlapsSomeSeq = False
+				# This region is a candidate for a JM, now check to see if
+				# any hits comp
+				bOverlapsSomeSeq = False
+				bCheckedAllTup = False
+				iTupCounter = 0
+				sys.stderr.write("Candidate Seq: "+ strSeq + " " + str(strSeq.count("X")) + str(iXlimit)+"\n" )
 
 
+
+				# In case the consensus sequence did not overlap with any other seqs, skip hit checking.
+				if(len(atupHitInfo)==0):
+					bCheckedAllTup = True
+					bOverlapsSomeSeq = False
+
+				# Cycle through all of the hits corresponding to this sequence. Check if any completely overlap. Stop if you hit even one.
+				while (bOverlapsSomeSeq == False and bCheckedAllTup == False and len(atupHitInfo)>0):
+					tupHitInfo = atupHitInfo[iTupCounter]
+
+					bOverlapsSomeSeq = IsInHit([iStart,iStart+iShortRegion-1],[tupHitInfo[1],tupHitInfo[2]])
+
+
+					# We will also check one amino acid ahead, and one behind
+					if (iStart-1>1):
+						bOverlapBehind = IsInHit([iStart-1,iStart+iShortRegion-2],[tupHitInfo[1],tupHitInfo[2]])
+					else:
+						bOverlapBehind = False
+					if ((iStart+iShortRegion) <= iSeqLength):
+						bOverlapAhead = IsInHit([iStart,iStart+iShortRegion],[tupHitInfo[1],tupHitInfo[2]])
+					else:
+						bOverlapAhead = False
+
+					bOverlapsSomeSeq = (bOverlapsSomeSeq or bOverlapBehind or bOverlapAhead)
+
+					if(bOverlapsSomeSeq == False):
+						iTupCounter+=1
+
+					if(iTupCounter>=len(atupHitInfo)):
+						bCheckedAllTup = True
+
+
+				#Stopped checking, either because hit overlap or went through all the hits.
+				if(bOverlapsSomeSeq == False):
+					bFoundRegion = True
+					iEnd = iStart + iShortRegion-1
+					iLength = iEnd - iStart +1
+					sys.stderr.write("Seq survived tuple check: "+ strSeq +"\n")
+
+
+					bHitRightEnd=False
+					bHitLeftEnd=False
+					#This is where you went wrong. It may be adding X's.
+					while (iLength< iMarkerLen and bHitRightEnd==False):
+						if(iEnd<iSeqLength and dictGenes[strGene][iStart-1:iEnd].count("X")<iXlimit):
+							iEnd+=1
+							iLength = iEnd - iStart +1
+						else:
+							bHitRightEnd=True
+
+					while (iLength< iMarkerLen and bHitLeftEnd==False):
+						if(iStart>1 and dictGenes[strGene][iStart-1:iEnd].count("X")<iXlimit):
+							iStart-=1
+							iLength = iEnd - iStart +1
+						else:
+							bHitLeftEnd=True
+
+					#Add the tuple, then move the window up (iMarkerLen) and try for more.
+					tupQM = (strGene, dictGenes[strGene][iStart-1:iEnd],len(dictGenes[strGene][iStart-1:iEnd]), iStart,iEnd,"Junction Marker")
+					atupPotentialJM.append(tupQM)
+					iMarkerCount +=1
+					sys.stderr.write("Original Seq: "+ strSeq +"\n")
+					strSeq = dictGenes[strGene][iStart-1:iEnd]
+					sys.stderr.write("Should be the same seq: "+ strSeq +"\n")
+					iStart = iStart+iMarkerLen
+					bOverlapsSomeSeq = False
+				else:
+					# Move the window up one space, try again
+					#sys.stderr.write(strGene + ", Start - End: " + str(iStart) + " - " + str(iEnd))
+					iStart = iStart+1
+	                bOverlapsSomeSeq = False
+		# Sort atupPotentialJM by length, take the top scoring 3, if they exist
+		if len(atupPotentialJM)>=3:
+			atupSortedJM = sorted(atupPotentialJM, key=lambda tup: tup[2], reverse=True)
+			atupSortedJM=atupSortedJM[:3]
+
+		for tupQM in atupPotentialJM:
+			if (tupQM[2]>=(iShortRegion*1.2)):
+				sys.stderr.write("Lengths:" + str(iShortRegion)+ " "+str(tupQM[2])+ "\n")
+				atupQM.append(tupQM)
+		# Add them to atupQM
 	return atupQM
+
 
 
 
@@ -523,6 +568,8 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
 				iWinEnd+=1
 		    else:
 				bStop=True
+
+		# DO I NEED TO ADD bStop = False here?
 
 		#After you've grown the QM as much as possible to the right, try growing to the left.
 		#Test the AA before the first AA of the QM, add it if it doesn't put you over iThresh

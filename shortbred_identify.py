@@ -117,6 +117,7 @@ grpParam.add_argument('--markerlength', type=int, default=20, dest='iMLength', h
 grpParam.add_argument('--totlength', default = 200, type=int, dest='iTotLength', help='Enter the maximum length for the combined markers for a gene. Default is 200')
 grpParam.add_argument('--qthresh', type=int, dest='iThresh',default=1, help='Enter a maximum quasi-score.')
 grpParam.add_argument('--qmlength', type=int, dest='iQMlength',default=33, help='Enter a minimum length for QM\'s.')
+grpParam.add_argument('--xlimit', dest='iXlimit', default=1,help='Enter the number of Xs to allow in JMs')
 
 # Tmp Directory
 grpParam.add_argument('--tmpdir', default ="", type=str, dest='sTmp', help='Set directory for temporary output files.')
@@ -369,7 +370,7 @@ sys.stderr.write( "Found True Markers...\n")
 #sys.stderr.write("The Short region is " + str(int(iShort)) )
 
 # Get Junction Markers
-atupQuasiMarkers1 = pb.QMCheckShortRegion(setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iQMlength*.95)),iMarkerLen=args.iQMlength)
+atupQuasiMarkers1 = pb.QMCheckShortRegion(setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iQMlength*.40)),iXlimit=int(args.iXlimit),iMarkerLen=args.iQMlength)
 
 
 if len(atupQuasiMarkers1)>0:
