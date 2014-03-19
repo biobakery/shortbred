@@ -225,7 +225,7 @@ def QMCheckShortRegion( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegio
 			atupSortedJM=atupSortedJM[:3]
 
 		for tupQM in atupPotentialJM:
-			if (tupQM[2]>=(iShortRegion*1.2)):
+			if (tupQM[2]>=(iShortRegion*1.1)):
 				sys.stderr.write("Lengths:" + str(iShortRegion)+ " "+str(tupQM[2])+ "\n")
 				atupQM.append(tupQM)
 		# Add them to atupQM

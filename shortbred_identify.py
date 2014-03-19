@@ -372,18 +372,20 @@ sys.stderr.write( "Found True Markers...\n")
 # Get Junction Markers
 atupQuasiMarkers1 = pb.QMCheckShortRegion(setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iQMlength*.40)),iXlimit=int(args.iXlimit),iMarkerLen=args.iQMlength)
 
-
-if len(atupQuasiMarkers1)>0:
+# THIS CODE NEEDS TO BE CHANGED.
+if len(setLeftover)>0:
 	bHasQuasi = True
 	#sys.stderr.write( "Making first set of Quasi Markers...\n")
-	sys.stderr.write( "Found "+str(len(atupQuasiMarkers1)) +" QM-Junction Markers...\n")
+
 else:
 	bHasQuasi = False
 	sys.stderr.write( "No Quasi Markers needed...\n")
 
 if bHasQuasi:
-	setGotQM = zip(*atupQuasiMarkers1)[0]
-	setLeftover = setLeftover.difference(setGotQM)
+	sys.stderr.write( "Found "+str(len(atupQuasiMarkers1)) +" JM Markers...\n")
+	if len(atupQuasiMarkers1) >0:
+		setGotQM = zip(*atupQuasiMarkers1)[0]
+		setLeftover = setLeftover.difference(setGotQM)
 
 	# Change these lines to determine how QM's are made
 	atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iQMlength,args.iThresh, args.iTotLength)
