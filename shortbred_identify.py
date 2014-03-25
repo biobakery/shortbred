@@ -370,7 +370,7 @@ sys.stderr.write( "Found True Markers...\n")
 #sys.stderr.write("The Short region is " + str(int(iShort)) )
 
 # Get Junction Markers
-atupQuasiMarkers1 = pb.QMCheckShortRegion(setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iQMlength*.40)),iXlimit=int(args.iXlimit),iMarkerLen=args.iQMlength)
+atupQuasiMarkers1 = pb.FindJMMarker(setLeftover, dictGOIGenes, dictGOIHits,dictRefHits,iShortRegion = int(math.floor(args.iQMlength*.40)),iXlimit=int(args.iXlimit),iMarkerLen=args.iQMlength)
 
 # THIS CODE NEEDS TO BE CHANGED.
 if len(setLeftover)>0:
