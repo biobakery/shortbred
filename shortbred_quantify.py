@@ -167,7 +167,7 @@ with open(strLog, "w") as log:
 	else:
 		log.write("Sequences: Markers\n")
 	if strMethod=="genome":
-		print "Ran against the genome" + args.strGenome
+		log.write("Ran against the genome " + args.strGenome)
 
 
 

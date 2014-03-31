@@ -102,19 +102,19 @@ grpOutput.add_argument('--map_out', type=str, default="gene-centroid.uc", dest='
 #PARAMETERS
 grpParam = parser.add_argument_group('Parameters')
 # Clustering
-grpParam.add_argument('--clustid',default = .90, type=float, dest='dClustID', help='Enter the identity cutoff for clustering the genes of interest. Examples: .90, .85, .10,...')
+grpParam.add_argument('--clustid',default = .85, type=float, dest='dClustID', help='Enter the identity cutoff for clustering the genes of interest. Examples: .90, .85, .10,...')
 grpParam.add_argument('--qclustid',default = .90, type=float, dest='dQClustID', help='Enter the identity cutoff for clustering the quasi-markers. Examples: .90, .85, .10,...')
-grpParam.add_argument('--consthresh',default = .70, type=float, dest='dConsThresh', help='Enter the consensus threshold for assigning AA\'s in the family alignments to the consensus sequences. The default is .70. Examples: .60, .70, .80,...')
+grpParam.add_argument('--consthresh',default = .95, type=float, dest='dConsThresh', help='Enter the consensus threshold for assigning AA\'s in the family alignments to the consensus sequences. The default is .70. Examples: .60, .70, .80,...')
 
 # BLAST Search
 grpParam.add_argument('--threads', type=int, default=1, dest='iThreads', help='Enter the number of threads to use.')
 grpParam.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity minimum for a short, high-identity region. Examples: .90, .85, .10,...')
-grpParam.add_argument('--len', default = .10, type=float, dest='dL', help='Enter the length maximum for a short, high-identity region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
+grpParam.add_argument('--len', default = .15, type=float, dest='dL', help='Enter the length maximum for a short, high-identity region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
 grpParam.add_argument('--minAln', default = 0, type=int, dest='iLenMin', help='Enter the minimum for a short, high-identity region. Examples: 10, 20, 30,... ')
 
 # Markers
-grpParam.add_argument('--markerlength', type=int, default=20, dest='iMLength', help='Enter the minimum marker length.')
-grpParam.add_argument('--totlength', default = 200, type=int, dest='iTotLength', help='Enter the maximum length for the combined markers for a gene. Default is 200')
+grpParam.add_argument('--markerlength', type=int, default=8, dest='iMLength', help='Enter the minimum marker length.')
+grpParam.add_argument('--totlength', default = 300, type=int, dest='iTotLength', help='Enter the maximum length for the combined markers for a gene. Default is 200')
 grpParam.add_argument('--qthresh', type=int, dest='iThresh',default=1, help='Enter a maximum quasi-score.')
 grpParam.add_argument('--qmlength', type=int, dest='iQMlength',default=33, help='Enter a minimum length for QM\'s.')
 grpParam.add_argument('--xlimit', dest='iXlimit', default=1,help='Enter the number of Xs to allow in JMs')
