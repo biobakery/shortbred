@@ -17,6 +17,6 @@ def check_file(strPath):
 	try:
 		with open(strPath):
 			pass
-	except IOerror:
+	except IOError:
 		print strPath, "does not exist. Please check the path to this file."
 		return
