@@ -149,6 +149,7 @@ if args.strGenome!="" and args.strWGS==None:
 	usearch database from the bug genome and then blasts the markers against it. \n\
 	Please remember to increase \"maxhits\" to a large number, so that multiple \n\
 	markers can hit each bug sequence. \n\n")
+	dictFamCounts = sq.MakeDictFamilyCounts(args.strMarkers,"")
 
 else:
 	strMethod = "wgs"
@@ -451,4 +452,18 @@ if strSize != "small":
 	#Delete the small, temp fasta file.
 	os.remove(strFASTAName)
 
+###########################################################################
+# Added in to produce counts of Bug genomes (currently in testing phase)
+##########################################################################
+if strMethod=="genome":
+	dictFinalCounts = sq.NormalizeGenomeCounts(strHitsFile,dictFamCounts)
+	sys.stderr.write("Normalizing hits to genome... \n")
+	with open(args.strResults,'w') as fileBugCounts:
+		fileBugCounts.write("Family" + "\t" + "Count" + "\n")
+		for strFam in sorted(dictFinalCounts.keys()):
+			fileBugCounts.write(strFam + "\t" + str(dictFinalCounts[strFam]) + "\n")
+
+
+
 sys.stderr.write("Processing complete. \n")
+

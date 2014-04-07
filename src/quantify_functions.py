@@ -31,6 +31,9 @@ import sys
 import math
 import os
 
+import Bio
+from Bio.Seq import Seq
+from Bio import SeqIO
 
 c_iAlnCentroids = 30
 
@@ -74,6 +77,99 @@ def CheckSize(iSize, iMax):
 		strSize = "large"
 
 	return strSize
+
+def MakeDictFamilyCounts (strMarkers,strFamilyOut):
+	dictFamMarkerCounts = {}
+	sys.stderr.write("Calculating markers per family... \n")
+	for seq in SeqIO.parse(strMarkers, "fasta"):
+		mtchFam = re.search(r'^(.*)_[TJQ]M_.*',seq.id)
+		if(mtchFam):
+			strFam = str(mtchFam.group(1)).strip()
+			if strFam in dictFamMarkerCounts:
+				dictFamMarkerCounts[strFam] = dictFamMarkerCounts[strFam]+1
+			else:
+				dictFamMarkerCounts[strFam] = 1
+	return dictFamMarkerCounts
+
+def CalcORFCount (dictORFMatches,dictFamMarkerCounts):
+	aaCounts = []
+	aaFinalCounts = []
+
+	for strFam in dictORFMatches:
+		dScore = dictORFMatches[strFam] / float(dictFamMarkerCounts[strFam])
+		aFamScore = [strFam,dScore]
+		aaCounts.append(aFamScore)
+
+	# Normalize in case ORF matches to multiple familes
+	dSum = sum(zip(*aaCounts)[1])
+
+	for aFamScore in aaCounts:
+		aNewScore = [aFamScore[0],aFamScore[1] * (aFamScore[1]/dSum) ]
+		aaFinalCounts.append(aNewScore)
+
+	return aaFinalCounts
+
+	"""
+	Example:
+
+	Before
+    	FamA	0.85
+		FamB	0.32
+
+	After
+		FamA	0.62
+		FamB	0.09
+
+	"""
+
+def NormalizeGenomeCounts (strValidHits,dictFamCounts):
+	dictFinalCounts = {}
+	for strFam in dictFamCounts.keys():
+		dictFinalCounts[strFam] = 0
+	dictORFMatches = {}
+
+	# Make dictionart where
+	# strORF ~ set (Marker1, Marker2, ...)
+	with open(strValidHits, 'r') as csvfileHits:
+		for aLine in csv.reader( csvfileHits, delimiter='\t' ):
+
+			strORF = aLine[0]
+			strMarker = aLine[1]
+
+
+			if strORF in dictORFMatches:
+				dictORFMatches[strORF] = dictORFMatches[strORF] + [strMarker]
+
+			else:
+				dictORFMatches[strORF] = [strMarker]
+
+
+	for strORF in sorted(dictORFMatches.keys()):
+		setMatches = set(dictORFMatches[strORF])
+
+		dictFamMatches = {}
+
+		# get count of matches to each family
+		for strFam in setMatches:
+			mtchFam = re.search(r'^(.*)_[TJQ]M_.*',strFam)
+			if(mtchFam):
+				strFam = str(mtchFam.group(1)).strip()
+
+				if strFam in dictFamMatches:
+					dictFamMatches[strFam] = dictFamMatches[strFam]+1
+				else:
+					dictFamMatches[strFam] = 1
+
+
+
+		# Normalize Counts
+		aaCount = CalcORFCount (dictFamMatches,dictFamCounts)
+
+		for aFamScore in aaCount:
+			dictFinalCounts[aFamScore[0]] = dictFinalCounts[aFamScore[0]] + aFamScore[1]
+
+	return dictFinalCounts
+
 
 def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects,strUSEARCH):
 
