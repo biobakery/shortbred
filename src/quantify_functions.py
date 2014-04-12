@@ -382,13 +382,13 @@ dAlnLength,strFile):
 				#
 				# Just in case, this one worked well.... iPossibleHitSpace = iMarkerNucs + 2*(dReadLength-iMarkerNucs) -(dReadLength-1)
 
-			dCount = iHits/float(iPossibleHitSpace)
+			dCount = iHits/(float(iPossibleHitSpace)/1000)
 
 			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
 			strProtFamily = mtchProtStub.group(1)
 
 		if iWGSReads >0:
-			dCount =  dCount *  (1e12 / iWGSReads)
+			dCount =  dCount /  (iWGSReads / 1e6 )
 		else:
 			dCount = 0
 			sys.stderr.write("WARNING: 0 Reads found in file:" + strFile )
