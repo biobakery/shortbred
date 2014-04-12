@@ -132,6 +132,10 @@ if args.strHits != "":
 else:
 	strHitsFile = ( dirTmp + os.sep + "SBhits.txt" )
 
+# Delete SBhits.txt file if it already exists.
+if os.path.isfile(strHitsFile):
+	os.remove(strHitsFile)
+
 
 strMarkerResults = args.strMarkerResults
 if strMarkerResults == "":

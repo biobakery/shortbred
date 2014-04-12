@@ -79,6 +79,9 @@ def CheckSize(iSize, iMax):
 	return strSize
 
 def MakeDictFamilyCounts (strMarkers,strFamilyOut):
+	# Counts up the number of markers each protein family has,
+	# saves it to dictFamMarkerCounts.
+
 	dictFamMarkerCounts = {}
 	sys.stderr.write("Calculating markers per family... \n")
 	for seq in SeqIO.parse(strMarkers, "fasta"):
@@ -92,6 +95,10 @@ def MakeDictFamilyCounts (strMarkers,strFamilyOut):
 	return dictFamMarkerCounts
 
 def CalcORFCount (dictORFMatches,dictFamMarkerCounts):
+    # Takes two dictionaries, each have protein families has the keys.
+	# One has the number of markers hitting the ORF, the other has all possible markers.
+	#
+
 	aaCounts = []
 	aaFinalCounts = []
 
