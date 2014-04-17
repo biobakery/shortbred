@@ -496,9 +496,18 @@ if strSize != "small":
 ###########################################################################
 # Added in to produce counts of Bug genomes (currently in testing phase)
 ##########################################################################
-if strMethod=="annotated_genome" or strMethod=="unannotated_genome":
-	dictFinalCounts = sq.NormalizeGenomeCounts(strHitsFile,dictFamCounts)
+
+if strMethod=="annotated_genome":
+	dictFinalCounts = sq.NormalizeGenomeCounts(strHitsFile,dictFamCounts,bUnannotated=False)
 	sys.stderr.write("Normalizing hits to genome... \n")
+
+elif strMethod=="unannotated_genome":
+	dictFinalCounts = sq.NormalizeGenomeCounts(strHitsFile,dictFamCounts,bUnannotated=True)
+	sys.stderr.write("Normalizing hits to genome... \n")
+
+
+if strMethod=="annotated_genome" or strMethod=="unannotated_genome":
+
 	with open(args.strResults,'w') as fileBugCounts:
 		fileBugCounts.write("Family" + "\t" + "Count" + "\n")
 		for strFam in sorted(dictFinalCounts.keys()):

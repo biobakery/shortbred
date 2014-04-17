@@ -102,7 +102,7 @@ def MakeDictFamilyCounts (strMarkers,strFamilyOut):
 def CalcORFCount (dictORFMatches,dictFamMarkerCounts):
     # Takes two dictionaries, each have protein families has the keys.
 	# One has the number of markers hitting the ORF, the other has all possible markers.
-	#
+
 
 	aaCounts = []
 	aaFinalCounts = []
@@ -134,7 +134,7 @@ def CalcORFCount (dictORFMatches,dictFamMarkerCounts):
 
 	"""
 
-def NormalizeGenomeCounts (strValidHits,dictFamCounts):
+def NormalizeGenomeCounts (strValidHits,dictFamCounts,bUnannotated=False):
 	dictFinalCounts = {}
 	for strFam in dictFamCounts.keys():
 		dictFinalCounts[strFam] = 0
@@ -157,7 +157,10 @@ def NormalizeGenomeCounts (strValidHits,dictFamCounts):
 
 
 	for strORF in sorted(dictORFMatches.keys()):
-		setMatches = set(dictORFMatches[strORF])
+		if(bUnannotated==False):
+			astrMatches = set(dictORFMatches[strORF])
+		else:
+			astrMatches = dictORFMatches[strORF]
 
 		dictFamMatches = {}
 
