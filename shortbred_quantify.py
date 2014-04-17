@@ -87,6 +87,9 @@ grpOutput.add_argument('--tmp', type=str, dest='strTmp', default ="",help='Enter
 
 grpPrograms = parser.add_argument_group('Programs:')
 grpPrograms.add_argument('--usearch', default ="usearch", type=str, dest='strUSEARCH', help='Provide the path to usearch. Default call will be \"usearch\".')
+grpPrograms.add_argument('--tblastn', default ="tblastn", type=str, dest='strTBLASTN', help='Provide the path to tblastn. Default call will be \"tblastn\".')
+grpPrograms.add_argument('--makeblastdb', default ="makeblastdb", type=str, dest='strMakeBlastDB', help='Provide the path to makeblastdb. Default call will be \"makeblastdb\".')
+
 
 #Parameters - Matching Settings
 grpParam = parser.add_argument_group('Parameters:')
@@ -96,6 +99,8 @@ grpParam.add_argument('--minreadBP', type=float, dest='iMinReadBP', help='Enter 
 grpParam.add_argument('--avgreadBP', type=float, dest='iAvgReadBP', help='Enter the average read length.', default = 100)
 grpParam.add_argument('--maxhits', type=float, dest='iMaxHits', help='Enter the number of markers allowed to hit read.', default = 1)
 grpParam.add_argument('--maxrejects', type=float, dest='iMaxRejects', help='Enter the number of markers allowed to hit read.', default = 32)
+grpParam.add_argument('--unannotated', action='store_const',dest='strUnannotated', help='Indicates genome is unannotated. ShortBRED will use tblastn to \
+search AA markers against the db of six possible translations of your genome data. ', const=True, default = False)
 #parser.add_argument('--tmid', type=float, dest='dTMID', help='Enter the percent identity for a TM match', default = .95)
 #parser.add_argument('--qmid', type=float, dest='dQMID', help='Enter the percent identity for a QM match', default = .95)
 #parser.add_argument('--alnTM', type=int, dest='iAlnMax', help='Enter a bound for TM alignments, such that aln must be>= min(markerlength,alnTM)', default = 20)
@@ -144,15 +149,27 @@ if strMarkerResults == "":
 ##############################################################################
 # Determine if profiling WGS or Genome
 if args.strGenome!="" and args.strWGS==None:
-	strMethod = "genome"
+	strMethod = "annotated_genome"
     #We assume that genomes will be a single fasta file, and that they will be
 	# smaller than 900 MB, the upper bound for passing a single file to usearch.
 	strSize = "small"
 	strFormat = "fasta"
-	sys.stderr.write("NOTE:\n\n When running against a bug genome, ShortBRED makes a \n\
-	usearch database from the bug genome and then blasts the markers against it. \n\
+	sys.stderr.write("NOTE:\n\n When running against an annotated bug genome, ShortBRED makes a \n\
+	usearch database from the bug genome and then searches the markers against it. \n\
 	Please remember to increase \"maxhits\" to a large number, so that multiple \n\
 	markers can hit each bug sequence. \n\n")
+	dictFamCounts = sq.MakeDictFamilyCounts(args.strMarkers,"")
+
+if args.strGenome!="" and args.strUnannotated==True:
+	strMethod = "unannotated_genome"
+    #We assume that genomes will be a single fasta file, and that they will be
+	# smaller than 900 MB, the upper bound for passing a single file to usearch.
+	strSize = "small"
+	strFormat = "fasta"
+	sys.stderr.write("NOTE: When running against an unannotated bug genome, ShortBRED makes a \
+	tblastn database from the genome and then blasts the markers against it. \
+	Please remember to increase \"maxhits\" to a large number, so that multiple \
+	markers can hit each bug sequence. ")
 	dictFamCounts = sq.MakeDictFamilyCounts(args.strMarkers,"")
 
 else:
@@ -171,7 +188,7 @@ with open(strLog, "w") as log:
 		log.write("Sequences: Centroids\n")
 	else:
 		log.write("Sequences: Markers\n")
-	if strMethod=="genome":
+	if strMethod=="annotated_genome":
 		log.write("Ran against the genome " + args.strGenome)
 
 
@@ -293,8 +310,7 @@ dAvgReadLength  = 0.0
 iMin = 999 #Can be any integer. Just a dummy to initialize iMin before calculations begin.
 iWGSFileCount = 1
 
-if strMethod=="genome":
-
+if strMethod=="annotated_genome":
 
 	strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strGenome)) + ".udb"
 	sq.MakedbUSEARCH (args.strGenome, strDBName,args.strUSEARCH)
@@ -305,6 +321,25 @@ if strMethod=="genome":
 	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 		dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
 		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
+
+	iWGSReads = 0
+	for seq in SeqIO.parse(args.strGenome, "fasta"):
+		iWGSReads+=1
+		iTotalReadCount+=1
+		dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
+		iMin = min(iMin,len(seq))
+
+elif strMethod=="unannotated_genome":
+
+	strDBName = str(dirTmp) + os.sep + "blastdb_"+os.path.basename(os.path.splitext(args.strGenome)[0])
+	sq.MakedbBLASTnuc( args.strMakeBlastDB, strDBName,args.strGenome,dirTmp)
+
+	strBlastOut = dirTmp + os.sep + "tblastn_"+args.strMarkers+".tab"
+	sq.RunTBLASTN (args.strTBLASTN, strDBName,args.strMarkers, strBlastOut, args.iThreads)
+
+	sq.StoreHitCounts(strBlastOut = strBlastOut,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+		dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
+		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),strUSearchOut=False)
 
 	iWGSReads = 0
 	for seq in SeqIO.parse(args.strGenome, "fasta"):
@@ -437,7 +472,9 @@ else:
 			tarWGS.close()
 ##################################################################################
 # Step 4: Calculate ShortBRED Counts, print results, print log info.
-if strMethod=="genome":
+if strMethod=="annotated_genome":
+	strInputFile = args.strGenome
+elif strMethod=="unannotated_genome":
 	strInputFile = args.strGenome
 elif strMethod=="wgs":
 	strInputFile=args.strWGS
@@ -459,7 +496,7 @@ if strSize != "small":
 ###########################################################################
 # Added in to produce counts of Bug genomes (currently in testing phase)
 ##########################################################################
-if strMethod=="genome":
+if strMethod=="annotated_genome" or strMethod=="unannotated_genome":
 	dictFinalCounts = sq.NormalizeGenomeCounts(strHitsFile,dictFamCounts)
 	sys.stderr.write("Normalizing hits to genome... \n")
 	with open(args.strResults,'w') as fileBugCounts:

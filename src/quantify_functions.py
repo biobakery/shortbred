@@ -41,6 +41,11 @@ def MakedbUSEARCH ( strMarkers, strDBName,strUSEARCH):
 	p = subprocess.check_call([strUSEARCH, "--makeudb_usearch", strMarkers,"--output", strDBName])
 	return
 
+def MakedbBLASTnuc ( strMakeBlastDB, strDBName,strGenome,dirTmp):
+	p = subprocess.check_call([strMakeBlastDB, "-in", strGenome, "-out", strDBName,
+		"-dbtype", "nucl", "-logfile", dirTmp + os.sep + "blast_nuc_db.log"])
+	return
+
 def CheckFormat ( strFile):
 	if strFile.find("fastq") > -1:
 		strFormat = "fastq"
@@ -196,6 +201,20 @@ def RunUSEARCHGenome ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTm
 		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,"--maxaccepts",str(iAccepts),
 		"--maxrejects",str(iRejects),"--threads", str(iThreads)])
 
+def RunTBLASTN ( strTBLASTN, strDB,strMarkers, strBlastOut, iThreads):
+
+	strOutFields = "6 sseqid qseqid  pident length mismatch gapopen qstart qend sstart send evalue bitscore"
+
+	astrBlastParams = ["-outfmt", strOutFields, "-matrix", "PAM30", "-ungapped",
+		"-comp_based_stats","F","-window_size","0",
+		"-xdrop_ungap","1","-evalue","1e-3",
+		"-max_target_seqs", "1000000",
+		"-num_threads",str(iThreads)]
+
+
+	subprocess.check_call(
+		[strTBLASTN, "-db", strDB,"-query", strMarkers,"-out",strBlastOut] +  astrBlastParams)
+
 def Median(adValues):
 	adValues.sort()
 	iLen = len(adValues)
@@ -205,7 +224,7 @@ def Median(adValues):
 		dMedian = adValues[int(math.floor(iLen/2))]
 	return dMedian
 
-def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA):
+def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA,strUSearchOut=True):
 # Reads in the USEARCH output (strBlastOut), marks which hits are valid (id>=dID &
 # len >= min(95% of read,dictMarkerLen[Marker]) and adds to count in dictHitsForMarker[strMarker].
 # Valid hits are also copied to the file in strValidHits. strCentCheck is used to flag centroids,
@@ -226,7 +245,11 @@ def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dict
 				strMarker 	= aLine[1]
 				dHitID		= aLine[2]
 				iAlnLen     = int(aLine[3])
-				iReadLenAA  = int(aLine[12])
+				if (strUSearchOut):
+					iReadLenAA  = int(aLine[12])
+				else:
+					iReadLenAA = int(aLine[7]) - int(aLine[6])
+
 
 				# A valid match must be as long as 95% of the read or the full marker.
 		        # (Note that this in AA's.)
