@@ -99,10 +99,10 @@ def MakeDictFamilyCounts (strMarkers,strFamilyOut):
 				dictFamMarkerCounts[strFam] = 1
 	return dictFamMarkerCounts
 
-def CalcORFCount (dictORFMatches,dictFamMarkerCounts):
+def CalcFinalCount (dictORFMatches,dictFamMarkerCounts,bUnannotated,dThres=.10,):
     # Takes two dictionaries, each have protein families has the keys.
 	# One has the number of markers hitting the ORF, the other has all possible markers.
-
+	#
 
 	aaCounts = []
 	aaFinalCounts = []
@@ -112,12 +112,27 @@ def CalcORFCount (dictORFMatches,dictFamMarkerCounts):
 		aFamScore = [strFam,dScore]
 		aaCounts.append(aFamScore)
 
-	# Normalize in case ORF matches to multiple familes
+
 	dSum = sum(zip(*aaCounts)[1])
 
-	for aFamScore in aaCounts:
-		aNewScore = [aFamScore[0],aFamScore[1] * (aFamScore[1]/dSum) ]
-		aaFinalCounts.append(aNewScore)
+	# For annotated genomes, we throw out scores that comprise less than (dThresh)
+	# percent of the total for the ORF
+	if (bUnannotated==False):
+		aaAboveThresh = []
+		for aFamScore in aaCounts:
+			if (aFamScore[1] / dSum)>=dThresh:
+				aaAboveThresh.append(aFamScore)
+
+		for aFamScore in aaAboveThresh:
+			aNewScore = [aFamScore[0],aFamScore[1] * (aFamScore[1]/dSum) ]
+			aaFinalCounts.append(aNewScore)
+
+	# For unannotated genomes, multiple families can hit to a contig, and we
+	# want to count all of them. We do not apply the threshold.
+	else:
+		for aFamScore in aaCounts:
+			aNewScore = [aFamScore[0],aFamScore[1] * (aFamScore[1]/dSum) ]
+			aaFinalCounts.append(aNewScore)
 
 	return aaFinalCounts
 
@@ -134,7 +149,7 @@ def CalcORFCount (dictORFMatches,dictFamMarkerCounts):
 
 	"""
 
-def NormalizeGenomeCounts (strValidHits,dictFamCounts,bUnannotated=False):
+def NormalizeGenomeCounts (strValidHits,dictFamCounts,bUnannotated,dThresh=.1):
 	dictFinalCounts = {}
 	for strFam in dictFamCounts.keys():
 		dictFinalCounts[strFam] = 0
@@ -165,7 +180,7 @@ def NormalizeGenomeCounts (strValidHits,dictFamCounts,bUnannotated=False):
 		dictFamMatches = {}
 
 		# get count of matches to each family
-		for strFam in setMatches:
+		for strFam in astrMatches:
 			mtchFam = re.search(r'^(.*)_[TJQ]M_.*',strFam)
 			if(mtchFam):
 				strFam = str(mtchFam.group(1)).strip()
@@ -178,7 +193,7 @@ def NormalizeGenomeCounts (strValidHits,dictFamCounts,bUnannotated=False):
 
 
 		# Normalize Counts
-		aaCount = CalcORFCount (dictFamMatches,dictFamCounts)
+		aaCount = CalcFinalCount (dictFamMatches,dictFamCounts,bUnannotated,dThresh=.1)
 
 		for aFamScore in aaCount:
 			dictFinalCounts[aFamScore[0]] = dictFinalCounts[aFamScore[0]] + aFamScore[1]
@@ -206,9 +221,10 @@ def RunUSEARCHGenome ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTm
 
 def RunTBLASTN ( strTBLASTN, strDB,strMarkers, strBlastOut, iThreads):
 
-	strOutFields = "6 sseqid qseqid  pident length mismatch gapopen qstart qend sstart send evalue bitscore"
 
-	astrBlastParams = ["-outfmt", strOutFields, "-matrix", "PAM30", "-ungapped",
+
+	astrBlastParams = ["-outfmt", "6 sseqid qseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",
+	"-matrix", "PAM30", "-ungapped",
 		"-comp_based_stats","F","-window_size","0",
 		"-xdrop_ungap","1","-evalue","1e-3",
 		"-max_target_seqs", "1000000",

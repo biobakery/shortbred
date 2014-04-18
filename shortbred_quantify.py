@@ -99,7 +99,7 @@ grpParam.add_argument('--minreadBP', type=float, dest='iMinReadBP', help='Enter 
 grpParam.add_argument('--avgreadBP', type=float, dest='iAvgReadBP', help='Enter the average read length.', default = 100)
 grpParam.add_argument('--maxhits', type=float, dest='iMaxHits', help='Enter the number of markers allowed to hit read.', default = 1)
 grpParam.add_argument('--maxrejects', type=float, dest='iMaxRejects', help='Enter the number of markers allowed to hit read.', default = 32)
-grpParam.add_argument('--unannotated', action='store_const',dest='strUnannotated', help='Indicates genome is unannotated. ShortBRED will use tblastn to \
+grpParam.add_argument('--unannotated', action='store_const',dest='bUnannotated', help='Indicates genome is unannotated. ShortBRED will use tblastn to \
 search AA markers against the db of six possible translations of your genome data. ', const=True, default = False)
 #parser.add_argument('--tmid', type=float, dest='dTMID', help='Enter the percent identity for a TM match', default = .95)
 #parser.add_argument('--qmid', type=float, dest='dQMID', help='Enter the percent identity for a QM match', default = .95)
@@ -148,19 +148,19 @@ if strMarkerResults == "":
 
 ##############################################################################
 # Determine if profiling WGS or Genome
-if args.strGenome!="" and args.strWGS==None:
+if args.strGenome!="" and args.strWGS==None and args.bUnannotated==False:
 	strMethod = "annotated_genome"
     #We assume that genomes will be a single fasta file, and that they will be
 	# smaller than 900 MB, the upper bound for passing a single file to usearch.
 	strSize = "small"
 	strFormat = "fasta"
-	sys.stderr.write("NOTE:\n\n When running against an annotated bug genome, ShortBRED makes a \n\
-	usearch database from the bug genome and then searches the markers against it. \n\
-	Please remember to increase \"maxhits\" to a large number, so that multiple \n\
+	sys.stderr.write("NOTE: When running against an annotated bug genome, ShortBRED makes a \
+	usearch database from the bug genome and then searches the markers against it. \
+	Please remember to increase \"maxhits\" to a large number, so that multiple \
 	markers can hit each bug sequence. \n\n")
 	dictFamCounts = sq.MakeDictFamilyCounts(args.strMarkers,"")
 
-if args.strGenome!="" and args.strUnannotated==True:
+if args.strGenome!="" and args.strWGS==None and args.bUnannotated==True:
 	strMethod = "unannotated_genome"
     #We assume that genomes will be a single fasta file, and that they will be
 	# smaller than 900 MB, the upper bound for passing a single file to usearch.
@@ -206,7 +206,7 @@ dictHitsForMarker = {}
 
 #FIX THIS ONE!
 if (args.strBlast == ""):
-	strBlast = str(dirTmp) + os.sep + "full_results.tab"
+	strBlast = str(dirTmp) + os.sep + strMethod+ "full_results.tab"
 else:
 	strBlast = args.strBlast
 
@@ -334,10 +334,9 @@ elif strMethod=="unannotated_genome":
 	strDBName = str(dirTmp) + os.sep + "blastdb_"+os.path.basename(os.path.splitext(args.strGenome)[0])
 	sq.MakedbBLASTnuc( args.strMakeBlastDB, strDBName,args.strGenome,dirTmp)
 
-	strBlastOut = dirTmp + os.sep + "tblastn_"+args.strMarkers+".tab"
-	sq.RunTBLASTN (args.strTBLASTN, strDBName,args.strMarkers, strBlastOut, args.iThreads)
+	sq.RunTBLASTN (args.strTBLASTN, strDBName,args.strMarkers, strBlast, args.iThreads)
 
-	sq.StoreHitCounts(strBlastOut = strBlastOut,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 		dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
 		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),strUSearchOut=False)
 
