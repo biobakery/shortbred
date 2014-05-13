@@ -101,6 +101,9 @@ grpParam.add_argument('--maxhits', type=float, dest='iMaxHits', help='Enter the 
 grpParam.add_argument('--maxrejects', type=float, dest='iMaxRejects', help='Enter the number of markers allowed to hit read.', default = 32)
 grpParam.add_argument('--unannotated', action='store_const',dest='bUnannotated', help='Indicates genome is unannotated. ShortBRED will use tblastn to \
 search AA markers against the db of six possible translations of your genome data. ', const=True, default = False)
+grpParam.add_argument('--EM', action='store_const',dest='bEM', help='Indicates user would like to run EM algorithm \
+ on the quasi-markers. ', const=True, default = False)
+grpParam.add_argument('--bayes', type=str,dest='strBayes', help='Output files for Bayes Results', default = "")
 #parser.add_argument('--tmid', type=float, dest='dTMID', help='Enter the percent identity for a TM match', default = .95)
 #parser.add_argument('--qmid', type=float, dest='dQMID', help='Enter the percent identity for a QM match', default = .95)
 #parser.add_argument('--alnTM', type=int, dest='iAlnMax', help='Enter a bound for TM alignments, such that aln must be>= min(markerlength,alnTM)', default = 20)
@@ -154,18 +157,20 @@ if args.strGenome!="" and args.strWGS==None and args.bUnannotated==False:
 	# smaller than 900 MB, the upper bound for passing a single file to usearch.
 	strSize = "small"
 	strFormat = "fasta"
+	sys.stderr.write("Treating input as an annotated genome...\n")
 	sys.stderr.write("NOTE: When running against an annotated bug genome, ShortBRED makes a \
 	usearch database from the bug genome and then searches the markers against it. \
-	Please remember to increase \"maxhits\" to a large number, so that multiple \
-	markers can hit each bug sequence. \n\n")
+	Please remember to increase \"maxhits\" and \"maxrejects\" to a large number, so that multiple \
+	markers can hit each bug sequence. Setting these values to 0 will search the full database.\n\n")
 	dictFamCounts = sq.MakeDictFamilyCounts(args.strMarkers,"")
 
-if args.strGenome!="" and args.strWGS==None and args.bUnannotated==True:
+elif args.strGenome!="" and args.strWGS==None and args.bUnannotated==True:
 	strMethod = "unannotated_genome"
     #We assume that genomes will be a single fasta file, and that they will be
 	# smaller than 900 MB, the upper bound for passing a single file to usearch.
 	strSize = "small"
 	strFormat = "fasta"
+	sys.stderr.write("Treating input as an unannotated genome...\n")
 	sys.stderr.write("NOTE: When running against an unannotated bug genome, ShortBRED makes a \
 	tblastn database from the genome and then blasts the markers against it. \
 	Please remember to increase \"maxhits\" to a large number, so that multiple \
@@ -174,6 +179,7 @@ if args.strGenome!="" and args.strWGS==None and args.bUnannotated==True:
 
 else:
 	strMethod = "wgs"
+	sys.stderr.write("Treating input as a wgs file...\n")
 
 
 ##############################################################################
@@ -203,6 +209,8 @@ dictMarkerLen = {}
 dictMarkerLenAll = {}
 dictMarkerCount = {}
 dictHitsForMarker = {}
+dictQMPossibleOverlap = {}
+dictType = {}
 
 #FIX THIS ONE!
 if (args.strBlast == ""):
@@ -215,6 +223,13 @@ else:
 # Sum up the marker lengths by family, put them in a dictionary.
 # Make them into a USEARCH database.
 
+strQMOut = str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ "QM.log")
+if os.path.isfile(strQMOut):
+	os.remove(strQMOut)
+
+
+
+astrQMs = []
 for seq in SeqIO.parse(args.strMarkers, "fasta"):
 	#For ShortBRED Markers...
 	if args.strCentroids=="Y":
@@ -223,11 +238,49 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 	else:
 		mtchStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',seq.id)
 		strStub = mtchStub.group(1)
+		strType = mtchStub.group(2)
 
 	dictMarkerLenAll[strStub] = len(seq) + dictMarkerLenAll.get(strStub,0)
 	dictMarkerCount[strStub] = dictMarkerCount.get(strStub,0) + 1
 	dictHitsForMarker[seq.id] = 0
+	dictType[strStub] = strType
  	dictMarkerLen[seq.id] = len(seq)
+
+	if strType == "QM":
+		astrQMs.append(seq.id)
+		astrAllFams = re.search(r'\__\[(.*)\]',seq.id).group(1).split(",")
+        # Example: __[ZP_04174269_w=0.541,ZP_04300309_w=0.262,NP_242644_w=0.098]
+		iQM = 0
+		iJM = 0
+		iTM = 0
+
+		astrFams =[]
+		# Only retain those families which could validly map to this QM at the given settings.
+		for strFam in astrAllFams:
+			mtchFam = re.search(r'(.*)_w=(.*)',strFam)
+			strID = mtchFam.group(1)
+			dProp = float(mtchFam.group(2))
+
+			if strID == strStub:
+				dMainFamProp = dProp
+			dLenOverlap = (dProp/dMainFamProp) * len(seq)
+
+			# Reads from current family can map to the QM if overlap is as long
+			# as the minimum accepted read length. Or if it nearly overlaps
+			# the entire marker
+			if (dLenOverlap >= (args.iMinReadBP/3)) or (dProp/dMainFamProp) >= args.dAlnLength:
+				astrFams.append(strID)
+
+
+		dictQMPossibleOverlap[seq.id] = astrFams
+
+
+
+
+
+
+
+
 
 #If profiling WGS, make a database from the markers.
 if strMethod=="wgs":
@@ -478,15 +531,13 @@ elif strMethod=="unannotated_genome":
 elif strMethod=="wgs":
 	strInputFile=args.strWGS
 
-sq.CalculateCounts(strResults = args.strResults, strMarkerResults=strMarkerResults,dictHitCounts=dictBLAST,
-dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-dReadLength = float(args.iAvgReadBP), iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,strFile = strInputFile)
+if strMethod=="wgs":
+	atupCounts = sq.CalculateCounts(strResults = args.strResults, strMarkerResults=strMarkerResults,dictHitCounts=dictBLAST,
+	dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+	dReadLength = float(args.iAvgReadBP), iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,strFile = strInputFile)
 
-# Add final details to log
-with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:
-	log.write("Total Reads Processed: " + str(iTotalReadCount) + "\n")
-	log.write("Average Read Length: " + str(dAvgReadLength) + "\n")
-	log.write("Min Read Length: " + str(iMin) + "\n")
+	# Row of atupCounts = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength,iPossibleHitSpace)
+
 
 if strSize != "small":
 	#Delete the small, temp fasta file.
@@ -512,7 +563,15 @@ if strMethod=="annotated_genome" or strMethod=="unannotated_genome":
 		for strFam in sorted(dictFinalCounts.keys()):
 			fileBugCounts.write(strFam + "\t" + str(dictFinalCounts[strFam]) + "\n")
 
-
+# Add final details to log
+with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:
+	log.write("Total Reads Processed: " + str(iTotalReadCount) + "\n")
+	log.write("Average Read Length: " + str(dAvgReadLength) + "\n")
+	log.write("Min Read Length: " + str(iMin) + "\n")
 
 sys.stderr.write("Processing complete. \n")
+########################################################################################
+if (args.strBayes != ""):
+	sq.PrintBayes(atupCounts=atupCounts,strBayesResults=args.strBayes,strBayesLog=strQMOut,astrQMs=astrQMs,
+	dictQMPossibleOverlap=dictQMPossibleOverlap,dictType=dictType)
 

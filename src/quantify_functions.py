@@ -90,7 +90,7 @@ def MakeDictFamilyCounts (strMarkers,strFamilyOut):
 	dictFamMarkerCounts = {}
 	sys.stderr.write("Calculating markers per family... \n")
 	for seq in SeqIO.parse(strMarkers, "fasta"):
-		mtchFam = re.search(r'^(.*)_[TJQ]M_.*',seq.id)
+		mtchFam = re.search(r'^(.*)_[TJQ]M.*',seq.id)
 		if(mtchFam):
 			strFam = str(mtchFam.group(1)).strip()
 			if strFam in dictFamMarkerCounts:
@@ -99,7 +99,7 @@ def MakeDictFamilyCounts (strMarkers,strFamilyOut):
 				dictFamMarkerCounts[strFam] = 1
 	return dictFamMarkerCounts
 
-def CalcFinalCount (dictORFMatches,dictFamMarkerCounts,bUnannotated,dThres=.10,):
+def CalcFinalCount (dictORFMatches,dictFamMarkerCounts,bUnannotated,dThresh=.10,):
     # Takes two dictionaries, each have protein families has the keys.
 	# One has the number of markers hitting the ORF, the other has all possible markers.
 	#
@@ -107,11 +107,11 @@ def CalcFinalCount (dictORFMatches,dictFamMarkerCounts,bUnannotated,dThres=.10,)
 	aaCounts = []
 	aaFinalCounts = []
 
+
 	for strFam in dictORFMatches:
 		dScore = dictORFMatches[strFam] / float(dictFamMarkerCounts[strFam])
 		aFamScore = [strFam,dScore]
 		aaCounts.append(aFamScore)
-
 
 	dSum = sum(zip(*aaCounts)[1])
 
@@ -130,10 +130,7 @@ def CalcFinalCount (dictORFMatches,dictFamMarkerCounts,bUnannotated,dThres=.10,)
 	# For unannotated genomes, multiple families can hit to a contig, and we
 	# want to count all of them. We do not apply the threshold.
 	else:
-		for aFamScore in aaCounts:
-			aNewScore = [aFamScore[0],aFamScore[1] * (aFamScore[1]/dSum) ]
-			aaFinalCounts.append(aNewScore)
-
+		aaFinalCounts = aaCounts
 	return aaFinalCounts
 
 	"""
@@ -179,9 +176,10 @@ def NormalizeGenomeCounts (strValidHits,dictFamCounts,bUnannotated,dThresh=.1):
 
 		dictFamMatches = {}
 
+
 		# get count of matches to each family
 		for strFam in astrMatches:
-			mtchFam = re.search(r'^(.*)_[TJQ]M_.*',strFam)
+			mtchFam = re.search(r'^(.*)_[TJQ]M.*',strFam)
 			if(mtchFam):
 				strFam = str(mtchFam.group(1)).strip()
 
@@ -189,8 +187,6 @@ def NormalizeGenomeCounts (strValidHits,dictFamCounts,bUnannotated,dThresh=.1):
 					dictFamMatches[strFam] = dictFamMatches[strFam]+1
 				else:
 					dictFamMatches[strFam] = 1
-
-
 
 		# Normalize Counts
 		aaCount = CalcFinalCount (dictFamMatches,dictFamCounts,bUnannotated,dThresh=.1)
@@ -439,4 +435,88 @@ dAlnLength,strFile):
 
 	ProcessHitData(atupMarkerCounts, strMarkerResults=strMarkerResults,strFamFile = strResults)
 
+	return atupMarkerCounts
+
+####################################################################################################
+def PrintBayes(atupCounts,strBayesResults,strBayesLog,astrQMs,dictQMPossibleOverlap,dictType):
+	# This function uses Bayesian updating to adjust the final ShortBRED counts
+	# for quasi markers. We consider true markers and junction markers to provide
+	# good estimates of the abundance of proteins of interest. By subtracting these
+	# values from the estimated QM counts, we obtain better estimates of their
+	# true values.
+
+
+	strCurFam = ""
+	atupCurFamData = []
+	dictFamCounts = {}
+	dictMarkerCounts = {}
+
+
+	for tupRow in atupCounts:
+
+		strFam = tupRow[0]
+		dictMarkerCounts[tupRow[1]] = tupRow[2]
+
+		# For each family, get Median ShortBRED count.
+		if strFam != strCurFam and strCurFam!="":
+			# If start a new family, print out the median for the last one.
+			atupZip = zip(*atupCurFamData)
+			dMed = Median(list(atupZip[2]))
+			dictFamCounts[strCurFam] = dMed
+			atupCurFamData = [tupRow]
+			strCurFam = strFam
+		elif strCurFam=="":
+			# For the first fam, initialize the family and current data.
+			strCurFam=strFam
+			atupCurFamData=[tupRow]
+		else:
+			# If still on same family, add row to current data.
+			atupCurFamData+=[tupRow]
+
+		# Add count for the last family.
+		atupZip = zip(*atupCurFamData)
+		dMed = Median(list(atupZip[2]))
+		dictFamCounts[strCurFam] = dMed
+
+	# The BayesLog was used for debugging purposes, this code also updates
+	# the value for the quasi-markers.
+
+	with open(strBayesLog, "a") as BayesLog:
+		BayesLog.write("Total Families:" +str(len(dictFamCounts)) + "\n")
+
+		for strMarker in astrQMs:
+			iQM = 0
+			iJM = 0
+			iTM = 0
+			dSubtract =0
+			BayesLog.write(strMarker+": ")
+			for strFam in dictQMPossibleOverlap[strMarker]:
+				BayesLog.write(strFam + " " + str(dictFamCounts[strFam]) + "\n")
+				if dictType[strFam]=="TM":
+					iTM+=1
+					dSubtract+=dictFamCounts[strFam]
+				elif dictType[strFam]=="JM":
+					iJM+=1
+					dSubtract+=dictFamCounts[strFam]
+				elif dictType[strFam]=="QM":
+					strQMFam = strFam
+					iQM+=1
+
+			BayesLog.write("\n")
+			astrValues=[str(iTM),str(iJM),str(iQM)]
+			dTotal = dictMarkerCounts[strMarker] - dSubtract
+			if dTotal<0:
+				dTotal = 0
+			BayesLog.write("\t".join(astrValues) + "\n")
+			BayesLog.write("Final Value: " +str(dTotal) + "\n")
+			dictFamCounts[strQMFam] = dTotal
+
+	with open(strBayesResults, "w") as fOut:
+		fOut.write("Family" + "\t" + "Count" + "\n")
+		for strFam in dictFamCounts.keys():
+			fOut.write(strFam + "\t" + str(dictFamCounts[strFam]) + "\n")
+
+
 	return
+
+
