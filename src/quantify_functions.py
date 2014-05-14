@@ -438,7 +438,7 @@ dAlnLength,strFile):
 	return atupMarkerCounts
 
 ####################################################################################################
-def PrintBayes(atupCounts,strBayesResults,strBayesLog,astrQMs,dictQMPossibleOverlap,dictType):
+def BayesUpdate(atupCounts,strBayesResults,strBayesLog,astrQMs,dictQMPossibleOverlap,dictType):
 	# This function uses Bayesian updating to adjust the final ShortBRED counts
 	# for quasi markers. We consider true markers and junction markers to provide
 	# good estimates of the abundance of proteins of interest. By subtracting these

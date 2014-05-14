@@ -572,6 +572,6 @@ with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a")
 sys.stderr.write("Processing complete. \n")
 ########################################################################################
 if (args.strBayes != ""):
-	sq.PrintBayes(atupCounts=atupCounts,strBayesResults=args.strBayes,strBayesLog=strQMOut,astrQMs=astrQMs,
+	sq.BayesUpdate(atupCounts=atupCounts,strBayesResults=args.strBayes,strBayesLog=strQMOut,astrQMs=astrQMs,
 	dictQMPossibleOverlap=dictQMPossibleOverlap,dictType=dictType)
 
