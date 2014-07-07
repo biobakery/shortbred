@@ -391,11 +391,11 @@ dAlnLength,strFile):
 
 	sys.stderr.write("Tabulating results for each marker... \n")
 	for strMarker in dictHitsForMarker.keys():
-		iHits = dictHitsForMarker[strMarker]
+		iHits = dictHitsForMarker.get(strMarker,0)
 		iMarkerNucs = dictMarkerLen[strMarker]*3
 		if strCentCheck=="Y":
 			strProtFamily = strMarker
-			dCount = iHits / float(iMarkerNucs)
+			dCount = iHits / (float(iMarkerNucs)/1000)
 			iPossibleHitSpace = float(iMarkerNucs)
 		else:
 			# Correction factor, since we only require dAlnLength of the reads to align. This results in (1-p)*2 Extra Read len on each side

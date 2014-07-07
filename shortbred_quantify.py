@@ -231,10 +231,11 @@ if os.path.isfile(strQMOut):
 
 astrQMs = []
 for seq in SeqIO.parse(args.strMarkers, "fasta"):
-	#For ShortBRED Markers...
+	#For Cenrtoids...
 	if args.strCentroids=="Y":
 		strStub = seq.id
-	#For Centroids...
+
+	#For ShortBRED Markers
 	else:
 		mtchStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',seq.id)
 		strStub = mtchStub.group(1)
@@ -243,36 +244,39 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 	dictMarkerLenAll[strStub] = len(seq) + dictMarkerLenAll.get(strStub,0)
 	dictMarkerCount[strStub] = dictMarkerCount.get(strStub,0) + 1
 	dictHitsForMarker[seq.id] = 0
-	dictType[strStub] = strType
- 	dictMarkerLen[seq.id] = len(seq)
+	dictMarkerLen[seq.id] = len(seq)
 
-	if strType == "QM":
-		astrQMs.append(seq.id)
-		astrAllFams = re.search(r'\__\[(.*)\]',seq.id).group(1).split(",")
-        # Example: __[ZP_04174269_w=0.541,ZP_04300309_w=0.262,NP_242644_w=0.098]
-		iQM = 0
-		iJM = 0
-		iTM = 0
-
-		astrFams =[]
-		# Only retain those families which could validly map to this QM at the given settings.
-		for strFam in astrAllFams:
-			mtchFam = re.search(r'(.*)_w=(.*)',strFam)
-			strID = mtchFam.group(1)
-			dProp = float(mtchFam.group(2))
-
-			if strID == strStub:
-				dMainFamProp = dProp
-			dLenOverlap = (dProp/dMainFamProp) * len(seq)
-
-			# Reads from current family can map to the QM if overlap is as long
-			# as the minimum accepted read length. Or if it nearly overlaps
-			# the entire marker
-			if (dLenOverlap >= (args.iMinReadBP/3)) or (dProp/dMainFamProp) >= args.dAlnLength:
-				astrFams.append(strID)
+	if args.strCentroids!="Y":
+		dictType[strStub] = strType
 
 
-		dictQMPossibleOverlap[seq.id] = astrFams
+		if strType == "QM":
+			astrQMs.append(seq.id)
+			astrAllFams = re.search(r'\__\[(.*)\]',seq.id).group(1).split(",")
+	        # Example: __[ZP_04174269_w=0.541,ZP_04300309_w=0.262,NP_242644_w=0.098]
+			iQM = 0
+			iJM = 0
+			iTM = 0
+
+			astrFams =[]
+			# Only retain those families which could validly map to this QM at the given settings.
+			for strFam in astrAllFams:
+				mtchFam = re.search(r'(.*)_w=(.*)',strFam)
+				strID = mtchFam.group(1)
+				dProp = float(mtchFam.group(2))
+
+				if strID == strStub:
+					dMainFamProp = dProp
+				dLenOverlap = (dProp/dMainFamProp) * len(seq)
+
+				# Reads from current family can map to the QM if overlap is as long
+				# as the minimum accepted read length. Or if it nearly overlaps
+				# the entire marker
+				if (dLenOverlap >= (args.iMinReadBP/3)) or (dProp/dMainFamProp) >= args.dAlnLength:
+					astrFams.append(strID)
+
+
+			dictQMPossibleOverlap[seq.id] = astrFams
 
 
 

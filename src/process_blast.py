@@ -113,7 +113,17 @@ def FindJMMarker( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegion=25,i
 			bHitEnd = True
 
 		# Load the hits against other consensus sequences.
-		atupHitInfo = dictGOIHits[strGene]
+		#atupHitInfo = dictGOIHits[strGene]
+
+		########################################################################
+		# Alternative: Check Reference Hits as Well.
+		# Revisit this in the future. Initial results very slightly weaker, likely
+		# due to increased reliance on QM's. Perhaps implement this again,
+		# but adjust QM algorithm to penalize consensus overlap more than
+		# reference overlap.
+		#######################################################################
+
+		atupHitInfo = dictGOIHits[strGene] + dictRefHits.get(strGene,[])
 
 		# Make a window as long as iShortRegion. Slide through the sequence.
 		# If you find a region with total X's under the limit, move to additional
