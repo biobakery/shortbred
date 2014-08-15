@@ -113,7 +113,7 @@ def CalcFinalCount (dictORFMatches,dictFamMarkerCounts,bUnannotated,dThresh=.10,
 		aFamScore = [strFam,dScore]
 		aaCounts.append(aFamScore)
 
-	dSum = sum(zip(*aaCounts)[1])
+	dSum = sum(list(zip(*aaCounts))[1])
 
 	# For annotated genomes, we throw out scores that comprise less than (dThresh)
 	# percent of the total for the ORF
@@ -201,7 +201,8 @@ def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAc
 
 	strFields = "query+target+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql+tl+qs+ts"
 
-	subprocess.check_call(["time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
+	subprocess.check_call([
+#		"time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
 		strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
 		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,"--maxaccepts",str(iAccepts),
 		"--maxrejects",str(iRejects),"--threads", str(iThreads)])
@@ -210,7 +211,8 @@ def RunUSEARCHGenome ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTm
 
 	strFields = "target+query+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql+tl+qs+ts"
 
-	subprocess.check_call(["time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
+	subprocess.check_call([
+#		"time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
 		strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
 		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,"--maxaccepts",str(iAccepts),
 		"--maxrejects",str(iRejects),"--threads", str(iThreads)])
@@ -234,7 +236,8 @@ def Median(adValues):
 	adValues.sort()
 	iLen = len(adValues)
 	if iLen % 2==0:
-		dMedian = float(adValues[iLen/2] + adValues[(iLen/2)-1])/2.0
+		i = int(iLen/2)
+		dMedian = float(adValues[i] + adValues[i-1])/2.0
 	else:
 		dMedian = adValues[int(math.floor(iLen/2))]
 	return dMedian
@@ -356,14 +359,13 @@ def PrintStats(atupCurFamData, strMarkerFile, strFamFile):
 
 	#sys.stderr.write("Processing "+strName+"... \n")
 	#Zip the tuples so that we perform operations on the columns.
-	atupZipped = zip(*atupCurFamData)
-
+	atupZipped = list(zip(*atupCurFamData))
 
 	# Family Stats
 	try:
 		dMedian = Median(list(atupZipped[2]))
-		iHits = sum(list(atupZipped[3]))
-		iMarkerLength = sum(list(atupZipped[4]))
+		iHits = sum(atupZipped[3])
+		iMarkerLength = sum(atupZipped[4])
 	except:
          sys.stderr.write("Problem with results for set: " +str(atupZipped))
 

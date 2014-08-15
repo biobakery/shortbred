@@ -322,7 +322,7 @@ if strMethod=="wgs":
 		# Remember that a tarfile has a header block, and then data blocks
 		if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
 			tarWGS = tarfile.open(strWGS,strExtractMethod)
-	 		atarinfoFiles = tarWGS.getmembers() #getmembers() returns tarInfo objects
+			atarinfoFiles = tarWGS.getmembers() #getmembers() returns tarInfo objects
 			tarWGS.close()
 
 			for tarinfoFile in atarinfoFiles:

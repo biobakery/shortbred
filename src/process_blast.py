@@ -46,37 +46,37 @@ from Bio.SeqRecord import SeqRecord
 
 ###############################################################################
 def GetCDHitMap ( fileCluster, strTxtMap):
-    setGenes = set()
-    strFam = ""
-    iLine = 0
+	setGenes = set()
+	strFam = ""
+	iLine = 0
 
-    dictFams = {}
+	dictFams = {}
 
-    for astrLine in csv.reader(open(fileCluster),delimiter='\t'):
+	for astrLine in csv.reader(open(fileCluster),delimiter='\t'):
 		iLine+=1
 		mtch = re.search(r'^>',astrLine[0])
 		if (mtch):
-		    if (len(setGenes)>0 and strFam!=""):
+			if (len(setGenes)>0 and strFam!=""):
 				for strGene in setGenes:
-				    dictFams[strGene] = strFam
+					dictFams[strGene] = strFam
 				setGenes=set()
 				strFam = ""
 		else:
-		    mtchGene = re.search(r'>(.*)\.\.\.',str(astrLine[1]))
-		    strGene = mtchGene.groups(1)[0]
-		    setGenes.add(strGene.strip())
-		    mtchFam = re.search(r'\.\.\.\s\*',str(astrLine[1]))
-		    if mtchFam:
+			mtchGene = re.search(r'>(.*)\.\.\.',str(astrLine[1]))
+			strGene = mtchGene.groups(1)[0]
+			setGenes.add(strGene.strip())
+			mtchFam = re.search(r'\.\.\.\s\*',str(astrLine[1]))
+			if mtchFam:
 				strFam = strGene.strip()
 
-    for strGene in setGenes:
-				    dictFams[strGene.strip()] = strFam.strip()
+	for strGene in setGenes:
+					dictFams[strGene.strip()] = strFam.strip()
 
 
-    f = open(strTxtMap, 'w')
-    for prot, fam in sorted(dictFams.items(), key = lambda(prot, fam): (fam,prot)):
+	f = open(strTxtMap, 'w')
+	for prot, fam in sorted(dictFams.items(), key = lambda a: (a[1], a[0])):
 		f.write(fam + "\t" + prot + "\n")
-    f.close()
+	f.close()
 
 ###############################################################################
 def IsInHit( aiSeqQuery, aiSeqTarget):
@@ -200,7 +200,7 @@ def FindJMMarker( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegion=25,i
 						else:
 							bHitRightEnd=True
 
-                    # Add as many AA's to the left as possible.
+					# Add as many AA's to the left as possible.
 					while (iLength< iMarkerLen and bHitLeftEnd==False):
 						iLength = iEnd - iStart +1
 						if(iStart>1 and dictGenes[strGene][iStart-1:iEnd].count("X")<iXlimit):
@@ -222,7 +222,7 @@ def FindJMMarker( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegion=25,i
 				else:
 					# Case 2: Region failed, move onto the next possibility.
 					iStart = iStart+1
-	                bOverlapsSomeSeq = False
+					bOverlapsSomeSeq = False
 
 		#######################################################################
 		# Finished checking *all* regions.
@@ -244,21 +244,21 @@ def FindJMMarker( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegion=25,i
 ###############################################################################
 def MakeFamilyFastaFiles ( strMapFile, fileFasta, dirOut):
 #Makes a fasta file containing genes for each family in dictFams.
-    dictFams = {}
-    for strLine in csv.reader(open(strMapFile),delimiter='\t'):
+	dictFams = {}
+	for strLine in csv.reader(open(strMapFile),delimiter='\t'):
 		dictFams[strLine[1]]=strLine[0]
 
 
-    dictgeneFamilies = {}
+	dictgeneFamilies = {}
 
-    for gene in SeqIO.parse(fileFasta, "fasta"):
+	for gene in SeqIO.parse(fileFasta, "fasta"):
 		strFamily = dictFams.get(gene.id,"unassigned")
 		aGene = dictgeneFamilies.get(strFamily,list())
 		aGene.append(gene)
 		dictgeneFamilies[strFamily] = aGene
 
-    for key in dictgeneFamilies.keys():
-		strFamFile = dirOut + os.sep + key +".faa"
+	for key in dictgeneFamilies.keys():
+		strFamFile = dirOut + os.sep + key + ".faa"
 		f = open(strFamFile, 'w')
 		SeqIO.write(dictgeneFamilies[key], strFamFile, "fasta")
 		f.close()
@@ -267,24 +267,24 @@ def MakeFamilyFastaFiles ( strMapFile, fileFasta, dirOut):
 def ClusterFams(dirClust, dCLustID, strOutputFile, dThresh,strMUSCLE):
 #Clusters all of the family files made by MakeFamilyFastaFiles.
 
-    dirFams = dirClust + os.sep + "fams"
-    dirCentroids = dirFams+os.sep+"centroids"
-    dirUC = dirFams+ os.sep + "uc"
+	dirFams = dirClust + os.sep + "fams"
+	dirCentroids = dirFams+os.sep+"centroids"
+	dirUC = dirFams+ os.sep + "uc"
 
-    if not os.path.exists(dirClust):
+	if not os.path.exists(dirClust):
 		os.makedirs(dirClust)
-    if not os.path.exists(dirFams):
+	if not os.path.exists(dirFams):
 		os.makedirs(dirFams)
-    if not os.path.exists(dirCentroids):
+	if not os.path.exists(dirCentroids):
 		os.makedirs(dirCentroids)
 
-    if not os.path.exists(dirUC):
+	if not os.path.exists(dirUC):
 		os.makedirs(dirUC)
 
 
-    #sys.stderr.write( dirCentroids + "\n")
-    #sys.stderr.write( str(glob.glob(dirFams+os.sep+'*.faa')) + "\n")
-    for fileFasta in glob.glob(dirFams+os.sep+'*.faa'):
+	#sys.stderr.write( dirCentroids + "\n")
+	#sys.stderr.write( str(glob.glob(dirFams+os.sep+'*.faa')) + "\n")
+	for fileFasta in glob.glob(dirFams+os.sep+'*.faa'):
 		#sys.stderr.write("The file is " + fileFasta + " \n")
 		fileClust = dirCentroids + os.sep + os.path.basename(fileFasta)
 		fileAlign = dirFams + os.sep + os.path.basename(fileFasta)+".aln"
@@ -294,14 +294,14 @@ def ClusterFams(dirClust, dCLustID, strOutputFile, dThresh,strMUSCLE):
 		iSeqCount = 0
 		#Count seqs, if more than one, then align them
 		for seq in SeqIO.parse(fileFasta, "fasta"):
-		    iSeqCount+=1
+			iSeqCount+=1
 
 
 		if iSeqCount>1:
-		    #Call muscle to produce an alignment
+			#Call muscle to produce an alignment
 			subprocess.check_call([strMUSCLE, "-in", str(fileFasta), "-out", str(fileAlign)])
 
-            # Use BioPython's "dumb consensus" feature to get consensus sequence
+			# Use BioPython's "dumb consensus" feature to get consensus sequence
 			algnFasta = AlignIO.read(str(fileAlign), "fasta")
 
 			seqConsensus =str(AlignInfo.SummaryInfo(algnFasta).dumb_consensus(threshold=dThresh, ambiguous='X'))
@@ -316,56 +316,56 @@ def ClusterFams(dirClust, dCLustID, strOutputFile, dThresh,strMUSCLE):
 			subprocess.check_call(["cons", "-seq", str(fileAlign), "-outseq", str(fileClust)])
 			"""
 		else:
-		    shutil.copyfile(fileFasta,fileClust)
+			shutil.copyfile(fileFasta,fileClust)
 
 
 
-    ageneAllGenes = []
+	ageneAllGenes = []
 
-    for fileFasta in glob.glob(dirCentroids+os.sep+'*.faa'):
+	for fileFasta in glob.glob(dirCentroids+os.sep+'*.faa'):
 		for gene in SeqIO.parse(fileFasta, "fasta"):
-		    gene.id = os.path.basename(os.path.splitext(fileFasta)[0])
-		    ageneAllGenes.append(gene)
+			gene.id = os.path.basename(os.path.splitext(fileFasta)[0])
+			ageneAllGenes.append(gene)
 
-    """
-    for gene in ageneAllGenes:
+	"""
+	for gene in ageneAllGenes:
 		mtch = re.search(r'centroid=(.*)',gene.id)
 		if mtch:
-		    gene.id = mtch.group(1)
+			gene.id = mtch.group(1)
 		else:
-		    gene.id = os.path.splitext()
-    """
+			gene.id = os.path.splitext()
+	"""
 
-    SeqIO.write(ageneAllGenes, strOutputFile, "fasta")
+	SeqIO.write(ageneAllGenes, strOutputFile, "fasta")
 
 ###############################################################################
 def printMap(strUCMap,strTxtMap):
 #Converts usearch .uc file into two column (FamId, GeneId) file.
 
-    dictGeneMap={}
-    for strLine in csv.reader(open(strUCMap),delimiter='\t'):
+	dictGeneMap={}
+	for strLine in csv.reader(open(strUCMap),delimiter='\t'):
 		if (strLine[0] == "H"):
-		    dictGeneMap[strLine[-2]] = strLine[-1]
+			dictGeneMap[strLine[-2]] = strLine[-1]
 		elif (strLine[0] == "C"):
-		    dictGeneMap[strLine[-2]] = strLine[-2]
+			dictGeneMap[strLine[-2]] = strLine[-2]
 
-    f = open(strTxtMap, 'w')
-    for prot, fam in sorted(dictGeneMap.items(), key = lambda(prot, fam): (fam,prot)):
+	f = open(strTxtMap, 'w')
+	for prot, fam in sorted(dictGeneMap.items(), key = lambda a: (a[1],a[0])):
 		f.write(fam + "\t" + prot + "\n")
-    f.close()
+	f.close()
 
 ###############################################################################
 def getGeneData ( fileFasta):
 #Returns dict of form (GeneID, seq)
-    dictGeneData = {}
+	dictGeneData = {}
 
-    for gene in SeqIO.parse(fileFasta, "fasta"):
-		    dictGeneData.setdefault(gene.id.strip(), str(gene.seq))
+	for gene in SeqIO.parse(fileFasta, "fasta"):
+			dictGeneData.setdefault(gene.id.strip(), str(gene.seq))
 
 
-    if dictGeneData.has_key(''):
+	if '' in dictGeneData:
 		del dictGeneData['']
-    return dictGeneData
+	return dictGeneData
 
 ##############################################################################
 def getOverlapCounts (fileBlast, dIDcutoff, iLengthMin, dLengthMax, iOffset, bSaveHitInfo):
@@ -386,11 +386,11 @@ def getOverlapCounts (fileBlast, dIDcutoff, iLengthMin, dLengthMax, iOffset, bSa
 
 #Read in the blast output line by line
 #When the program finds a new QueryGene:
-    #Add the last gene's aiCounts to dictAAOverlapCounts -- (gene, abWindow)
+	#Add the last gene's aiCounts to dictAAOverlapCounts -- (gene, abWindow)
 	#Add the last gene's atupHitInfo to dictOverlapInfo
-    #Make a new aiCounts
+	#Make a new aiCounts
 #When the program finds the same QueryGene:
-    #If the region in the blast hit satisfies our length and ID parameters
+	#If the region in the blast hit satisfies our length and ID parameters
 		#Set the corresponding location in abWindow equal to (count+1)
 
 #Add the last gene when you finish the file
@@ -404,8 +404,8 @@ def getOverlapCounts (fileBlast, dIDcutoff, iLengthMin, dLengthMax, iOffset, bSa
 	iLine =0
 
 
-    #sys.stderr.write("The file is " + fileBlast + "\n")
-	for aLine in csv.reader( open(fileBlast, 'rb'), delimiter='\t' ):
+	#sys.stderr.write("The file is " + fileBlast + "\n")
+	for aLine in csv.reader( open(fileBlast, 'rU'), delimiter='\t' ):
 
 		iLine+=1
 
@@ -442,7 +442,7 @@ def getOverlapCounts (fileBlast, dIDcutoff, iLengthMin, dLengthMax, iOffset, bSa
 		#If it's valid overlap:
 		#   and 1 to each appopriate spot in the array
 		#   save the name of the overlapping gene, and its start and end points
-		#       Note: The latter region will include AA's outside what is marked as overlap, we still want that info.
+		#	   Note: The latter region will include AA's outside what is marked as overlap, we still want that info.
 
 		if (dIdentity >= dIDcutoff) and (iAln >=iLengthMin) and (dMatchLength <= dLengthMax) and (strQueryID!=strSubId):
 			iOLCount = 0
@@ -456,8 +456,8 @@ def getOverlapCounts (fileBlast, dIDcutoff, iLengthMin, dLengthMax, iOffset, bSa
 
 
 	dictAAOverlapCounts.setdefault(strCurQuery.strip(), aiCounts)
- 	dictOverlapInfo.setdefault(strCurQuery.strip(), atupHitsInfo)
-  	iGeneCount = iGeneCount+1
+	dictOverlapInfo.setdefault(strCurQuery.strip(), atupHitsInfo)
+	iGeneCount = iGeneCount+1
 
 	return dictAAOverlapCounts, dictOverlapInfo
 	#tupAAandHits = (dictAAOverlapCounts, dictOverlapInfo)
@@ -467,12 +467,12 @@ def getOverlapCounts (fileBlast, dIDcutoff, iLengthMin, dLengthMax, iOffset, bSa
 ###########################################################################
 def MarkX(dictGenes, dictOverlap):
 
-    for strName in dictGenes:
+	for strName in dictGenes:
 		for i in range(len(dictGenes[strName])):
-		    if dictGenes[strName][i]=="X" or dictGenes[strName][i]=="x":
+			if dictGenes[strName][i]=="X" or dictGenes[strName][i]=="x":
 				dictOverlap[strName][i] = dictOverlap[strName][i] + 9999999
 
-    return dictOverlap
+	return dictOverlap
 
 
 ###########################################################################
@@ -482,57 +482,57 @@ def CheckForMarkers(setGenes, dictKnockOut, iN):
 # Returns set of genes (ID's) with markers.
 
 
-    fFoundRegion = False
-    fHitEnd = False
-    iSumCounts = 0
-    iMarkers = 0
+	fFoundRegion = False
+	fHitEnd = False
+	iSumCounts = 0
+	iMarkers = 0
 
-    setGenesWithMarkers = set()
+	setGenesWithMarkers = set()
 
-    for key in setGenes:
+	for key in setGenes:
 		aiWindow = dictKnockOut[key]
 		iStart = 0
 		while (fFoundRegion == False and fHitEnd == False):
-		    if ((iStart+iN) > len(aiWindow)):
+			if ((iStart+iN) > len(aiWindow)):
 				fHitEnd = True
-		    iSumCounts = sum(aiWindow[iStart:(iStart+iN)])
-		    if (iSumCounts == 0 and fHitEnd==False):
+			iSumCounts = sum(aiWindow[iStart:(iStart+iN)])
+			if (iSumCounts == 0 and fHitEnd==False):
 				iMarkers +=1
 				fFoundRegion = True
 				setGenesWithMarkers.add(key)
-		    iStart += 1
+			iStart += 1
 		fFoundRegion = False
 		fHitEnd = False
 
-    return setGenesWithMarkers
+	return setGenesWithMarkers
 ###############################################################################
 def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLength):
 
-    #Only run this on the leftover genes
-    # "iN" = minimum window length
-    #For each one, sum up the values from [0:n], then [1:n+1]...
-    #Store these in an array of length (len(gene)-n)
-    #Find the minimum value in this array
-    #Take its index
-    #Your window is [index:index+n]
+	#Only run this on the leftover genes
+	# "iN" = minimum window length
+	#For each one, sum up the values from [0:n], then [1:n+1]...
+	#Store these in an array of length (len(gene)-n)
+	#Find the minimum value in this array
+	#Take its index
+	#Your window is [index:index+n]
 
-    #Get the appropriate string from dictGOIgenes
-    #add it to dictQM
-
-
-    #Return dictQM with these windows
-
-    #A QM_tuple has 4 values (name, markers, overlapvalue,iOriginalLength)
+	#Get the appropriate string from dictGOIgenes
+	#add it to dictQM
 
 
+	#Return dictQM with these windows
 
-    iN = max(iN,12)
-
-    atupQM = []
+	#A QM_tuple has 4 values (name, markers, overlapvalue,iOriginalLength)
 
 
 
-    for key in setGenes:
+	iN = max(iN,12)
+
+	atupQM = []
+
+
+
+	for key in setGenes:
 		aiWindow = dictKnockOut[key]
 
 
@@ -550,11 +550,11 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
 
 		# Cycle through all windows of length N, record total overlap in aiWindowSums
 		while (fHitEnd == False):
-		    if ((iStart+iN) >= len(adAdjWindow)):
+			if ((iStart+iN) >= len(adAdjWindow)):
 				fHitEnd = True
-		    dSumCounts = sum(adAdjWindow[iStart:(iStart+iN)])
-		    adWindowSums.append(dSumCounts)
-		    iStart+=1
+			dSumCounts = sum(adAdjWindow[iStart:(iStart+iN)])
+			adWindowSums.append(dSumCounts)
+			iStart+=1
 
 		# Find first AminoAcid of best window (lowest total overlap) with length N
 		dMin = min(adWindowSums)
@@ -565,9 +565,9 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
 
 		# Add next AA if that does not put this over the threshhold
 		while(bStop==False and iWinEnd< len(dictGenes[key])-1 and len(adAdjWindow[iWinStart:iWinEnd+1]) < iTotLength):
-		    if (sum(adAdjWindow[iWinStart:iWinEnd+1])<=iThresh):
+			if (sum(adAdjWindow[iWinStart:iWinEnd+1])<=iThresh):
 				iWinEnd+=1
-		    else:
+			else:
 				bStop=True
 
 		# DO I NEED TO ADD bStop = False here?
@@ -575,9 +575,9 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
 		#After you've grown the QM as much as possible to the right, try growing to the left.
 		#Test the AA before the first AA of the QM, add it if it doesn't put you over iThresh
 		while(bStop==False and iWinStart>= 1 and len(aiWindow[iWinStart-1:iWinEnd]) < iTotLength):
-		    if (sum(adAdjWindow[iWinStart-1:iWinEnd])<=iThresh):
+			if (sum(adAdjWindow[iWinStart-1:iWinEnd])<=iThresh):
 				iWinStart-=1
-		    else:
+			else:
 				bStop=True
 
 
@@ -607,17 +607,17 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
 		#Error Checking
 		"""
 		if (key == "VFG1266" or key == "VFG0696" or key=="VFG2059"):
-		    print key
-		    print dictRefCounts.get(key,"Not in Ref Blast Results")
-		    print dictGOICounts.get(key,"Not in Clust Blast Results")
-		    print dictGOIGenes[key]
-		    print aiWindowSums
+			print key
+			print dictRefCounts.get(key,"Not in Ref Blast Results")
+			print dictGOICounts.get(key,"Not in Clust Blast Results")
+			print dictGOIGenes[key]
+			print aiWindowSums
 
-		    print iMin, iWinStart
+			print iMin, iWinStart
 
-		    print dictGenes[key][iWinStart:iWinStart+iN]
+			print dictGenes[key][iWinStart:iWinStart+iN]
 		"""
-    return atupQM
+	return atupQM
 
 ######################################################################################
 def GetQMOverlap(tupQM,atupHitInfo,fileOut,dictGOIGenes):
@@ -632,10 +632,10 @@ def GetQMOverlap(tupQM,atupHitInfo,fileOut,dictGOIGenes):
 
 # Give QM fields useful var names (examples in parentheses):
 	strQMSeqName = tupQM[0]		# The seq for which the QM is built ("AAA25465")
-	strQMSeqData = tupQM[1]     # ("RDRQGNIVDSLDSPRNKAPK")
-	iQMOverlap = tupQM[2]       # Sum of Overlap, after ^(1/4) transformation ("28")
+	strQMSeqData = tupQM[1]	 # ("RDRQGNIVDSLDSPRNKAPK")
+	iQMOverlap = tupQM[2]	   # Sum of Overlap, after ^(1/4) transformation ("28")
 	iMarkerStart = tupQM[3]+1   # Start of QM Location on Seq, converted Python notation to BLAST. ("0" becomes "1")
-	iMarkerEnd = tupQM[4]       # End of QM Location on Seq ("20")
+	iMarkerEnd = tupQM[4]	   # End of QM Location on Seq ("20")
 	aiOverlapWindow = tupQM[5]	# Overlap window (*before* ^(1/4) transformation ("[5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0]")
 
 # Each a atupHitInfo contains tuples with the following six fields:
@@ -665,7 +665,7 @@ def GetQMOverlap(tupQM,atupHitInfo,fileOut,dictGOIGenes):
 		iOLMarkerStart = tupHit[1]
 		iOLMarkerEnd = tupHit[2]
 
-        # Overlap location on the hit (in Blast format)
+		# Overlap location on the hit (in Blast format)
 		iOLHitStart = tupHit[3]
 		iOLHitEnd = tupHit[4]
 
@@ -675,12 +675,12 @@ def GetQMOverlap(tupQM,atupHitInfo,fileOut,dictGOIGenes):
 		if (iOLMarkerStart > iMarkerEnd or iOLMarkerEnd < iMarkerStart):
 			bOverlapsMarker = False
 
-        # If the overlapping hit begins within the QM...
+		# If the overlapping hit begins within the QM...
 		elif (iMarkerStart <= iOLMarkerStart <= iMarkerEnd):
 			iOLMarkerEnd = min(iMarkerEnd,iOLMarkerEnd)
 			bOverlapsMarker = True
 
-        # If the overlapping hit ends within the QM...
+		# If the overlapping hit ends within the QM...
 		elif(iMarkerStart <= iOLMarkerEnd <= iMarkerEnd):
 			iOLMarkerStart = max(iMarkerStart,iOLMarkerStart)
 			bOverlapsMarker = True
@@ -725,7 +725,7 @@ def GetQMOverlap(tupQM,atupHitInfo,fileOut,dictGOIGenes):
 
 
 def UpdateQMHeader(atupQM,dictGOIHits,dictRefHits,strQMOut,dictGOIGenes,bUpdateHeader=False):
-    #Each QM_tuple has the values: (name, window, overlapvalue,iMarkerStart,iMarkerEnd,aOverlap)
+	#Each QM_tuple has the values: (name, window, overlapvalue,iMarkerStart,iMarkerEnd,aOverlap)
 
 
 
@@ -735,7 +735,7 @@ def UpdateQMHeader(atupQM,dictGOIHits,dictRefHits,strQMOut,dictGOIGenes,bUpdateH
 		for tupQM in atupQM:
 			strQMName = tupQM[0]
 			strQMData = tupQM[1]
-			iQuasi    = tupQM[2]
+			iQuasi	= tupQM[2]
 			aiOverlapWindow = tupQM[5]
 
 
@@ -758,7 +758,7 @@ def UpdateQMHeader(atupQM,dictGOIHits,dictRefHits,strQMOut,dictGOIGenes,bUpdateH
 			aaGOIOverlap = GetQMOverlap(tupQM,dictGOIHits[strQMName],fQMOut,dictGOIGenes)
 			fQMOut.write(str(aaGOIOverlap) + "\n")
 			if(len(aaGOIOverlap)) > 0:
-				iGOIOverlap = sum(zip(*aaGOIOverlap)[1])
+				iGOIOverlap = sum(list(zip(*aaGOIOverlap))[1])
 			else:
 				iGOIOverlap = 0
 
@@ -766,7 +766,7 @@ def UpdateQMHeader(atupQM,dictGOIHits,dictRefHits,strQMOut,dictGOIGenes,bUpdateH
 				fQMOut.write("Overlap among Ref Seqs:" + '\n')
 				aaRefOverlap = GetQMOverlap(tupQM,dictRefHits[strQMName],fQMOut,dictGOIGenes)
 				if (len(aaRefOverlap)>0):
-					iRefOverlap = sum(zip(*aaRefOverlap)[1])
+					iRefOverlap = sum(list(zip(*aaRefOverlap))[1])
 				else:
 					iRefOverlap = 0
 				fQMOut.write(str(aaRefOverlap) + "\n")
@@ -799,7 +799,7 @@ def UpdateQMHeader(atupQM,dictGOIHits,dictRefHits,strQMOut,dictGOIGenes,bUpdateH
 ###############################################################################
 def PrintQuasiMarkers(atupQM, fileOut,bDetailed=False,bInitial=False):
 	iCounter = 0
- 	strName = ""
+	strName = ""
 
 
 	for tup in atupQM:

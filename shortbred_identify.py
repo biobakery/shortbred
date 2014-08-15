@@ -212,8 +212,8 @@ if(iMode==1 or iMode==2):
 	sys.stderr.write( "Clustering proteins of interest...\n")
 	src.check_file(str(args.sGOIProts))
 	#Cluster in cdhit
-	subprocess.check_call([c_strTIME, "-o",
-		  dirTime + os.sep + "goiclust.time",
+	subprocess.check_call([
+#		c_strTIME, "-o", dirTime + os.sep + "goiclust.time",
 		  strCDHIT, "-i", str(args.sGOIProts),
 			"-o", strClustFile, "-d", "0",
 			"-c", str(args.dClustID), "-b", "10","-g", "1"])
@@ -236,7 +236,8 @@ if(iMode==1 or iMode==2):
 
 	sys.stderr.write("Making BLAST database for the family consensus sequences...\n")
 	#Make database from goi centroids
-	subprocess.check_call([c_strTIME, "-o", dirTime + os.sep + "goidb.time",
+	subprocess.check_call([
+#		c_strTIME, "-o", dirTime + os.sep + "goidb.time",
 		"makeblastdb", "-in", strClustFile, "-out", strClustDB,
 		"-dbtype", "prot", "-logfile", dirTmp + os.sep + "goidb.log"])
 
@@ -252,7 +253,8 @@ if(iMode==1):
 
 		sys.stderr.write("Making BLAST database for the reference protein sequences...\n")
 		src.check_file(str(args.sRefProts))
-		subprocess.check_call([c_strTIME, "-o", dirTime + os.sep + "refdb.time",
+		subprocess.check_call([
+#			c_strTIME, "-o", dirTime + os.sep + "refdb.time",
 			"makeblastdb", "-in", str(args.sRefProts),"-out", strRefDBPath,
 			"-dbtype", "prot", "-logfile", dirTmp + os.sep +  "refdb.log"])
 
@@ -281,14 +283,16 @@ if(iMode==1 or iMode==2):
 
 
 	#Blast clust file against goidb
- 	sys.stderr.write( "BLASTing the consensus family sequences against themselves...\n")
-	subprocess.check_call(["time", "-o", dirTime + os.sep +"goisearch.time",
+	sys.stderr.write( "BLASTing the consensus family sequences against themselves...\n")
+	subprocess.check_call([
+#		"time", "-o", dirTime + os.sep +"goisearch.time",
 		strBLASTP, "-query", strClustFile, "-db", strClustDB,
 		"-out", strBlastSelf] + astrBlastParams)
 
 	#Blast clust file against refdb
- 	sys.stderr.write("BLASTing the consensus family sequences against the reference protein sequences...\n")
-	subprocess.check_call(["time", "-o", dirTime + os.sep +"refsearch.time",
+	sys.stderr.write("BLASTing the consensus family sequences against the reference protein sequences...\n")
+	subprocess.check_call([
+#		"time", "-o", dirTime + os.sep +"refsearch.time",
 		strBLASTP, "-query", strClustFile, "-db",strRefDBPath,
 		"-out", strBlastRef] + astrBlastParams)
 
@@ -384,7 +388,9 @@ else:
 if bHasQuasi:
 	sys.stderr.write( "Found "+str(len(atupQuasiMarkers1)) +" JM Markers...\n")
 	if len(atupQuasiMarkers1) >0:
-		setGotQM = zip(*atupQuasiMarkers1)[0]
+		for a in zip(*atupQuasiMarkers1):
+			setGotQM = a
+			break
 		setLeftover = setLeftover.difference(setGotQM)
 
 	# Change these lines to determine how QM's are made
@@ -396,7 +402,7 @@ if bHasQuasi:
 
 #Replace AA's with +'s in True Markers
 for key in setHasMarkers:
-	if dictAllCounts.has_key(key):
+	if key in dictAllCounts:
 		aiWindow = dictAllCounts[key]
 		astrGene = list(dictGOIGenes[key])
 
@@ -440,7 +446,7 @@ if(bHasQuasi):
 				dictFams[key] = qcvalue
 
 	with open(dirTmp + os.sep + "final.map",'w') as fFinalMap:
-		for prot, fam in sorted(dictFams.items(), key = lambda(prot, fam): (fam,prot)):
+		for prot, fam in sorted(dictFams.items(), key = lambda a: (a[1],a[0])):
 				fFinalMap.write(fam + "\t" + prot + "\n")
 
 	log.write("QM Families, after clustering:\t" +str(len(set(dictQuasiClust.values()))) + "\n")
