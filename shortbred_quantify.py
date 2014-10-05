@@ -86,10 +86,12 @@ help='Enter the name of the output for marker level results.')
 grpOutput.add_argument('--tmp', type=str, dest='strTmp', default ="",help='Enter the path and name of the tmp directory.')
 
 grpPrograms = parser.add_argument_group('Programs:')
+grpPrograms.add_argument('--search_program', default ="usearch", type=str, dest='strSearchProg', help='Choose program for wgs and unannotated genome search. Default is \"usearch\".')
 grpPrograms.add_argument('--usearch', default ="usearch", type=str, dest='strUSEARCH', help='Provide the path to usearch. Default call will be \"usearch\".')
 grpPrograms.add_argument('--tblastn', default ="tblastn", type=str, dest='strTBLASTN', help='Provide the path to tblastn. Default call will be \"tblastn\".')
 grpPrograms.add_argument('--makeblastdb', default ="makeblastdb", type=str, dest='strMakeBlastDB', help='Provide the path to makeblastdb. Default call will be \"makeblastdb\".')
-
+grpPrograms.add_argument('--prerapsearch2', default ="prerapsearch", type=str, dest='strPrerapPath', help='Provide the path to prerapsearch2. Default call will be \"prerapsearch\".')
+grpPrograms.add_argument('--rapsearch2', default ="prerapsearch", type=str, dest='strRap2Path', help='Provide the path to rapsearch2. Default call will be \"rapsearch2\".')
 
 #Parameters - Matching Settings
 grpParam = parser.add_argument_group('Parameters:')
@@ -417,6 +419,30 @@ else:
 			log.write(str(iWGSFileCount) + ": " + '\t'.join(astrFileInfo) + '\n')
 		iWGSReads = 0
 		sys.stderr.write( "Working on file " + str(iWGSFileCount) + " of " + str(len(aaWGSInfo)))
+
+
+		if args.strSearchProg=="rapsearch2" and strFormat=="fasta" and strSize=="small":
+			sq.RunRAPSEARCH2(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
+			iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
+			
+			sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
+				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
+
+
+			for seq in SeqIO.parse(strWGS, "fasta"):
+				iWGSReads+=1
+				iTotalReadCount+=1
+				dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
+				iMin = min(iMin,len(seq))
+
+    
+		#Include code here for extracting files from TAR file,and running
+		# in Rapsearch2            
+
+
+
+
 
 		#If it's a small fasta file, just give it to USEARCH directly.
 		if strSize=="small" and strFormat=="fasta":
