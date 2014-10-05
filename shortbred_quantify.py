@@ -91,7 +91,7 @@ grpPrograms.add_argument('--usearch', default ="usearch", type=str, dest='strUSE
 grpPrograms.add_argument('--tblastn', default ="tblastn", type=str, dest='strTBLASTN', help='Provide the path to tblastn. Default call will be \"tblastn\".')
 grpPrograms.add_argument('--makeblastdb', default ="makeblastdb", type=str, dest='strMakeBlastDB', help='Provide the path to makeblastdb. Default call will be \"makeblastdb\".')
 grpPrograms.add_argument('--prerapsearch2', default ="prerapsearch", type=str, dest='strPrerapPath', help='Provide the path to prerapsearch2. Default call will be \"prerapsearch\".')
-grpPrograms.add_argument('--rapsearch2', default ="prerapsearch", type=str, dest='strRap2Path', help='Provide the path to rapsearch2. Default call will be \"rapsearch2\".')
+grpPrograms.add_argument('--rapsearch2', default ="rapsearch2", type=str, dest='strRap2Path', help='Provide the path to rapsearch2. Default call will be \"rapsearch2\".')
 
 #Parameters - Matching Settings
 grpParam = parser.add_argument_group('Parameters:')
@@ -290,9 +290,14 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 
 
 #If profiling WGS, make a database from the markers.
-if strMethod=="wgs":
+if strMethod=="wgs" and args.strSearchProg=="usearch":
 	strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".udb"
 	sq.MakedbUSEARCH (args.strMarkers, strDBName,args.strUSEARCH)
+
+
+elif strMethod=="wgs" and args.strSearchProg=="rapsearch2":
+	strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".rap2db"
+	sq.MakedbRapsearch2 (args.strMarkers, strDBName,args.strPrerapPath)
 
 #If profiling genome, make a database from the genome reads in Step 3.
 
