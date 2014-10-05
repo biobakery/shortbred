@@ -41,6 +41,10 @@ def MakedbUSEARCH ( strMarkers, strDBName,strUSEARCH):
 	p = subprocess.check_call([strUSEARCH, "--makeudb_usearch", strMarkers,"--output", strDBName])
 	return
 
+def MakedbRapsearch2 ( strMarkers, strDBName,strPrerapPath):
+	p = subprocess.check_call([strPrerapPath, "-d", strMarkers,"-n", strDBName])
+	return
+
 def MakedbBLASTnuc ( strMakeBlastDB, strDBName,strGenome,dirTmp):
 	p = subprocess.check_call([strMakeBlastDB, "-in", strGenome, "-out", strDBName,
 		"-dbtype", "nucl", "-logfile", dirTmp + os.sep + "blast_nuc_db.log"])

@@ -261,6 +261,7 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 			astrFams =[]
 			# Only retain those families which could validly map to this QM at the given settings.
 			for strFam in astrAllFams:
+				print strFam
 				mtchFam = re.search(r'(.*)_w=(.*)',strFam)
 				strID = mtchFam.group(1)
 				dProp = float(mtchFam.group(2))
