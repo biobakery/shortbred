@@ -25,11 +25,13 @@
 #####################################################################################
 
 import subprocess
+from subprocess import Popen, PIPE,STDOUT
 import csv
 import re
 import sys
 import math
 import os
+import io
 
 import Bio
 from Bio.Seq import Seq
@@ -210,6 +212,24 @@ def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAc
 		strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
 		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,"--maxaccepts",str(iAccepts),
 		"--maxrejects",str(iRejects),"--threads", str(iThreads)])
+  
+def RunRAPSEARCH2 ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects,strRAPSEARCH2):
+
+
+	#p = Popen([strRAPSEARCH2,"-q","stdin","-d", strDB,"-v",str(iAccepts),"-z", str(iThreads),"-b", "0","-u","1"],stdin=PIPE,stdout=PIPE)
+	
+	with open(strWGS,"r") as streamSeq:
+		p = Popen([strRAPSEARCH2,"-q","stdin","-d", strDB,"-v",str(iAccepts),"-z", str(iThreads),"-b", "0","-u","1"],stdin=streamSeq,stdout=PIPE)
+		#seq = next(streamSeq)
+		#print(seq.format("fasta"))
+		#strRapOut = p.communicate(input=seq.format("fasta"))
+		#p.stdin.write(seq.format("fasta"))
+		#p.stdin.close()
+		strRapOut = p.stdout.read()
+		print(strRapOut)
+
+	
+	return
 
 def RunUSEARCHGenome ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects,strUSEARCH):
 
@@ -245,6 +265,74 @@ def Median(adValues):
 	else:
 		dMedian = adValues[int(math.floor(iLen/2))]
 	return dMedian
+
+def StoreHitCountsRapsearch2(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA,strUSearchOut=True):
+# Reads in the RAPSEARCH2 output (strBlastOut), marks which hits are valid (id>=dID &
+# len >= min(95% of read,dictMarkerLen[Marker]) and adds to count in dictHitsForMarker[strMarker].
+# Valid hits are also copied to the file in strValidHits. strCentCheck is used to flag centroids,
+# and handle their counting
+
+# Some small changes are made for Rapsearch2 output in this function.
+# *add ".m8", to the filename 
+# *skip the first 5 lines
+#* rearrange columns.
+
+	strBlastOut = strBlastOut + ".m8"
+	iSkip = 5
+
+        with open(strValidHits, 'a') as csvfileHits:
+                csvwHits = csv.writer( csvfileHits, csv.excel_tab )
+
+
+                sys.stderr.write("Processing RAPSEARCH2 results... \n")
+                #Go through the Rapsearch2 output, for each prot family, record the number of valid hits
+
+                with open(strBlastOut, 'r') as csvfileBlast:
+			csvReader = csv.reader( csvfileBlast, delimiter='\t' )
+			for i in range(iSkip):
+				next(csvReader)
+
+                        for aLine in csvReader:
+
+
+                                strMarker       = aLine[0]
+                                dHitID          = aLine[2]
+                                iAlnLen     = int(aLine[3])
+                                if (strUSearchOut):
+                                        iReadLenAA  = int(aLine[12])
+                                else:
+                                        iReadLenAA = int(aLine[7]) - int(aLine[6])
+
+                              # A valid match must be as long as 95% of the read or the full marker.
+                        # (Note that this in AA's.)
+
+
+                                #If using centroids (Typically only used for evaluation purposes.)....
+                                if strCentCheck=="Y":
+                                        strProtFamily = strMarker
+
+                                        if ( (int(iAlnLen)>= c_iAlnCentroids) and ( float(dHitID)/100) >= dID):
+                                                        dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) + 1
+                                                        dictHitsForMarker[strProtFamily] = dictHitsForMarker.setdefault(strProtFamily,0) + 1
+                                                        csvwHits.writerow( aLine )
+
+                                #If using ShortBRED Markers (and not centroids)...
+                                else:
+                                        iAlnMin = min(dictMarkerLen[strMarker] ,math.floor((iAvgReadAA)*dAlnLength))
+                                        #Get the Family Name
+                                        mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
+                                        strProtFamily = mtchProtStub.group(1)
+
+                                        #If hit satisfies criteria, add it to counts, write out data to Hits file
+                                        if (int(iAlnLen)>= iAlnMin and (iReadLenAA >= iMinReadAA) and (float(dHitID)/100) >= dID):
+
+                                                #Add 1 to count of hits for that marker, and family
+                                                dictHitsForMarker[aLine[1]] = dictHitsForMarker.setdefault(aLine[1],0) + 1
+                                                dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) +1
+
+                                                csvwHits.writerow( aLine )
+        return
+
 
 def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA,strUSearchOut=True):
 # Reads in the USEARCH output (strBlastOut), marks which hits are valid (id>=dID &

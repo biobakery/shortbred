@@ -426,36 +426,28 @@ else:
 		sys.stderr.write( "Working on file " + str(iWGSFileCount) + " of " + str(len(aaWGSInfo)))
 
 
-		if args.strSearchProg=="rapsearch2" and strFormat=="fasta" and strSize=="small":
-			sq.RunRAPSEARCH2(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
-			iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
+		if strFormat=="fasta" and strSize=="small":
+			if args.strSearchProg=="rapsearch2":
+				sq.RunRAPSEARCH2(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
+				iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strRAPSEARCH2=args.strRap2Path )
 			
-			sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
+				sq.StoreHitCountsRapsearch22(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
+					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
 
 
-			for seq in SeqIO.parse(strWGS, "fasta"):
-				iWGSReads+=1
-				iTotalReadCount+=1
-				dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
-				iMin = min(iMin,len(seq))
-
-    
-		#Include code here for extracting files from TAR file,and running
-		# in Rapsearch2            
 
 
 
 
 
 		#If it's a small fasta file, just give it to USEARCH directly.
-		if strSize=="small" and strFormat=="fasta":
-			sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
-			iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
-			sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
+			elif args.strSearchProg=="usearch":
+				sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
+				iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
+				sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
+					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
 
 
 			for seq in SeqIO.parse(strWGS, "fasta"):
