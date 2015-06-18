@@ -39,11 +39,18 @@ import time
 import datetime
 import math
 
+
+
+try:
+    import Bio
+except ImportError:
+    print "\nShortBRED was unable to load Biopython. Please check to make sure you have Biopython installed (http://biopython.org/wiki/Main_Page)\n"
+    sys.exit(1)
+
 import src
 import src.process_blast
 pb = src.process_blast
 
-import Bio
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Alphabet import IUPAC
@@ -90,10 +97,6 @@ grpInput.add_argument('--map_in', type=str, dest='sMapIn',default="", help='Used
 grpOutput = parser.add_argument_group('Output')
 grpOutput.add_argument('--markers', type=str, default="markers.faa", dest='sMarkers', help='Enter name and path for the marker output file')
 
-
-# DB NOTE: Put in a few examples there. Maybe even provide a few sample fasta files.
-#	That will help the user out a great deal. They can see how this will work for different
-#	Parameters, etc.
 
 
 grpOutput.add_argument('--map_out', type=str, default="gene-centroid.uc", dest='sMap', help='Enter name and path for the output map file')
@@ -144,7 +147,7 @@ else:
 
 
 ##############################################################################
-#Preliminary: Create temporary folder, open log file
+#Preliminary: Check dependencies, create temporary folder, open log file.
 
 dirTmp = args.sTmp
 if(dirTmp==""):
