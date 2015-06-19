@@ -461,7 +461,7 @@ if(bHasQuasi):
 	pb.PrintQuasiMarkers(atupQM,fQuasi,bDetailed=False,bInitial=True)
 	fQuasi.close()
 
-	subprocess.check_call([args.strCDhit, "-i", strQuasiFN,"-o",strQuasiClust,
+	subprocess.check_call([args.strCDHIT, "-i", strQuasiFN,"-o",strQuasiClust,
 		"-d", "0", "-c", str(args.dQClustID), "-b", "8","-g", "1","-aL","1.0"])
 
 	pb.GetCDHitMap( strQuasiClust+".clstr", strQuasiMap)
