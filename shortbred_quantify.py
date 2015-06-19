@@ -96,8 +96,8 @@ grpPrograms.add_argument('--rapsearch2', default ="rapsearch2", type=str, dest='
 #Parameters - Matching Settings
 grpParam = parser.add_argument_group('Parameters:')
 grpParam.add_argument('--id', type=float, dest='dID', help='Enter the percent identity for the match', default = .95)
-grpParam.add_argument('--pctlength', type=float, dest='dAlnLength', help='Enter the minimum alignment length. The default is 20', default = 0.95)
-grpParam.add_argument('--minreadBP', type=float, dest='iMinReadBP', help='Enter the lower bound for read lengths that shortbred witll process', default = 90)
+grpParam.add_argument('--pctlength', type=float, dest='dAlnLength', help='Enter the minimum alignment length. The default is .95', default = 0.95)
+grpParam.add_argument('--minreadBP', type=float, dest='iMinReadBP', help='Enter the lower bound for read lengths that shortbred will process', default = 90)
 grpParam.add_argument('--avgreadBP', type=float, dest='iAvgReadBP', help='Enter the average read length.', default = 100)
 grpParam.add_argument('--maxhits', type=float, dest='iMaxHits', help='Enter the number of markers allowed to hit read.', default = 1)
 grpParam.add_argument('--maxrejects', type=float, dest='iMaxRejects', help='Enter the number of markers allowed to hit read.', default = 32)
@@ -118,7 +118,21 @@ grpParam.add_argument('--small', type=bool, dest='bSmall',default=False, help='T
 
 #parser.add_argument('--length', type=int, dest='iLength', help='Enter the minimum length of the markers.')
 
+# Check for args.
+if len(sys.argv)==1:
+    parser.print_help()
+    sys.stderr.write("\nNo arguments were supplied to ShortBRED. Please see the usage information above to determine what to pass to the program.\n")
+    sys.exit(1)
+    
+############################################################################
+# Check Dependencies
 args = parser.parse_args()
+if (args.strSearchProg=="usearch"):
+    src.CheckDependency(args.strUSEARCH,"","usearch")
+elif (args.strSearchProg=="rapsearch2"):
+    src.CheckDependency(args.strRap2Path,"","rapsearch2")
+    src.CheckDependency(args.strPrerapPath,"","prerapsearch")
+
 
 if (args.strMarkers == "" or args.strWGS==""):
 	parser.print_help( )
@@ -168,6 +182,8 @@ if args.strGenome!="" and args.strWGS==None and args.bUnannotated==False:
 
 elif args.strGenome!="" and args.strWGS==None and args.bUnannotated==True:
 	strMethod = "unannotated_genome"
+  
+	src.CheckDependency(args.strTBLASTN,"","tblastn")
     #We assume that genomes will be a single fasta file, and that they will be
 	# smaller than 900 MB, the upper bound for passing a single file to usearch.
 	strSize = "small"
@@ -282,13 +298,6 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 			dictQMPossibleOverlap[seq.id] = astrFams
 
 
-
-
-
-
-
-
-
 #If profiling WGS, make a database from the markers.
 if strMethod=="wgs" and args.strSearchProg=="usearch":
 	strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".udb"
@@ -297,9 +306,11 @@ if strMethod=="wgs" and args.strSearchProg=="usearch":
 
 elif strMethod=="wgs" and args.strSearchProg=="rapsearch2":
 	strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".rap2db"
+	strDBName = os.path.abspath(strDBName)
+	print "strDBName is",strDBName
 	sq.MakedbRapsearch2 (args.strMarkers, strDBName,args.strPrerapPath)
 
-#If profiling genome, make a database from the genome reads in Step 3.
+#(If profiling genome, make a database from the genome reads in Step 3.)
 
 
 ##################################################################################
@@ -372,10 +383,11 @@ if strMethod=="wgs":
 # Initialize values for the sample
 iTotalReadCount = 0
 dAvgReadLength  = 0.0
-iMin = 999 #Can be any integer. Just a dummy to initialize iMin before calculations begin.
+iMin = 999 #Can be any large integer. Just a value to initialize iMin before calculations begin.
 iWGSFileCount = 1
 
 if strMethod=="annotated_genome":
+    # If running on an *annotated_genome*, use usearch.
 
 	strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strGenome)) + ".udb"
 	sq.MakedbUSEARCH (args.strGenome, strDBName,args.strUSEARCH)
@@ -395,6 +407,7 @@ if strMethod=="annotated_genome":
 		iMin = min(iMin,len(seq))
 
 elif strMethod=="unannotated_genome":
+    # If running on *unannotated_genome*, use tblastn.
 
 	strDBName = str(dirTmp) + os.sep + "blastdb_"+os.path.basename(os.path.splitext(args.strGenome)[0])
 	sq.MakedbBLASTnuc( args.strMakeBlastDB, strDBName,args.strGenome,dirTmp)
@@ -412,7 +425,7 @@ elif strMethod=="unannotated_genome":
 		dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
 		iMin = min(iMin,len(seq))
 
-# Otherwise, profile wgs
+# Otherwise, profile wgs data with usearch or rapsearch2
 else:
 	with open(strLog, "a") as log:
 		log.write('\t'.join(["# FileName","size","format","extract method","tar file (if part of one)"]) + '\n')
@@ -423,25 +436,20 @@ else:
 		with open(strLog, "a") as log:
 			log.write(str(iWGSFileCount) + ": " + '\t'.join(astrFileInfo) + '\n')
 		iWGSReads = 0
-		sys.stderr.write( "Working on file " + str(iWGSFileCount) + " of " + str(len(aaWGSInfo)))
+		sys.stderr.write( "Working on file " + str(iWGSFileCount) + " of " + str(len(aaWGSInfo)) + "\n")
 
-
+        #If it's a small fasta file, just give it to USEARCH or rapsearch  directly.
 		if strFormat=="fasta" and strSize=="small":
 			if args.strSearchProg=="rapsearch2":
 				sq.RunRAPSEARCH2(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
 				iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strRAPSEARCH2=args.strRap2Path )
 			
-				sq.StoreHitCountsRapsearch22(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
+				sq.StoreHitCountsRapsearch2(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
 					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
 
 
-
-
-
-
-
-		#If it's a small fasta file, just give it to USEARCH directly.
+		
 			elif args.strSearchProg=="usearch":
 				sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
 				iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
@@ -492,12 +500,13 @@ else:
 			#Open file for writing
 			fileFASTA = open(strFASTAName, 'w')
 
-			#TEMPORARY TEST!
+			"""
 			if strFormat=="unknown":
 				strFormat="fastq"
 			if streamWGS==None:
 				with open(strLog, "a") as log:
 					log.write("File was empty." + '\n')
+             """
 
 			#Start the main loop to get everything in streamWGS -> small fasta file -> counted and stored
 			for seq in SeqIO.parse(streamWGS, strFormat):
@@ -572,7 +581,7 @@ if strSize != "small":
 	os.remove(strFASTAName)
 
 ###########################################################################
-# Added in to produce counts of Bug genomes (currently in testing phase)
+# Added to produce counts of bug genomes 
 ##########################################################################
 
 if strMethod=="annotated_genome":
@@ -598,6 +607,8 @@ with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a")
 	log.write("Min Read Length: " + str(iMin) + "\n")
 
 sys.stderr.write("Processing complete. \n")
+########################################################################################
+# This is part of a possible EM application that is not fully implemented yet.
 ########################################################################################
 if (args.strBayes != ""):
 	sq.BayesUpdate(atupCounts=atupCounts,strBayesResults=args.strBayes,strBayesLog=strQMOut,astrQMs=astrQMs,

@@ -44,7 +44,7 @@ import math
 try:
     import Bio
 except ImportError:
-    print "\nShortBRED was unable to load Biopython. Please check to make sure you have Biopython installed (http://biopython.org/wiki/Main_Page)\n"
+    print "\nShortBRED was unable to load Biopython. Please check to make sure you have Biopython installed (http://biopython.org/wiki/Main_Page), and that its directory is in your PYTHONPATH. \n"
     sys.exit(1)
 
 import src
@@ -131,13 +131,47 @@ grpPrograms.add_argument('--usearch', default ="usearch", type=str, dest='strUSE
 grpPrograms.add_argument('--muscle', default ="muscle", type=str, dest='strMUSCLE', help='Provide the path to muscle. Default call will be \"muscle\".')
 grpPrograms.add_argument('--cdhit', default ="cd-hit", type=str, dest='strCDHIT', help='Provide the path to usearch. Default call will be \"cd-hit\".')
 grpPrograms.add_argument('--blastp', default ="blastp", type=str, dest='strBLASTP', help='Provide the path to blastp. Default call will be \"blastp\".')
-
+grpPrograms.add_argument('--makeblastdb', default ="makeblastdb", type=str, dest='strMAKEBLASTDB', help='Provide the path to  makeblastdb. Default call will be to \"blastp\".')
 args = parser.parse_args()
+
+
+##############################################################################
+#Preliminary: Check for args, appropriate dependencies 
+# Create temporary folder, and open log file.
+
+# Check for args.
+if len(sys.argv)==1:
+    parser.print_help()
+    sys.stderr.write("\nNo arguments were supplied to ShortBRED. Please see the usage information above to determine what to pass to the program.\n")
+    sys.exit(1)
+
+# Check dependencies
+
+    #iReturnCode = oCmd.returncode
+    #return iReturnCode
+
+print "Checking dependencies..."
+src.CheckDependency(args.strUSEARCH,"","Usearch")    
+src.CheckDependency(args.strBLASTP,"-h","blastp")
+src.CheckDependency(args.strMUSCLE,"","muscle")
+src.CheckDependency(args.strCDHIT,"-h","cdhit")
+src.CheckDependency(args.strMAKEBLASTDB,"-h","makeblastdb")
+
+print "Checking to make sure that installed version of usearch can make databases..."
+pCmd = subprocess.Popen([args.strUSEARCH,"-help","makeudb_usearch"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+pCmd.communicate()[0]
+if (pCmd.returncode==0):
+    sys.stderr.write("Usearch appears to be working.\n\n")
+else:
+    sys.stderr.write("Usearch cannot make a required database. Please check to make sure you have v6.0.307 of usearch or later installed.\n\n")
 
 c_strTIME	= "time"
 strCDHIT = args.strCDHIT
 strBLASTP = args.strBLASTP
 strMUSCLE = args.strMUSCLE
+
+
+
 
 if args.iLenMin==0:
 	#If no minimum alignment length is given, use 80% of minimum marker length and round up.
@@ -146,8 +180,7 @@ else:
     iLenMin = args.iMLength
 
 
-##############################################################################
-#Preliminary: Check dependencies, create temporary folder, open log file.
+
 
 dirTmp = args.sTmp
 if(dirTmp==""):
@@ -241,7 +274,7 @@ if(iMode==1 or iMode==2):
 	#Make database from goi centroids
 	subprocess.check_call([
 #		c_strTIME, "-o", dirTime + os.sep + "goidb.time",
-		"makeblastdb", "-in", strClustFile, "-out", strClustDB,
+		args.strMAKEBLASTDB, "-in", strClustFile, "-out", strClustDB,
 		"-dbtype", "prot", "-logfile", dirTmp + os.sep + "goidb.log"])
 
 ################################################################################
@@ -258,7 +291,7 @@ if(iMode==1):
 		src.check_file(str(args.sRefProts))
 		subprocess.check_call([
 #			c_strTIME, "-o", dirTime + os.sep + "refdb.time",
-			"makeblastdb", "-in", str(args.sRefProts),"-out", strRefDBPath,
+			args.strMAKEBLASTDB, "-in", str(args.sRefProts),"-out", strRefDBPath,
 			"-dbtype", "prot", "-logfile", dirTmp + os.sep +  "refdb.log"])
 
 ################################################################################
