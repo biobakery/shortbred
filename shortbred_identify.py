@@ -153,7 +153,7 @@ if len(sys.argv)==1:
 print "Checking dependencies..."
 src.CheckDependency(args.strUSEARCH,"","Usearch")    
 src.CheckDependency(args.strBLASTP,"-h","blastp")
-src.CheckDependency(args.strMUSCLE,"","muscle")
+src.CheckDependency(args.strMUSCLE,"-h","muscle")
 src.CheckDependency(args.strCDHIT,"-h","cdhit")
 src.CheckDependency(args.strMAKEBLASTDB,"-h","makeblastdb")
 
