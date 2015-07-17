@@ -48,6 +48,8 @@ import Bio
 from Bio.Seq import Seq
 from Bio import SeqIO
 
+VERSION="0.9.0"
+
 
 ################################################################################
 # Constants
@@ -62,7 +64,7 @@ c_iReadsForFile = 7000000 # Number of WGS reads to process at a time
 parser = argparse.ArgumentParser(description='ShortBRED Quantify \n \
 This program takes a set of protein family markers and wgs file as input, \
 and produces a relative abundance table.')
-
+parser.add_argument("--version", action="version", version="%(prog)s v"+VERSION)
 #Input
 grpInput = parser.add_argument_group('Input:')
 grpInput.add_argument('--markers', type=str, dest='strMarkers',
@@ -114,6 +116,7 @@ grpParam.add_argument('--bayes', type=str,dest='strBayes', help='Output files fo
 grpParam.add_argument('--bz2', type=bool, dest='fbz2file', help='Set to True if using a tar.bz2 file', default = False)
 grpParam.add_argument('--threads', type=int, dest='iThreads', help='Enter the number of CPUs available for USEARCH.', default=1)
 grpParam.add_argument('--notmarkers', type=str, dest='strCentroids',default="N", help='This flag is used when testing centroids for evaluation purposes.')
+grpParam.add_argument('--cent_match_length', type=int, dest='iAlnCentroids',default=30, help='This flag is used when working with centroids. It sets the minimum matching length.')
 grpParam.add_argument('--small', type=bool, dest='bSmall',default=False, help='This flag is used to indicate the input file is small enough for USEARCH.')
 
 #parser.add_argument('--length', type=int, dest='iLength', help='Enter the minimum length of the markers.')
@@ -397,7 +400,7 @@ if strMethod=="annotated_genome":
 	iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
 	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 		dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
+		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids)
 
 	iWGSReads = 0
 	for seq in SeqIO.parse(args.strGenome, "fasta"):
@@ -416,7 +419,7 @@ elif strMethod=="unannotated_genome":
 
 	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 		dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),strUSearchOut=False)
+		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strUSearchOut=False)
 
 	iWGSReads = 0
 	for seq in SeqIO.parse(args.strGenome, "fasta"):
@@ -446,7 +449,7 @@ else:
 			
 				sq.StoreHitCountsRapsearch2(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
+					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids)
 
 
 		
@@ -455,7 +458,7 @@ else:
 				iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
 				sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
+					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids)
 
 
 			for seq in SeqIO.parse(strWGS, "fasta"):
@@ -531,7 +534,7 @@ else:
 					iThreads=args.iThreads,dID=args.dID, iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH  )
 					sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
 					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
+					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids)
 
 					#Reset count, make new file
 					iReadsInSmallFile = 0
@@ -548,7 +551,7 @@ else:
 				iThreads=args.iThreads,dID=args.dID,iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
 				sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)))
+				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids)
 
 		with open(strLog, "a") as log:
 			log.write(str(iWGSReads) + '\n')

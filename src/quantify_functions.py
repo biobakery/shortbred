@@ -37,7 +37,9 @@ import Bio
 from Bio.Seq import Seq
 from Bio import SeqIO
 
-c_iAlnCentroids = 30
+#c_iAlnCentroids = 30
+# This used to be a constant, but we have changed it to allow for different
+# values when working with centroids.
 
 def MakedbUSEARCH ( strMarkers, strDBName,strUSEARCH):
     # This functions calls usearch to make a database of the ShortBRED markers.
@@ -285,7 +287,7 @@ def Median(adValues):
 		dMedian = adValues[int(math.floor(iLen/2))]
 	return dMedian
 
-def StoreHitCountsRapsearch2(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA,strUSearchOut=False):
+def StoreHitCountsRapsearch2(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA,iAlnCentroids=30,strUSearchOut=False):
 # Reads in the RAPSEARCH2 output (strBlastOut), marks which hits are valid (id>=dID &
 # len >= min(95% of read,dictMarkerLen[Marker]) and adds to count in dictHitsForMarker[strMarker].
 # Valid hits are also copied to the file in strValidHits. strCentCheck is used to flag centroids,
@@ -324,7 +326,7 @@ def StoreHitCountsRapsearch2(strBlastOut,strValidHits,dictHitsForMarker,dictMark
                 if strCentCheck=="Y":
                     strProtFamily = strMarker
                     
-                    if ( (int(iAlnLen)>= c_iAlnCentroids) and ( float(dHitID)/100) >= dID):
+                    if ( (int(iAlnLen)>= iAlnCentroids) and ( float(dHitID)/100) >= dID):
                                     dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) + 1
                                     dictHitsForMarker[strProtFamily] = dictHitsForMarker.setdefault(strProtFamily,0) + 1
                                     csvwHits.writerow( aLine )
@@ -347,7 +349,7 @@ def StoreHitCountsRapsearch2(strBlastOut,strValidHits,dictHitsForMarker,dictMark
         return
 
 
-def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA,strUSearchOut=True):
+def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA,iAlnCentroids=30,strUSearchOut=True):
 # Reads in the USEARCH output (strBlastOut), marks which hits are valid (id>=dID &
 # len >= min(95% of read,dictMarkerLen[Marker]) and adds to count in dictHitsForMarker[strMarker].
 # Valid hits are also copied to the file in strValidHits. strCentCheck is used to flag centroids,
@@ -374,7 +376,7 @@ def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dict
 				if strCentCheck=="Y":
 					strProtFamily = strMarker
 
-					if ( (int(iAlnLen)>= c_iAlnCentroids) and ( float(dHitID)/100) >= dID):
+					if ( (int(iAlnLen)>= iAlnCentroids) and ( float(dHitID)/100) >= dID):
 							dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) + 1
 							dictHitsForMarker[strProtFamily] = dictHitsForMarker.setdefault(strProtFamily,0) + 1
 							csvwHits.writerow( aLine )

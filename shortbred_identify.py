@@ -57,6 +57,7 @@ from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO
 
+VERSION="0.9.0"
 
 ###############################################################################
 #COMMAND LINE ARGUMENTS
@@ -71,7 +72,7 @@ Example: \n \
 Please note that a large number of comparisons can take several hours to run. [Example: 2,000 prots of interest against a reference set of 5,000,000 prots]  \n \n \
 It is also possible to use an existing BLAST protein database as your reference set, or modify parameters from an earlier ShortBRED run. \
 Please see the documentation for more details.',formatter_class=RawTextHelpFormatter)
-
+parser.add_argument("--version", action="version", version="%(prog)s v"+VERSION)
 
 #INPUT Files
 #Mode 1: For initial run: goi genes, ref genes, (map_in)
@@ -132,6 +133,7 @@ grpPrograms.add_argument('--muscle', default ="muscle", type=str, dest='strMUSCL
 grpPrograms.add_argument('--cdhit', default ="cd-hit", type=str, dest='strCDHIT', help='Provide the path to usearch. Default call will be \"cd-hit\".')
 grpPrograms.add_argument('--blastp', default ="blastp", type=str, dest='strBLASTP', help='Provide the path to blastp. Default call will be \"blastp\".')
 grpPrograms.add_argument('--makeblastdb', default ="makeblastdb", type=str, dest='strMAKEBLASTDB', help='Provide the path to  makeblastdb. Default call will be to \"blastp\".')
+
 args = parser.parse_args()
 
 
