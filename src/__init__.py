@@ -8,6 +8,7 @@ Created on Wed Sep 26 14:33:52 2012
 import os
 import subprocess
 import sys
+import distutils.spawn
 
 def check_create_dir( strDir ):
 
@@ -25,7 +26,7 @@ def check_file(strPath):
 
 def CheckDependency(strCmd,strArg,strIntendedProgram):
 
-    if (os.path.isfile(strCmd)==False):
+    if (os.path.isfile(distutils.spawn.find_executable(strCmd))==False):
         raise IOError("\nShortBRED was unable to find " +  strIntendedProgram + " at the path *" + strCmd +  "*\nPlease check that the program is installed and the path is correct.")
         #print "\nShortBRED was unable to load " +  strIntendedProgram + "at the path " + strCmd +  "\nPlease check to make sure the program is installed and the path is correct."
         sys.exit(1)
