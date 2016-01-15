@@ -25,9 +25,15 @@ def check_file(strPath):
 		return
 
 def CheckDependency(strCmd,strArg,strIntendedProgram):
-
-    if (os.path.isfile(distutils.spawn.find_executable(strCmd))==False):
-        raise IOError("\nShortBRED was unable to find " +  strIntendedProgram + " at the path *" + strCmd +  "*\nPlease check that the program is installed and the path is correct.")
+    #print strCmd
+    #print distutils.spawn.find_executable("usearch")
+    #print distutils.spawn.find_executable("ls")
+    #print os.access("usearch",os.F_OK)
+    #print distutils.spawn.find_executable("muscle")
+    #print distutils.spawn.find_executable("cd-hit")
+        
+    if ((distutils.spawn.find_executable(strCmd))==None):
+        raise IOError("\nShortBRED was unable to find " +  strIntendedProgram + " at the path *" + strCmd +  "*\nPlease check that the program is installed and the path is correct. Please note that ShortBRED will not be able to use the unix alias for the program.")
         #print "\nShortBRED was unable to load " +  strIntendedProgram + "at the path " + strCmd +  "\nPlease check to make sure the program is installed and the path is correct."
         sys.exit(1)
 

@@ -57,7 +57,7 @@ from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO
 
-VERSION="0.9.1"
+VERSION="0.9.2"
 
 ###############################################################################
 #COMMAND LINE ARGUMENTS
@@ -86,10 +86,10 @@ grpInput = parser.add_argument_group('Input')
 grpInput.add_argument('--goi', type=str, dest='sGOIProts',default= "", help='Enter the path and name of the proteins of interest file.')
 grpInput.add_argument('--ref', type=str, dest='sRefProts',default= "", help='Enter the path and name of the file containing reference protein sequences.')
 grpInput.add_argument('--refdb', type=str, dest='dirRefDB', default= "",help='Can be specified in place of reference proteins [--ref]. Enter the path and name for a blastdb of reference proteins.')
-grpInput.add_argument('--goiblast', type=str, default = "", dest='sGOIBlast', help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the blast results from the goi-to-goi search.')
-grpInput.add_argument('--refblast', type=str, dest='sRefBlast', default= "", help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the blast results from the goi-to-ref search.')
-grpInput.add_argument('--goiclust', type=str, default ="", dest='sClust', help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the clustered genes of interest file.')
-grpInput.add_argument('--map_in', type=str, dest='sMapIn',default="", help='Used when modifying existing ShortBRED-Identiy results. Enter the path and name of the two column file connecting proteins to families.')
+grpInput.add_argument('--goiblast', type=str, default = "", dest='sGOIBlast', help='Used when modifying existing ShortBRED-Identify results. Enter the path and name of the blast results from the goi-to-goi search.')
+grpInput.add_argument('--refblast', type=str, dest='sRefBlast', default= "", help='Used when modifying existing ShortBRED-Identify results. Enter the path and name of the blast results from the goi-to-ref search.')
+grpInput.add_argument('--goiclust', type=str, default ="", dest='sClust', help='Used when modifying existing ShortBRED-Identify results. Enter the path and name of the clustered genes of interest file.')
+grpInput.add_argument('--map_in', type=str, dest='sMapIn',default="", help='Used when modifying existing ShortBRED-Identify results. Enter the path and name of the two column file connecting proteins to families.')
 
 
 
@@ -153,7 +153,7 @@ if len(sys.argv)==1:
     #return iReturnCode
 
 print "Checking dependencies..."
-src.CheckDependency(args.strUSEARCH,"","Usearch")    
+src.CheckDependency(args.strUSEARCH,"","usearch")    
 src.CheckDependency(args.strBLASTP,"-h","blastp")
 src.CheckDependency(args.strMUSCLE,"-h","muscle")
 src.CheckDependency(args.strCDHIT,"-h","cdhit")
