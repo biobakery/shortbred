@@ -57,7 +57,7 @@ from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO
 
-VERSION="0.9.2"
+VERSION="0.9.3"
 
 ###############################################################################
 #COMMAND LINE ARGUMENTS
@@ -204,7 +204,8 @@ log.write("QM Thresh:" + str(args.iThresh) + "\n")
 iMode = 0
 
 ################################################################################
-# Step Zero: Choose program mode based on files supplied by the user.
+# Step Zero: Choose program mode based on files supplied by the user. 
+
 
 if (args.sGOIProts!="" and args.sRefProts!=""):
 	log.write("Mode 1: Building everything..." + "\n")
@@ -237,7 +238,7 @@ strMapFile = args.sMapIn
 
 #Make directories for clustfile and database.
 if(iMode==1 or iMode==2):
-
+	pb.CheckFastaForBadProtNames(args.sGOIProts)    
 	dirClust = src.check_create_dir( dirTmp + os.sep + "clust" )
 	dirClustDB = src.check_create_dir( dirTmp + os.sep + "clustdb" )
 

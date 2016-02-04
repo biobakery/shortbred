@@ -48,7 +48,7 @@ import Bio
 from Bio.Seq import Seq
 from Bio import SeqIO
 
-VERSION="0.9.2"
+VERSION="0.9.3"
 
 
 ################################################################################
@@ -105,6 +105,11 @@ grpParam.add_argument('--maxhits', type=float, dest='iMaxHits', help='Enter the 
 grpParam.add_argument('--maxrejects', type=float, dest='iMaxRejects', help='Enter the number of markers allowed to hit read.', default = 32)
 grpParam.add_argument('--unannotated', action='store_const',dest='bUnannotated', help='Indicates genome is unannotated. ShortBRED will use tblastn to \
 search AA markers against the db of six possible translations of your genome data. ', const=True, default = False)
+grpParam.add_argument('--pctmarker_thresh',dest='dPctMarkerThresh', type=float,help='Indicates the share of a familiy\'s markers that must map to ORF to be counted. ', default = 0.1)
+grpParam.add_argument('--pctORFscore_thresh',dest='dPctORFScoreThresh', type=float,help='Indicates the share of total ORF score that a family must receive to be counted. ', default = 0.1)
+
+
+
 grpParam.add_argument('--EM', action='store_const',dest='bEM', help='Indicates user would like to run EM algorithm \
  on the quasi-markers. ', const=True, default = False)
 grpParam.add_argument('--bayes', type=str,dest='strBayes', help='Output files for Bayes Results', default = "")
@@ -152,6 +157,7 @@ if(dirTmp==""):
     dirTmp = ("tmp" + str(os.getpid()) + '%.0f' % round((time.time()*1000), 1))
 
 dirTmp = src.check_create_dir( dirTmp )
+dirTmp = os.path.abspath(dirTmp)
 
 # Assign file names
 if args.strHits != "":
@@ -187,6 +193,7 @@ elif args.strGenome!="" and args.strWGS==None and args.bUnannotated==True:
 	strMethod = "unannotated_genome"
   
 	src.CheckDependency(args.strTBLASTN,"","tblastn")
+	src.CheckDependency(args.strMakeBlastDB,"","makeblastdb")
     #We assume that genomes will be a single fasta file, and that they will be
 	# smaller than 900 MB, the upper bound for passing a single file to usearch.
 	strSize = "small"
@@ -233,7 +240,7 @@ dictHitsForMarker = {}
 dictQMPossibleOverlap = {}
 dictType = {}
 
-#FIX THIS ONE!
+
 if (args.strBlast == ""):
 	strBlast = str(dirTmp) + os.sep + strMethod+ "full_results.tab"
 else:
@@ -282,7 +289,7 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 			astrFams =[]
 			# Only retain those families which could validly map to this QM at the given settings.
 			for strFam in astrAllFams:
-				print strFam
+				#print strFam
 				mtchFam = re.search(r'(.*)_w=(.*)',strFam)
 				strID = mtchFam.group(1)
 				dProp = float(mtchFam.group(2))
@@ -588,11 +595,11 @@ if strSize != "small":
 ##########################################################################
 
 if strMethod=="annotated_genome":
-	dictFinalCounts = sq.NormalizeGenomeCounts(strHitsFile,dictFamCounts,bUnannotated=False)
+	dictFinalCounts = sq.NormalizeGenomeCounts(strHitsFile,dictFamCounts,bUnannotated=False,dPctMarkerThresh=args.dPctMarkerThresh)
 	sys.stderr.write("Normalizing hits to genome... \n")
 
 elif strMethod=="unannotated_genome":
-	dictFinalCounts = sq.NormalizeGenomeCounts(strHitsFile,dictFamCounts,bUnannotated=True)
+	dictFinalCounts = sq.NormalizeGenomeCounts(strHitsFile,dictFamCounts,bUnannotated=True,dPctMarkerThresh=args.dPctMarkerThresh)
 	sys.stderr.write("Normalizing hits to genome... \n")
 
 
@@ -606,8 +613,10 @@ if strMethod=="annotated_genome" or strMethod=="unannotated_genome":
 # Add final details to log
 with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:
 	log.write("Total Reads Processed: " + str(iTotalReadCount) + "\n")
-	log.write("Average Read Length: " + str(dAvgReadLength) + "\n")
+	log.write("Average Read Length Specified by User: " + str(args.iAvgReadBP) + "\n")
+	log.write("Average Read Length Calculated by ShortBRED: " + str(dAvgReadLength) + "\n")
 	log.write("Min Read Length: " + str(iMin) + "\n")
+
 
 sys.stderr.write("Processing complete. \n")
 ########################################################################################

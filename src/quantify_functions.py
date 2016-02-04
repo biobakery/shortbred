@@ -52,7 +52,8 @@ def MakedbRapsearch2 ( strMarkers, strDBName,strPrerapPath):
 	return
 
 def MakedbBLASTnuc ( strMakeBlastDB, strDBName,strGenome,dirTmp):
-    # This functions calls usearch to make a database of the ShortBRED markers.
+	print "Making blastdb in " + dirTmp
+	# This functions calls usearch to make a database of the ShortBRED markers.
 	p = subprocess.check_call([strMakeBlastDB, "-in", strGenome, "-out", strDBName,
 		"-dbtype", "nucl", "-logfile", dirTmp + os.sep + "blast_nuc_db.log"])
 	return
@@ -110,9 +111,13 @@ def MakeDictFamilyCounts (strMarkers,strFamilyOut):
 				dictFamMarkerCounts[strFam] = 1
 	return dictFamMarkerCounts
 
-def CalcFinalCount (dictORFMatches,dictFamMarkerCounts,bUnannotated,dThresh=.10,):
+def CalcFinalCount (dictORFMatches,dictFamMarkerCounts,bUnannotated,dPctORFScoreThresh,dPctMarkerThresh):
     # Takes two dictionaries, each have protein families has the keys.
 	# One has the number of markers hitting the ORF, the other has all possible markers.
+
+    # Make two paramaters her avaialble as arguments:
+    # 1) dPctORFScoreThresh, which controls how much a share of an ORF score a fam must receive
+    # 2) dPctMarkerThresh, which controls the threshhold for even being counted as a hit
 	
 
 	aaCounts = []
@@ -121,6 +126,11 @@ def CalcFinalCount (dictORFMatches,dictFamMarkerCounts,bUnannotated,dThresh=.10,
 
 	for strFam in dictORFMatches:
 		dScore = dictORFMatches[strFam] / float(dictFamMarkerCounts[strFam])
+		#print strFam,dScore,dPctMarkerThresh
+		if (dScore < dPctMarkerThresh):
+			dScore = 0
+			#print strFam,dScore,dPctMarkerThresh
+  
 		aFamScore = [strFam,dScore]
 		aaCounts.append(aFamScore)
 
@@ -131,8 +141,10 @@ def CalcFinalCount (dictORFMatches,dictFamMarkerCounts,bUnannotated,dThresh=.10,
 	if (bUnannotated==False):
 		aaAboveThresh = []
 		for aFamScore in aaCounts:
-			if (aFamScore[1] / dSum)>=dThresh:
-				aaAboveThresh.append(aFamScore)
+			if dSum >0:
+				if (aFamScore[1] / dSum)>=dPctORFScoreThresh:
+					aaAboveThresh.append(aFamScore)
+					#print aaAboveThresh, dSum
 
 		for aFamScore in aaAboveThresh:
 			aNewScore = [aFamScore[0],aFamScore[1] * (aFamScore[1]/dSum) ]
@@ -157,7 +169,7 @@ def CalcFinalCount (dictORFMatches,dictFamMarkerCounts,bUnannotated,dThresh=.10,
 
 	"""
 
-def NormalizeGenomeCounts (strValidHits,dictFamCounts,bUnannotated,dThresh=.1):
+def NormalizeGenomeCounts (strValidHits,dictFamCounts,bUnannotated,dPctORFScoreThresh=.1,dPctMarkerThresh=.1):
 	dictFinalCounts = {}
 	for strFam in dictFamCounts.keys():
 		dictFinalCounts[strFam] = 0
@@ -200,7 +212,7 @@ def NormalizeGenomeCounts (strValidHits,dictFamCounts,bUnannotated,dThresh=.1):
 					dictFamMatches[strFam] = 1
 
 		# Normalize Counts
-		aaCount = CalcFinalCount (dictFamMatches,dictFamCounts,bUnannotated,dThresh=.1)
+		aaCount = CalcFinalCount (dictFamMatches,dictFamCounts,bUnannotated,dPctORFScoreThresh,dPctMarkerThresh)
 
 		for aFamScore in aaCount:
 			dictFinalCounts[aFamScore[0]] = dictFinalCounts[aFamScore[0]] + aFamScore[1]

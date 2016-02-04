@@ -242,6 +242,24 @@ def FindJMMarker( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegion=25,i
 	return atupJM
 
 ###############################################################################
+def CheckFastaForBadProtNames(fileFasta):
+    reBadChars=re.compile(r'[\\\/\*]')
+    setProtNames = set()
+    
+    for gene in SeqIO.parse(fileFasta, "fasta"):
+        mtchBad = reBadChars.search(gene.id)
+        assert (mtchBad == None),("\nOne or more of the sequences in your "+
+        "input file has an id that ShortBRED cannot use as a valid folder "+
+        "name during the clustering step, so ShortBRED has stopped. Please edit  ** "+
+        fileFasta + " ** to remove any slashes,asterisks, etc. from the fasta ids. The program utils/AdjustFastaHeadersForShortBRED.py "+
+        "in the ShortBRED folder can do this for you.  ShortBRED halted on this gene/protein:" + gene.id)
+        assert (gene.id not in setProtNames),("\nShortBRED uses the first word of the seq id to identify each "+
+        "input sequence, and two or more of your sequences share the same starting word. Please edit ** "+
+        fileFasta + " ** to avoid duplicate ids. The program utils/AdjustFastaHeadersForShortBRED.py can add unique identifiers to your data if needed. ShortBRED halted on this gene/protein: " + gene.id)
+        setProtNames.add(gene.id)
+        
+
+###############################################################################
 def MakeFamilyFastaFiles ( strMapFile, fileFasta, dirOut):
 #Makes a fasta file containing genes for each family in dictFams.
 	dictFams = {}
