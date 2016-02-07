@@ -38,7 +38,8 @@ for strLine in sys.stdin:
         #strHeader = strLine[1:].replace(" ","_",args.iSpacesToChange)
         strHeader = strLine[1:].replace(" ","_")
         if len(strHeader) > c_iMaxIDLength:
-            strHeader = strHeader[0:c_iMaxIDLength+1] 
+            sys.stderr.write("Warning: The following header was too long, and was shortened:\n>" + strHeader + "\n" )
+            strHeader = strHeader[0:c_iMaxIDLength+1]
         strHeader = re.sub(reBadChars,"_",strHeader)
         dictHeaderCounts[strHeader] = dictHeaderCounts.get(strHeader,0)+1
         if dictHeaderCounts[strHeader] > 1:
