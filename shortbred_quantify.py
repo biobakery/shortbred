@@ -586,7 +586,7 @@ if strMethod=="wgs":
 	# Row of atupCounts = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength,iPossibleHitSpace)
 
 
-if strSize != "small":
+if strSize != "small" or os.path.isfile(strFASTAName):
 	#Delete the small, temp fasta file.
 	os.remove(strFASTAName)
 
