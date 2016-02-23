@@ -559,6 +559,7 @@ else:
 				sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
 				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids)
+				os.remove(strFASTAName)
 
 		with open(strLog, "a") as log:
 			log.write(str(iWGSReads) + '\n')
@@ -577,6 +578,7 @@ elif strMethod=="unannotated_genome":
 	strInputFile = args.strGenome
 elif strMethod=="wgs":
 	strInputFile=args.strWGS
+	
 
 if strMethod=="wgs":
 	atupCounts = sq.CalculateCounts(strResults = args.strResults, strMarkerResults=strMarkerResults,dictHitCounts=dictBLAST,
@@ -586,9 +588,7 @@ if strMethod=="wgs":
 	# Row of atupCounts = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength,iPossibleHitSpace)
 
 
-if strSize != "small" or os.path.isfile(strFASTAName):
-	#Delete the small, temp fasta file.
-	os.remove(strFASTAName)
+
 
 ###########################################################################
 # Added to produce counts of bug genomes 
