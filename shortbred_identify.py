@@ -57,7 +57,7 @@ from Bio.Alphabet import IUPAC
 from Bio.Data import CodonTable
 from Bio import SeqIO
 
-VERSION="0.9.3"
+VERSION="0.9.5"
 
 ###############################################################################
 #COMMAND LINE ARGUMENTS
