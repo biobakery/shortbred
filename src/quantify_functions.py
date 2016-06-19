@@ -41,6 +41,30 @@ from Bio import SeqIO
 # This used to be a constant, but we have changed it to allow for different
 # values when working with centroids.
 
+c_vstrUsearchForAAValue = "v6.0.307"
+# Explained in CheckUSEARCH function.
+
+def CheckUSEARCH(strUSEARCH):
+    """ This function returns the version of usearch. 
+    In searches with a nucleotide query and amino acid db, versions v6.1.544
+    and beyond report query length in nucleotides, and versions v6.0.307 and
+    older report query length in amino acids. 
+    
+    We pass the version to StoreHitCounts, so that the correct amino acid
+    length is used. """
+    strOutput = subprocess.check_output([strUSEARCH, "--version"])
+    strVersion = strOutput.strip().split(" ")[1]
+    return strVersion
+    
+def CompareVersions(strVersion1,strVersion2):
+    """ This function compares two versions to see which is newer.
+    It expects the format 'vXX.XX.XX' The number of X's can vary.  
+    It returns 1 if V1 is newer, -1 if V2 is newer, 0 if they are the same."""
+    
+    aiV1,aiV2 = [map(int,x.replace("v","").split(".")) for x in [strVersion1,strVersion2]]
+    #print(str(aiV1),str(aiV2))
+    return cmp(aiV1,aiV2)
+
 def MakedbUSEARCH ( strMarkers, strDBName,strUSEARCH):
     # This functions calls usearch to make a database of the ShortBRED markers.
 	p = subprocess.check_call([strUSEARCH, "--makeudb_usearch", strMarkers,"--output", strDBName])
@@ -361,11 +385,15 @@ def StoreHitCountsRapsearch2(strBlastOut,strValidHits,dictHitsForMarker,dictMark
         return
 
 
-def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA,iAlnCentroids=30,strUSearchOut=True):
+def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA,strVersionUSEARCH,strShortBREDMode="wgs",iAlnCentroids=30,strUSearchOut=True):
 # Reads in the USEARCH output (strBlastOut), marks which hits are valid (id>=dID &
 # len >= min(95% of read,dictMarkerLen[Marker]) and adds to count in dictHitsForMarker[strMarker].
 # Valid hits are also copied to the file in strValidHits. strCentCheck is used to flag centroids,
 # and handle their counting
+    
+	# If the version in use is newer than 6.0.307,     
+	CompareVersions(strVersionUSEARCH,c_vstrUsearchForAAValue)
+
 
 	with open(strValidHits, 'a') as csvfileHits:
 		csvwHits = csv.writer( csvfileHits, csv.excel_tab )
@@ -378,9 +406,17 @@ def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dict
 				dHitID		= aLine[2]
 				iAlnLen     = int(aLine[3])
 				if (strUSearchOut):
-					iReadLenAA  = int(aLine[12])
+					iReadLenAA  = int(round(int(aLine[12])))
 				else:
 					iReadLenAA = int(aLine[7]) - int(aLine[6])
+				
+				# USearch versions past 6.0.307 report query length in AA space, 6.0.307 and prior versions report in nuc space.
+				# This is not an issue in AA to AA comparisons, so seraching "annnotated_genomes" is fine. 
+ 				if (strShortBREDMode!="wgs" or CompareVersions(strVersionUSEARCH,c_vstrUsearchForAAValue) != 1):    
+					iReadLenAA = iReadLenAA 
+ 				else:
+					iReadLenAA = int(round(iReadLenAA/3))                    
+                    
 
 				# A valid match must be as long as 95% of the read or the full marker.
 		        # (Note that this in AA's.)

@@ -48,7 +48,7 @@ import Bio
 from Bio.Seq import Seq
 from Bio import SeqIO
 
-VERSION="0.9.3"
+VERSION="0.9.4"
 
 
 ################################################################################
@@ -137,6 +137,8 @@ if len(sys.argv)==1:
 args = parser.parse_args()
 if (args.strSearchProg=="usearch"):
     src.CheckDependency(args.strUSEARCH,"","usearch")
+    strVersionUSEARCH = sq.CheckUSEARCH(args.strUSEARCH)
+    print("Using this version of usearch: ",strVersionUSEARCH)
 elif (args.strSearchProg=="rapsearch2"):
     src.CheckDependency(args.strRap2Path,"","rapsearch2")
     src.CheckDependency(args.strPrerapPath,"","prerapsearch")
@@ -407,7 +409,7 @@ if strMethod=="annotated_genome":
 	iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
 	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 		dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids)
+		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strShortBREDMode=strMethod,strVersionUSEARCH = strVersionUSEARCH )
 
 	iWGSReads = 0
 	for seq in SeqIO.parse(args.strGenome, "fasta"):
@@ -426,7 +428,7 @@ elif strMethod=="unannotated_genome":
 
 	sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 		dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strUSearchOut=False)
+		iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strUSearchOut=False,strVersionUSEARCH = strVersionUSEARCH)
 
 	iWGSReads = 0
 	for seq in SeqIO.parse(args.strGenome, "fasta"):
@@ -465,7 +467,7 @@ else:
 				iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
 				sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids)
+					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strShortBREDMode=strMethod,strVersionUSEARCH = strVersionUSEARCH)
 
 
 			for seq in SeqIO.parse(strWGS, "fasta"):
@@ -541,7 +543,7 @@ else:
 					iThreads=args.iThreads,dID=args.dID, iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH  )
 					sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
 					dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids)
+					iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strShortBREDMode=strMethod,strVersionUSEARCH = strVersionUSEARCH)
 
 					#Reset count, make new file
 					iReadsInSmallFile = 0
@@ -558,7 +560,7 @@ else:
 				iThreads=args.iThreads,dID=args.dID,iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
 				sq.StoreHitCounts(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
 				dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids)
+				iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strShortBREDMode=strMethod,strVersionUSEARCH = strVersionUSEARCH)
 				os.remove(strFASTAName)
 
 		with open(strLog, "a") as log:
