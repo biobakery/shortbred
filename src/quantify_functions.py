@@ -53,7 +53,7 @@ def CheckUSEARCH(strUSEARCH):
     We pass the version to StoreHitCounts, so that the correct amino acid
     length is used. """
     strOutput = subprocess.check_output([strUSEARCH, "--version"])
-    strVersion = strOutput.strip().split(" ")[1]
+    strVersion = strOutput.strip().split(" ")[1].split("_")[0]
     return strVersion
     
 def CompareVersions(strVersion1,strVersion2):
