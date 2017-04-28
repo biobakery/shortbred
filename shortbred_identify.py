@@ -267,7 +267,7 @@ if(iMode==1 or iMode==2):
 
 	sys.stderr.write( "Making a fasta file for each protein family...\n")
 	#Make a fasta file for each CD-HIT cluster
-	pb.MakeFamilyFastaFiles( strMapFile, str(args.sGOIProts), dirFams)
+	pb.MakeFamilyFastaFiles( strMapFile, str(args.sGOIProts), dirFams, log)
 
 	sys.stderr.write( "Aligning sequences in each family, producing consensus sequences...\n")
 	#Call MUSCLE + EMBOSS_CONS OR DUMB CONSENSUS to get consensus seq for each cluster,overwrite the CD-HIT cluster file
@@ -665,6 +665,8 @@ with open(args.sMarkers,'w') as fOut:
 			SeqIO.write(gene, fOut,"fasta")
 
 sys.stderr.write( "\nProcessing complete! Final markers saved to " + args.sMarkers + "\n")
+sys.stderr.write( "\nNOTE: Please open and read the log file before using the markers\
+. Warnings about individual sequences will appear in the log.\n\n")
 
 iQMMinimal = iQM
 iMarkers = iTM + iQMJunction + iQMMinimal

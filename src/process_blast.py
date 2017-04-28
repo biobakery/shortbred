@@ -260,7 +260,7 @@ def CheckFastaForBadProtNames(fileFasta):
         
 
 ###############################################################################
-def MakeFamilyFastaFiles ( strMapFile, fileFasta, dirOut):
+def MakeFamilyFastaFiles ( strMapFile, fileFasta, dirOut, log):
 #Makes a fasta file containing genes for each family in dictFams.
 	dictFams = {}
 	for strLine in csv.reader(open(strMapFile),delimiter='\t'):
@@ -271,9 +271,17 @@ def MakeFamilyFastaFiles ( strMapFile, fileFasta, dirOut):
 
 	for gene in SeqIO.parse(fileFasta, "fasta"):
 		strFamily = dictFams.get(gene.id,"unassigned")
-		aGene = dictgeneFamilies.get(strFamily,list())
-		aGene.append(gene)
-		dictgeneFamilies[strFamily] = aGene
+  
+		if strFamily == "unassigned":
+			log.write("Warning: The sequence " + gene.id + " was not assigned\
+ to any cluster by cd-hit, and will not have a marker. This often happens when a\
+ sequence is very short (say <8 AA's).\n")
+      
+      
+		else:
+			aGene = dictgeneFamilies.get(strFamily,list())
+			aGene.append(gene)
+			dictgeneFamilies[strFamily] = aGene
 
 	for key in dictgeneFamilies.keys():
 		strFamFile = dirOut + os.sep + key + ".faa"
