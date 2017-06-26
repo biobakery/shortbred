@@ -53,7 +53,7 @@ def CheckUSEARCH(strUSEARCH):
     We pass the version to StoreHitCounts, so that the correct amino acid
     length is used. """
     strOutput = subprocess.check_output([strUSEARCH, "--version"])
-    strVersion = strOutput.strip().split(" ")[1].split("_")[0]
+    strVersion = strOutput.decode('utf-8').strip().split(" ")[1].split("_")[0]
     return strVersion
     
 def CompareVersions(strVersion1,strVersion2):
@@ -61,9 +61,9 @@ def CompareVersions(strVersion1,strVersion2):
     It expects the format 'vXX.XX.XX' The number of X's can vary.  
     It returns 1 if V1 is newer, -1 if V2 is newer, 0 if they are the same."""
     
-    aiV1,aiV2 = [map(int,x.replace("v","").split(".")) for x in [strVersion1,strVersion2]]
+    aiV1,aiV2 = [list(map(int,x.replace("v","").split("."))) for x in [strVersion1,strVersion2]]
     #print(str(aiV1),str(aiV2))
-    return cmp(aiV1,aiV2)
+    return ((aiV1 > aiV2) - (aiV1 < aiV2))
 
 def MakedbUSEARCH ( strMarkers, strDBName,strUSEARCH):
     # This functions calls usearch to make a database of the ShortBRED markers.
@@ -76,7 +76,7 @@ def MakedbRapsearch2 ( strMarkers, strDBName,strPrerapPath):
 	return
 
 def MakedbBLASTnuc ( strMakeBlastDB, strDBName,strGenome,dirTmp):
-	print "Making blastdb in " + dirTmp
+	print("Making blastdb in " + dirTmp)
 	# This functions calls usearch to make a database of the ShortBRED markers.
 	p = subprocess.check_call([strMakeBlastDB, "-in", strGenome, "-out", strDBName,
 		"-dbtype", "nucl", "-logfile", dirTmp + os.sep + "blast_nuc_db.log"])
@@ -261,7 +261,7 @@ def RunRAPSEARCH2 ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, 
     with open(strWGS,"r") as streamSeq:
         p = Popen([strRAPSEARCH2,"-q","stdin","-d", strDB,"-o",strBlastOut],stdin=streamSeq,stdout=PIPE)
         p.communicate()
-    	return
+        return
     
 
     """
@@ -345,7 +345,7 @@ def StoreHitCountsRapsearch2(strBlastOut,strValidHits,dictHitsForMarker,dictMark
         with open(strBlastOut, 'r') as csvfileBlast:
             csvReader = csv.reader( csvfileBlast, delimiter='\t' )
             for i in range(iSkip):
-    			next(csvReader)
+                next(csvReader)
             for aLine in csvReader:
                 strMarker       = aLine[1]
                 dHitID          = aLine[2]
@@ -412,9 +412,9 @@ def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dict
 				
 				# USearch versions past 6.0.307 report query length in AA space, 6.0.307 and prior versions report in nuc space.
 				# This is not an issue in AA to AA comparisons, so seraching "annnotated_genomes" is fine. 
- 				if (strShortBREDMode!="wgs" or CompareVersions(strVersionUSEARCH,c_vstrUsearchForAAValue) != 1):    
+				if (strShortBREDMode!="wgs" or CompareVersions(strVersionUSEARCH,c_vstrUsearchForAAValue) != 1):
 					iReadLenAA = iReadLenAA 
- 				else:
+				else:
 					iReadLenAA = int(round(iReadLenAA/3))                    
                     
 
