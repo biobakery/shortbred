@@ -613,16 +613,16 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
 
 		"""
 		if key =="ZP_04318513":
-			print "Data"
-			print key
-			print "Integer Window"
-			print aiWindow
-			print "Adjusted Window"
-			print adAdjWindow
-			print "Start,End",iWinStart, iWinEnd
-			print adAdjWindow[iWinStart:iWinEnd]
-			print dictGenes[key][iWinStart:iWinEnd]
-			print "Quasi:",iQuasi
+			print("Data")
+			print(key)
+			print("Integer Window")
+			print(aiWindow)
+			print("Adjusted Window")
+			print(adAdjWindow)
+			print("Start,End",iWinStart, iWinEnd)
+			print(adAdjWindow[iWinStart:iWinEnd])
+			print(dictGenes[key][iWinStart:iWinEnd])
+			print("Quasi:",iQuasi)
 		"""
 
 
@@ -633,15 +633,15 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictGenes, iN, iThresh, iTotLen
 		#Error Checking
 		"""
 		if (key == "VFG1266" or key == "VFG0696" or key=="VFG2059"):
-			print key
-			print dictRefCounts.get(key,"Not in Ref Blast Results")
-			print dictGOICounts.get(key,"Not in Clust Blast Results")
-			print dictGOIGenes[key]
-			print aiWindowSums
+			print(key)
+			print(dictRefCounts.get(key,"Not in Ref Blast Results"))
+			print(dictGOICounts.get(key,"Not in Clust Blast Results"))
+			print(dictGOIGenes[key])
+			print(aiWindowSums)
 
-			print iMin, iWinStart
+			print(iMin, iWinStart)
 
-			print dictGenes[key][iWinStart:iWinStart+iN]
+			print(dictGenes[key][iWinStart:iWinStart+iN])
 		"""
 	return atupQM
 
