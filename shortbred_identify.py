@@ -44,7 +44,7 @@ import math
 try:
     import Bio
 except ImportError:
-    print "\nShortBRED was unable to load Biopython. Please check to make sure you have Biopython installed (http://biopython.org/wiki/Main_Page), and that its directory is in your PYTHONPATH. \n"
+    print("\nShortBRED was unable to load Biopython. Please check to make sure you have Biopython installed (http://biopython.org/wiki/Main_Page), and that its directory is in your PYTHONPATH. \n")
     sys.exit(1)
 
 import src
@@ -152,14 +152,14 @@ if len(sys.argv)==1:
     #iReturnCode = oCmd.returncode
     #return iReturnCode
 
-print "Checking dependencies..."
+print("Checking dependencies...")
 src.CheckDependency(args.strUSEARCH,"","usearch")    
 src.CheckDependency(args.strBLASTP,"-h","blastp")
 src.CheckDependency(args.strMUSCLE,"-h","muscle")
 src.CheckDependency(args.strCDHIT,"-h","cdhit")
 src.CheckDependency(args.strMAKEBLASTDB,"-h","makeblastdb")
 
-print "Checking to make sure that installed version of usearch can make databases..."
+print("Checking to make sure that installed version of usearch can make databases...")
 pCmd = subprocess.Popen([args.strUSEARCH,"-help","makeudb_usearch"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 pCmd.communicate()[0]
 if (pCmd.returncode==0):
