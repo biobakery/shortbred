@@ -319,7 +319,7 @@ if strMethod=="wgs" and args.strSearchProg=="usearch":
 elif strMethod=="wgs" and args.strSearchProg=="rapsearch2":
 	strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".rap2db"
 	strDBName = os.path.abspath(strDBName)
-	print "strDBName is",strDBName
+	print("strDBName is",strDBName)
 	sq.MakedbRapsearch2 (args.strMarkers, strDBName,args.strPrerapPath)
 
 #(If profiling genome, make a database from the genome reads in Step 3.)
