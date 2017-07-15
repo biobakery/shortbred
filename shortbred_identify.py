@@ -111,6 +111,8 @@ grpParam.add_argument('--qclustid',default = .90, type=float, dest='dQClustID', 
 grpParam.add_argument('--consthresh',default = .95, type=float, dest='dConsThresh', help='Enter the consensus threshold for assigning AA\'s in the family alignments to the consensus sequences. The default is .70. Examples: .60, .70, .80,...')
 
 # BLAST Search
+grpParam.add_argument('--search_program', type=str, default="diamond", dest='strSearchProgram', help='"diamond" or "blastp". Choose the program you wish to use for identifying matching regions \
+ between your proteins of interest and the reference database.')
 grpParam.add_argument('--threads', type=int, default=1, dest='iThreads', help='Enter the number of threads to use.')
 grpParam.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity minimum for a short, high-identity region. Examples: .90, .85, .10,...')
 grpParam.add_argument('--len', default = .15, type=float, dest='dL', help='Enter the length maximum for a short, high-identity region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
@@ -131,8 +133,10 @@ grpPrograms = parser.add_argument_group('Programs')
 grpPrograms.add_argument('--usearch', default ="usearch", type=str, dest='strUSEARCH', help='Provide the path to usearch. Default call will be \"usearch\".')
 grpPrograms.add_argument('--muscle', default ="muscle", type=str, dest='strMUSCLE', help='Provide the path to muscle. Default call will be \"muscle\".')
 grpPrograms.add_argument('--cdhit', default ="cd-hit", type=str, dest='strCDHIT', help='Provide the path to usearch. Default call will be \"cd-hit\".')
-grpPrograms.add_argument('--blastp', default ="blastp", type=str, dest='strBLASTP', help='Provide the path to blastp. Default call will be \"blastp\".')
-grpPrograms.add_argument('--makeblastdb', default ="makeblastdb", type=str, dest='strMAKEBLASTDB', help='Provide the path to  makeblastdb. Default call will be to \"blastp\".')
+#grpPrograms.add_argument('--blastp', default ="blastp", type=str, dest='strBLASTP', help='Provide the path to blastp. Default call will be \"blastp\".')
+#grpPrograms.add_argument('--makeblastdb', default ="makeblastdb", type=str, dest='strMAKEBLASTDB', help='Provide the path to  makeblastdb. Default call will be to \"blastp\".')
+grpPrograms.add_argument('--diamond', default ="diamond", type=str, dest='strDIAMOND', help='Provide the path to  diamond. Default call will be \"diamond\".')
+
 
 args = parser.parse_args()
 
@@ -153,11 +157,18 @@ if len(sys.argv)==1:
     #return iReturnCode
 
 print("Checking dependencies...")
-src.CheckDependency(args.strUSEARCH,"","usearch")    
-src.CheckDependency(args.strBLASTP,"-h","blastp")
+#src.CheckDependency(args.strUSEARCH,"","usearch")
 src.CheckDependency(args.strMUSCLE,"-h","muscle")
 src.CheckDependency(args.strCDHIT,"-h","cdhit")
-src.CheckDependency(args.strMAKEBLASTDB,"-h","makeblastdb")
+
+if args.strSearchProgram=="blastp":
+    src.CheckDependency(args.strBLASTP,"-h","blastp")
+    src.CheckDependency(args.strMAKEBLASTDB,"-h","makeblastdb")  
+else:
+    src.CheckDependency(args.strDIAMOND,"-h","diamond")  
+    
+
+
 
 print("Checking to make sure that installed version of usearch can make databases...")
 pCmd = subprocess.Popen([args.strUSEARCH,"-help","makeudb_usearch"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -214,7 +225,7 @@ elif (args.sGOIProts!="" and args.dirRefDB!=""):
 	log.write("Mode 2: Using user-supplied ref db..." + "\n")
 	iMode = 2
 elif (args.sClust !="" and args.sGOIBlast!="" and args.sRefBlast!="" and args.sMapIn!=""):
-	log.write("Mode 3: Using existing BLAST and Clustering results..." + "\n")
+	log.write("Mode 3: Using existing BLASTP/Diamond and Clustering results..." + "\n")
 	iMode = 3
 else:
 	parser.print_help( )
@@ -287,14 +298,21 @@ if(iMode==1 or iMode==2):
 
 # Save blastdb of ref file to	 "tmp/refdb/refdb"
 if(iMode==1):
-	if (args.sRefBlast == "" and args.dirRefDB == "" and args.sRefProts!=""):
-		dirRefDB = src.check_create_dir( dirTmp + os.sep + "refdb" )
-		strRefDBPath = dirRefDB + os.sep + "refdb"
-
-		sys.stderr.write("Making BLAST database for the reference protein sequences...\n")
-		src.check_file(str(args.sRefProts))
-		subprocess.check_call([
-#			c_strTIME, "-o", dirTime + os.sep + "refdb.time",
+	if(args.strSearchProgram=="diamond"):
+         print("Running diamond")
+         # Determine correct database filename here. diamond makedb --in /home/jim/shortbred/example/input_prots.faa -d input_prots
+        
+        
+	else:
+         if (args.sRefBlast == "" and args.dirRefDB == "" and args.sRefProts!=""):
+              dirRefDB = src.check_create_dir( dirTmp + os.sep + "refdb" )
+              strRefDBPath = dirRefDB + os.sep + "refdb"
+              
+              # Make BLAST database            
+              sys.stderr.write("Making BLAST database for the reference protein sequences...\n")
+              src.check_file(str(args.sRefProts))
+              subprocess.check_call([
+              #			c_strTIME, "-o", dirTime + os.sep + "refdb.time",
 			args.strMAKEBLASTDB, "-in", str(args.sRefProts),"-out", strRefDBPath,
 			"-dbtype", "prot", "-logfile", dirTmp + os.sep +  "refdb.log"])
 
@@ -311,30 +329,62 @@ if(iMode==1 or iMode==2):
 	if (args.dirRefDB!=""):
 		strRefDBPath = str(args.dirRefDB)
 
-	dirBlastResults = src.check_create_dir( dirTmp + os.sep + "blastresults" )
-	strBlastRef = dirBlastResults + os.sep + "refblast.txt"
-	strBlastSelf = dirBlastResults + os.sep + "selfblast.txt"
+	if(args.strSearchProgram=="diamond"):
+         """
+         Ideally, we can just add code here that is the equivalent of the 
+         BLAST code below. We will want to think about whether we should change
+         the var names that have blast in them (like dirBlastResults,strBlastRef,etc.)
+         """
+        
+         dirDiamondResults = src.check_create_dir( dirTmp + os.sep + "diamond_results" )
+         strDiamondRef = dirDiamondResults + os.sep + "ref_diamond.txt"
+         strDiamondSelf = dirDiamondResults + os.sep + "self_diamond.txt"
+         
+         # Will likely need to experiment a bit here.
+         # Do we want to set an id cutoff here? That may drop hits we don't want to count anyway.
+         # Need to figure out how to do ungapped alignemnts.  [--ungapped-score]
+         astrDiamondParams = ["--outfmt",
+         "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen",
+                              "--comp-based-stats","0","--evalue","1e-3","--matrix","PAM30", "--id", 90,"--threads",
+                              str(args.iThreads)]
+                              
+         #Diamond: Run clust file against goidb
+         sys.stderr.write( "Using DIAMOND to compare the consensus family to themselves...\n")
+         subprocess.check_call([
+         #		"time", "-o", dirTime + os.sep +"goisearch.time",
+         args.strDIAMOND, "blastp","-q", strClustFile, "-d", strClustDB,
+         "-out", strDiamondSelf] + astrDiamondParams)       
 
-	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped",
-		"-comp_based_stats","F","-window_size","0",
-		"-xdrop_ungap","1","-evalue","1e-3",
-		"-max_target_seqs", "1000000",
-		"-num_threads",str(args.iThreads)]
+        
+	else:
+    
+        	dirBlastResults = src.check_create_dir( dirTmp + os.sep + "blastresults" )
+        	strBlastRef = dirBlastResults + os.sep + "refblast.txt"
+        	strBlastSelf = dirBlastResults + os.sep + "selfblast.txt"
+    
+     
+        	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped",
+    		"-comp_based_stats","F","-window_size","0",
+    		"-xdrop_ungap","1","-evalue","1e-3",
+    		"-max_target_seqs", "1000000",
+    		"-num_threads",str(args.iThreads)]
+    
+    
+    	#Blast clust file against goidb
+        	sys.stderr.write( "BLASTing the consensus family sequences against themselves...\n")
+        	subprocess.check_call([
+    #		"time", "-o", dirTime + os.sep +"goisearch.time",
+    		strBLASTP, "-query", strClustFile, "-db", strClustDB,
+    		"-out", strBlastSelf] + astrBlastParams)
+    
+    	#Blast clust file against refdb
+        	sys.stderr.write("BLASTing the consensus family sequences against the reference protein sequences...\n")
+        	subprocess.check_call([
+    #		"time", "-o", dirTime + os.sep +"refsearch.time",
+    		strBLASTP, "-query", strClustFile, "-db",strRefDBPath,
+    		"-out", strBlastRef] + astrBlastParams)
 
 
-	#Blast clust file against goidb
-	sys.stderr.write( "BLASTing the consensus family sequences against themselves...\n")
-	subprocess.check_call([
-#		"time", "-o", dirTime + os.sep +"goisearch.time",
-		strBLASTP, "-query", strClustFile, "-db", strClustDB,
-		"-out", strBlastSelf] + astrBlastParams)
-
-	#Blast clust file against refdb
-	sys.stderr.write("BLASTing the consensus family sequences against the reference protein sequences...\n")
-	subprocess.check_call([
-#		"time", "-o", dirTime + os.sep +"refsearch.time",
-		strBLASTP, "-query", strClustFile, "-db",strRefDBPath,
-		"-out", strBlastRef] + astrBlastParams)
 
 ##################################################################################################
 #Step Four: Search BLAST output to find regions of overlap.
