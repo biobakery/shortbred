@@ -9,7 +9,6 @@
 """
 This script makes small changes to an input fasta file to format the sequence
 ids for ShortBRED. It will do the following:
-    * Convert the first --numspaces (args.iSpacesToChange) to "_"'s
     * Add an unique ID when two seqs have the exact same name.
     * Replace characters like "*,[,:" with _ .
 

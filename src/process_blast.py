@@ -244,18 +244,29 @@ def FindJMMarker( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegion=25,i
 ###############################################################################
 def CheckFastaForBadProtNames(fileFasta):
     reBadChars=re.compile(r'[\\\/\*]')
+    reMarkerTypes = re.compile(r'_([TJQ]M)')
+    reWeight = re.compile(r'w=')
     setProtNames = set()
     
     for gene in SeqIO.parse(fileFasta, "fasta"):
         mtchBad = reBadChars.search(gene.id)
-        assert (mtchBad == None),("\nOne or more of the sequences in your "+
+        mtchMarkerType = reMarkerTypes.search(gene.id)
+        mtchWeight = reWeight.search(gene.id)
+        assert (mtchBad == None),("\n\nOne or more of the sequences in your "+
         "input file has an id that ShortBRED cannot use as a valid folder "+
         "name during the clustering step, so ShortBRED has stopped. Please edit  ** "+
         fileFasta + " ** to remove any slashes,asterisks, etc. from the fasta ids. The program utils/AdjustFastaHeadersForShortBRED.py "+
         "in the ShortBRED folder can do this for you.  ShortBRED halted on this gene/protein:" + gene.id)
-        assert (gene.id not in setProtNames),("\nShortBRED uses the first word of the seq id to identify each "+
+        assert (gene.id not in setProtNames),("\n\nShortBRED uses the first word of the seq id to identify each "+
         "input sequence, and two or more of your sequences share the same starting word. Please edit ** "+
         fileFasta + " ** to avoid duplicate ids. The program utils/AdjustFastaHeadersForShortBRED.py can add unique identifiers to your data if needed. ShortBRED halted on this gene/protein: " + gene.id)
+        assert (mtchMarkerType == None),("\n\nShortBRED uses the strings '_TM','_QM',and '_JM' in the headers for markers, "+
+        "and their presence in the original protein ID may cause issues downstream. Please edit ** "+
+        fileFasta + " ** . ShortBRED halted on this gene/protein: " + gene.id)
+        assert (mtchWeight == None),("\n\nShortBRED uses the string '_w=' in the headers for markers, "+
+        "and their presence in the original protein ID may cause issues downstream. Please edit ** "+
+        fileFasta + " ** . ShortBRED halted on this gene/protein: " + gene.id)
+        
         setProtNames.add(gene.id)
         
 

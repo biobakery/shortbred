@@ -229,6 +229,7 @@ strBlastRef = args.sRefBlast
 strBlastSelf = args.sGOIBlast
 strMapFile = args.sMapIn
 
+
 ################################################################################
 # Step One: Cluster input genes and make into a blast database.
 #

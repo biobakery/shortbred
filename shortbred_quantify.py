@@ -267,7 +267,7 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 
 	#For ShortBRED Markers
 	else:
-		mtchStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',seq.id)
+		mtchStub = re.search(r'(.*)_([TJQ]M)[0-9]*_\#([0-9]*)',seq.id)
 		strStub = mtchStub.group(1)
 		strType = mtchStub.group(2)
 
