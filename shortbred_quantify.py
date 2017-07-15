@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+
+"""
+This is the diamond implementation branch.
+"""
+
 #####################################################################################
 #Copyright (C) <2013> Jim Kaminski and the Huttenhower Lab
 #
@@ -59,6 +64,9 @@ c_iMaxSizeForDirectRun = 900 # File size in MB. Any WGS file smaller than this
 c_iReadsForFile = 7000000 # Number of WGS reads to process at a time
 
 ################################################################################
+
+
+
 # Args
 
 parser = argparse.ArgumentParser(description='ShortBRED Quantify \n \
