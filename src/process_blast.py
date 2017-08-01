@@ -243,7 +243,7 @@ def FindJMMarker( setGenes, dictGenes, dictGOIHits,dictRefHits,iShortRegion=25,i
 
 ###############################################################################
 def CheckFastaForBadProtNames(fileFasta):
-    reBadChars=re.compile(r'[\\\/\*]')
+    reBadChars=re.compile(r'[\\\/\*\=\:\'\[\]\.\;\,]')
     reMarkerTypes = re.compile(r'_([TJQ]M)')
     reWeight = re.compile(r'w=')
     setProtNames = set()
