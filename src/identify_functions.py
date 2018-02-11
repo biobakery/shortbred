@@ -271,6 +271,21 @@ def Create_BLAST_Database(cmdMakeBlastDB,fastaInput,pathDB,dirTmp):
         cmdMakeBlastDB, "-in", fastaInput, "-out", pathDB,
         "-dbtype", "prot", "-logfile", dirTmp + os.sep + strLog])
     
+
+def Run_BLAST_Protein_Search(cmdBLASTP,fastaInput,pathDB,txtBlastOut,iThreads=1):
+    strLog = os.path.basename(pathDB) + ".log"
+    astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped",
+                       "-comp_based_stats","F","-window_size","0",
+                       "-xdrop_ungap","1","-evalue","1e-3",
+                       "-max_target_seqs", "1000000",
+                       "-num_threads",str(iThreads)]
+    subprocess.check_call([
+#		"time", "-o", dirTime + os.sep +"goisearch.time",
+        cmdBLASTP, "-query", fastaInput, "-db", pathDB,
+        "-out", txtBlastOut] + astrBlastParams)
+
+
+
 def Test_ClusterFASTAFileAndMakeFamilies():
     fastaInput ="/home/jim/PythonProjects/shortbred/example/input_prots.faa"
     fastaRef = "/home/jim/PythonProjects/shortbred/example/ref_prots.faa"
@@ -293,7 +308,18 @@ def Test_ClusterFASTAFileAndMakeFamilies():
     #print(dictSBFamilies["P13246"].dictMemberSeqs)
     Create_BLAST_Database(cmdMakeBlastDB,fastaConsensus, strClustDB,dirTmp)
     Create_BLAST_Database(cmdMakeBlastDB,fastaRef, strRefDB,dirTmp)
+    
+    
+    # Blast searches
+    dirBlastResults = check_create_dir( dirTmp + os.sep + "blastresults" )
+    txtBlastRef = dirBlastResults + os.sep + "refblast.txt"
+    txtBlastSelf = dirBlastResults + os.sep + "selfblast.txt"
+    
+    Run_BLAST_Protein_Search(cmdBLASTP="blastp",fastaInput=fastaConsensus,
+                             pathDB=strClustDB,txtBlastOut=txtBlastSelf,iThreads=1)
 
+    Run_BLAST_Protein_Search(cmdBLASTP="blastp",fastaInput=fastaConsensus,
+                             pathDB=strRefDB,txtBlastOut=txtBlastRef,iThreads=1)
 
 Test_ClusterFASTAFileAndMakeFamilies()
 
@@ -302,5 +328,6 @@ Test_ClusterFASTAFileAndMakeFamilies()
 Next functions:
     Run_BLAST_Search()
     * Think about how to best organize the overlap process. If the output
-    from blast is the same as diamond, canuse the same system
+    from blast is the same as diamond, can use the same system.
     Run_DIAMOND_Search()
+"""
