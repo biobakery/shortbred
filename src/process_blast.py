@@ -405,7 +405,7 @@ def getGeneData ( fileFasta):
 	return dictGeneData
 
 ##############################################################################
-def getOverlapCounts (fileBlast, dIDcutoff, iLengthMin, dLengthMax, iOffset, bSaveHitInfo):
+def getOverlapCounts (fileBlast, dIDcutoff, iLengthMin, dLengthMax, iOffset, bSaveHitInfo,dictFields):
 
 # Makes a dictionary of form (GeneID, [0,0,0,0,1,1...]), where the number indicates
 # the number of times an amino acid overlaps with a region in the blast output.
@@ -440,25 +440,29 @@ def getOverlapCounts (fileBlast, dIDcutoff, iLengthMin, dLengthMax, iOffset, bSa
 	iGeneCount = 0
 	iLine =0
 
+    c_dictBLASTP_Fields = {"QueryID":0,"SubjectID":1,"Identity":2,"Aln":3,
+                    "Mismatches":4,"Gap":5,"QueryStart":6,"QueryEnd":7,
+                    "SubjectStart":8,"SubjectEnd":9,"eValue":10,"Bit":11,
+                    "QueryLength":12}
 
 	#sys.stderr.write("The file is " + fileBlast + "\n")
 	for aLine in csv.reader( open(fileBlast, 'rU'), delimiter='\t' ):
 
 		iLine+=1
 
-		strQueryID = aLine[0]
-		strSubId = aLine[1]
-		dIdentity =float(aLine[2])/100
-		iAln= int(aLine[3] )
-		iMismatch = int(aLine[4])
-		iGap = int(aLine[5] )
-		iQStart = int(aLine[6] )
-		iQEnd = int(aLine[7])
-		iSubStart = int(aLine[8] )
-		iSubEnd= int(aLine[9] )
-		deVal = float(aLine[10] )
-		dBit = float(aLine[11])
-		iQLength = int(aLine[12])
+		strQueryID = aLine[dictFields["QueryID"]]
+		strSubId = aLine[dictFields["SubjectID"]]
+		dIdentity =float(aLine[dictFields["Identity"]])/100
+		iAln= int(aLine[dictFields["Aln"]] )
+		iMismatch = int(aLine[dictFields["Mismatches"]])
+		iGap = int(aLine[dictFields["Gap"]] )
+		iQStart = int(aLine[dictFields["QueryStart"]] )
+		iQEnd = int(aLine[dictFields["QueryEnd"]])
+		iSubStart = int(aLine[dictFields["SubjectStart"]] )
+		iSubEnd= int(aLine[dictFields["SubjectEnd"]] )
+		deVal = float(aLine[dictFields["eValue"]] )
+		dBit = float(aLine[dictFields["Bit"]])
+		iQLength = int(aLine[dictFields["QueryLength"]])
 
 		#When the current queryID changes, add the last one, and switch to the next gene.
 		if strQueryID != strCurQuery:
