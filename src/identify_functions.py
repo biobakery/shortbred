@@ -284,8 +284,30 @@ def Run_BLAST_Protein_Search(cmdBLASTP,fastaInput,pathDB,txtBlastOut,iThreads=1)
         cmdBLASTP, "-query", fastaInput, "-db", pathDB,
         "-out", txtBlastOut] + astrBlastParams)
 
+def Create_DIAMOND_Database(cmdDIAMOND,fastaInput,pathDB,dirTmp):
 
-
+    strLog = os.path.basename(pathDB) + ".log"
+    sys.stderr.write("Making DIAMOND database...\n")
+    #Make database from goi centroids
+    subprocess.check_call([
+#        c_strTIME, "-o", dirTime + os.sep + "goidb.time",
+        cmdDIAMOND, "makedb", "--in", fastaInput, "--db", pathDB])
+    
+def Run_DIAMOND_Protein_Search(cmdDIAMOND,fastaInput,pathDB,txtSearchOut,iThreads=1):
+    #strLog = os.path.basename(pathDB) + ".log"
+    astrDIAMONDParams = ["--outfmt", "6","qseqid","sseqid","pident","length","mismatch","gaps","qstart","qend","sstart","send",
+                         "evalue","bitscore","qlen", "--matrix", "PAM30",
+                       "--comp-based-stats","0","--window","0","--ungapped-score","10",
+                       "--evalue","1e-3",
+                       "--max-target-seqs", "0",
+                       "--threads",str(iThreads)]
+    cmdRun = [
+#        "time", "-o", dirTime + os.sep +"goisearch.time",
+        cmdDIAMOND,"blastp", "--query", fastaInput, "--db", pathDB,
+        "--out", txtSearchOut] + astrDIAMONDParams
+            
+    #sys.stderr.write(" ".join(cmdRun))
+    subprocess.check_call(cmdRun)
 ##############################################################################
 def Get_Overlap_Counts_From_Search(txtSearchResults, dIDcutoff, iLengthMin, dLengthMax, iOffset, bSaveHitInfo,dictFields):
 
@@ -600,9 +622,9 @@ def Test_IdentifyRevisions():
     fastaRef = "/home/jim/PythonProjects/shortbred/example/ref_prots.faa"
     dirTmp = "/home/jim/PythonProjects/shortbred/tmp/test"
     cmdMakeBlastDB = "makeblastdb"
-    cmdDiamond = ""
+    cmdDiamond = "/home/jim/shortbred_dependecies/diamond/diamond"
     
-    strAlignmentProgram = "blast"
+    strAlignmentProgram = "diamond"
 
     dirClustDB = check_create_dir( dirTmp + os.sep + "clustdb" )
     strClustDB = dirClustDB + os.sep + "goidb"
@@ -624,33 +646,43 @@ def Test_IdentifyRevisions():
     
     dictSBFamilies = Construct_ShortBRED_Families(fastaConsensus,fastaInput,mapClusters)
 
+    # Search results from DIAMOND or BLASTP
+    dirProteinSearchResults = check_create_dir( dirTmp + os.sep + "prot_search_results" )
+    txtProtSearch_Ref = dirProteinSearchResults + os.sep + strAlignmentProgram + "_search_against_refdb.txt"
+    txtProtSearch_Self =dirProteinSearchResults + os.sep + strAlignmentProgram + "_search_against_selfdb.txt"
 
     if(strAlignmentProgram=="blast"):
         Create_BLAST_Database(cmdMakeBlastDB,fastaConsensus, strClustDB,dirTmp)
         Create_BLAST_Database(cmdMakeBlastDB,fastaRef, strRefDB,dirTmp)
             
-        # Blast searches
-        dirBlastResults = check_create_dir( dirTmp + os.sep + "blastresults" )
-        txtBlastRef = dirBlastResults + os.sep + "refblast.txt"
-        txtBlastSelf = dirBlastResults + os.sep + "selfblast.txt"
-    
-        
         Run_BLAST_Protein_Search(cmdBLASTP="blastp",fastaInput=fastaConsensus,
-                                 pathDB=strClustDB,txtBlastOut=txtBlastSelf,iThreads=1)
+                                 pathDB=strClustDB,txtBlastOut=txtProtSearch_Self,iThreads=1)
         Run_BLAST_Protein_Search(cmdBLASTP="blastp",fastaInput=fastaConsensus,
-                                 pathDB=strRefDB,txtBlastOut=txtBlastRef,iThreads=1)
+                                 pathDB=strRefDB,txtBlastOut=txtProtSearch_Ref,iThreads=1)
 
-        #Update ILength later
-        sys.stderr.write( "Finding overlap with reference database...\n")
-        dictRefCounts, dictRefHits = Get_Overlap_Counts_From_Search(txtSearchResults=txtBlastRef, dIDcutoff=.90, iLengthMin=8,
-                                                         dLengthMax=.15,iOffset=0,bSaveHitInfo=True,
-                                                         dictFields=c_dictBLASTP_Fields)
+
+    else:
+        Create_DIAMOND_Database(cmdDIAMOND=cmdDiamond,fastaInput=fastaConsensus,pathDB=strClustDB,dirTmp=dirTmp)
+        Create_DIAMOND_Database(cmdDIAMOND=cmdDiamond,fastaInput=fastaRef,pathDB=strRefDB,dirTmp=dirTmp)
         
-        #Get high-identity hits of *all lengths* in GOI database
-        sys.stderr.write( "Finding overlap with family consensus database...\n")
-        dictGOICounts, dictGOIHits  = Get_Overlap_Counts_From_Search(txtSearchResults=txtBlastSelf, dIDcutoff=.90, iLengthMin=8,
-                                                                     dLengthMax=1.0, iOffset=0,bSaveHitInfo=True,dictFields=c_dictBLASTP_Fields)
-
+        Run_DIAMOND_Protein_Search(cmdDIAMOND=cmdDiamond,fastaInput=fastaConsensus,
+                                 pathDB=strClustDB,txtSearchOut=txtProtSearch_Self,iThreads=1)
+        Run_DIAMOND_Protein_Search(cmdDIAMOND=cmdDiamond,fastaInput=fastaConsensus,
+                                 pathDB=strRefDB,txtSearchOut=txtProtSearch_Ref,iThreads=1)
+     
+    #Update ILength later
+    sys.stderr.write( "Finding overlap with reference database...\n")
+    dictRefCounts, dictRefHits = Get_Overlap_Counts_From_Search(txtSearchResults=txtProtSearch_Ref,
+                                                                dIDcutoff=.90, iLengthMin=8,dLengthMax=.15,
+                                                                iOffset=0,bSaveHitInfo=True,dictFields=c_dictBLASTP_Fields)
+        
+    #Get high-identity hits of *all lengths* in GOI database
+    sys.stderr.write( "Finding overlap with family consensus database...\n")
+    dictGOICounts, dictGOIHits  = Get_Overlap_Counts_From_Search(txtSearchResults=txtProtSearch_Self,
+                                                                 dIDcutoff=.90, iLengthMin=8,
+                                                                 dLengthMax=1.0, iOffset=0,bSaveHitInfo=True,
+                                                                 dictFields=c_dictBLASTP_Fields)
+        
     #print(dictGOICounts['YP_001068559'])
     dictGOICounts = MarkX_SBFamilies(dictSBFamilies,dictGOICounts)
     #print(dictGOICounts['YP_001068559'])
@@ -675,7 +707,7 @@ def Test_IdentifyRevisions():
         if(dictSBFamilies[strFam].iTM==0 and dictSBFamilies[strFam].iJM==0):
             Create_JunctionMarkers_And_QuasiMarkers(SBFamily=dictSBFamilies[strFam],strMarkerType="QM",iShortRegion=25,iMarkerLen=25,iXlimit=1)
         
-        print(dictSBFamilies[strFam])
+        #print(dictSBFamilies[strFam])
 
     
     # Cluster all of the quasi markers and junction markers, and merge ShortBRED families that get mapped to same cluster.
