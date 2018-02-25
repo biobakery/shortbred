@@ -24,6 +24,12 @@
 # (contact Jim Kaminski, jjk451@mail.harvard.edu).
 #####################################################################################
 
+"""
+ToDo:
+    * Add a function to count tblastn hits
+"""
+
+
 import subprocess
 from subprocess import Popen, PIPE,STDOUT
 import csv
@@ -302,7 +308,7 @@ def RunTBLASTN ( strTBLASTN, strDB,strMarkers, strBlastOut, iThreads):
 
 
 
-	astrBlastParams = ["-outfmt", "6 sseqid qseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",
+	astrBlastParams = ["-outfmt", "6 sseqid qseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore slen qlen",
 	"-matrix", "PAM30", "-ungapped",
 		"-comp_based_stats","F","-window_size","0",
 		"-xdrop_ungap","1","-evalue","1e-3",
@@ -384,6 +390,10 @@ def StoreHitCountsRapsearch2(strBlastOut,strValidHits,dictHitsForMarker,dictMark
                         csvwHits.writerow( aLine )
         return
 
+"""
+* Consider writing a function to process TBLASTN hits
+"""
+
 
 def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA,strVersionUSEARCH,strShortBREDMode="wgs",iAlnCentroids=30,strUSearchOut=True):
 # Reads in the USEARCH output (strBlastOut), marks which hits are valid (id>=dID &
@@ -435,7 +445,10 @@ def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dict
 					#Get the Family Name
 					mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
 					strProtFamily = mtchProtStub.group(1)
-
+					"""
+					if(float(dHitID)>.9):
+						sys.stderr.write( " ".join([str(iAlnLen),str(iAlnMin),str(dHitID),str(dID),str(iReadLenAA),str(iMinReadAA)] ) +"\n")
+					"""
 					#If hit satisfies criteria, add it to counts, write out data to Hits file
 					if (int(iAlnLen)>= iAlnMin and (iReadLenAA >= iMinReadAA) and (float(dHitID)/100) >= dID):
 
@@ -577,6 +590,7 @@ dAlnLength,strFile):
 			dCount =  dCount /  (iWGSReads / 1e6 )
 		else:
 			dCount = 0
+			sys.stderr.write(str(strFile))            
 			sys.stderr.write("WARNING: 0 Reads found in file:" + strFile )
 		tupCount = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength,iPossibleHitSpace)
 		atupMarkerCounts.append(tupCount)

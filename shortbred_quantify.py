@@ -201,10 +201,10 @@ elif args.strGenome!="" and args.strWGS==None and args.bUnannotated==True:
 	strSize = "small"
 	strFormat = "fasta"
 	sys.stderr.write("Treating input as an unannotated genome...\n")
-	sys.stderr.write("NOTE: When running against an unannotated bug genome, ShortBRED makes a \
-	tblastn database from the genome and then blasts the markers against it. \
-	Please remember to increase \"maxhits\" to a large number, so that multiple \
-	markers can hit each bug sequence. ")
+	sys.stderr.write("NOTE: When running against an unannotated bug genome, ShortBRED makes a \n\
+	tblastn database from the genome and then blasts the markers against it. \n\
+	Please remember to increase \"maxhits\" to a large number, so that multiple \n\
+	markers can hit each bug sequence. \n")
 	dictFamCounts = sq.MakeDictFamilyCounts(args.strMarkers,"")
 
 else:
@@ -327,7 +327,7 @@ elif strMethod=="wgs" and args.strSearchProg=="rapsearch2":
 
 ##################################################################################
 #Step 2: Get information on WGS file(s), put it into aaFileInfo.
-#sys.stderr.write( "\nExamining WGS data:")
+sys.stderr.write( "\nExamining WGS data:")
 """
 aaFileInfo is array of string arrays, each with details on the file so ShortBRED
 knows how to process it efficiently. Each line has the format:
@@ -441,7 +441,7 @@ elif strMethod=="unannotated_genome":
 else:
 	with open(strLog, "a") as log:
 		log.write('\t'.join(["# FileName","size","format","extract method","tar file (if part of one)"]) + '\n')
-		log.write("Reads processed" + "\n")
+		#log.write("Reads processed" + "\n")
 
 	for astrFileInfo in aaWGSInfo:
 		strWGS,strFormat,strSize,strExtractMethod,strMainTar = astrFileInfo

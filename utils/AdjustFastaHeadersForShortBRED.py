@@ -19,10 +19,10 @@ import re
 from argparse import RawTextHelpFormatter
     
 parser = argparse.ArgumentParser(description='This script makes small changes to an input fasta file to format the sequence \
-ids for ShortBRED. It will do the following: \
-    * Add a unique ID when two seqs have the exact same name. \
-    * Cut fasta files with very long names to 251 characters match (240 chars, plus possible "___Copy000X" suffix for duplicates.) \
-    * Replace characters like "*,[,:" with _ . ',formatter_class=RawTextHelpFormatter) 
+ids for ShortBRED. It will do the following: \n\
+    * Add a unique ID when two seqs have the exact same name. \n\
+    * Cut fasta files with very long names to 251 characters match (240 chars, plus possible "___Copy000X" suffix for duplicates.)\n \
+    * Replace characters like "*,[,:" with _ .  \n\nUsage example:\n  python shortbred/utils/AdjustFastaHeadersForShortBRED.py < OriginalSeq.faa > FormattedSeqs.faa ',formatter_class=RawTextHelpFormatter) 
 #parser.add_argument("--numspaces", default = 2, type=int, dest='iSpacesToChange')
 args = parser.parse_args()
 
@@ -43,7 +43,7 @@ for strLine in sys.stdin:
         dictHeaderCounts[strHeader] = dictHeaderCounts.get(strHeader,0)+1
         if dictHeaderCounts[strHeader] > 1:
             strHeader = strHeader + "___Copy"+str(dictHeaderCounts[strHeader]).zfill(4)
-        print ">" + strHeader
+        print(">" + strHeader)
     else:
-        print strLine
+        print(strLine)
         
