@@ -297,8 +297,8 @@ def Run_DIAMOND_Protein_Search(cmdDIAMOND,fastaInput,pathDB,txtSearchOut,iThread
     #strLog = os.path.basename(pathDB) + ".log"
     astrDIAMONDParams = ["--outfmt", "6","qseqid","sseqid","pident","length","mismatch","gaps","qstart","qend","sstart","send",
                          "evalue","bitscore","qlen", "--matrix", "PAM30",
-                       "--comp-based-stats","0","--window","0","--ungapped-score","10",
-                       "--evalue","1e-3",
+                       "--comp-based-stats","0","--window","0","--ungapped-score","20",
+                       "--evalue","1e-4","--shape-mask","11111","--rank-ratio","0","--shapes","0",
                        "--max-target-seqs", "0",
                        "--threads",str(iThreads)]
     cmdRun = [
