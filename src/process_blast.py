@@ -913,4 +913,52 @@ def CheckOutOfFrame (fileBlast, dIDcutoff, iWGSReadLen, dictFams, strOffTargetFi
 
 	return set(astrProblemMarkers)
 
+###############################################################################
+##############################################################################
+def Create_BLAST_Database(cmdMakeBlastDB,fastaInput,pathDB,dirTmp):
 
+    strLog = os.path.basename(pathDB) + ".log"
+    #Make database from goi centroids
+    subprocess.check_call([
+#        c_strTIME, "-o", dirTime + os.sep + "goidb.time",
+        cmdMakeBlastDB, "-in", fastaInput, "-out", pathDB,
+        "-dbtype", "prot", "-logfile", dirTmp + os.sep + strLog])
+    
+
+def Run_BLAST_Protein_Search(cmdBLASTP,fastaInput,pathDB,txtBlastOut,iThreads=1):
+    #strLog = os.path.basename(pathDB) + ".log"
+    astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped",
+                       "-comp_based_stats","F","-window_size","0",
+                       "-xdrop_ungap","1","-evalue","1e-3",
+                       "-max_target_seqs", "1000000",
+                       "-num_threads",str(iThreads)]
+    subprocess.check_call([
+#        "time", "-o", dirTime + os.sep +"goisearch.time",
+        cmdBLASTP, "-query", fastaInput, "-db", pathDB,
+        "-out", txtBlastOut] + astrBlastParams)
+
+def Create_DIAMOND_Database(cmdDIAMOND,fastaInput,pathDB,dirTmp):
+
+#    strLog = os.path.basename(pathDB) + ".log"
+    #Make database from goi centroids
+    subprocess.check_call([
+#        c_strTIME, "-o", dirTime + os.sep + "goidb.time",
+        cmdDIAMOND, "makedb", "--in", fastaInput, "--db", pathDB])
+    
+def Run_DIAMOND_Protein_Search(cmdDIAMOND,fastaInput,pathDB,txtSearchOut,iThreads=1):
+    #strLog = os.path.basename(pathDB) + ".log"
+    astrDIAMONDParams = ["--outfmt", "6","qseqid","sseqid","pident","length","mismatch","gaps","qstart","qend","sstart","send",
+                         "evalue","bitscore","qlen", "--matrix", "PAM30",
+                       "--comp-based-stats","0","--window","0","--ungapped-score","20",
+                       "--evalue","1e-4","--rank-ratio","0","--shapes","0",
+                       "--max-target-seqs", "0",
+                       "--threads",str(iThreads)]
+    # "--shape-mask","11111" this param is removed temporarily, otherwise, some of self-hits would disappear
+    
+    cmdRun = [
+#        "time", "-o", dirTime + os.sep +"goisearch.time",
+        cmdDIAMOND,"blastp", "--query", fastaInput, "--db", pathDB,
+        "--out", txtSearchOut] + astrDIAMONDParams
+            
+    #sys.stderr.write(" ".join(cmdRun))
+    subprocess.check_call(cmdRun)

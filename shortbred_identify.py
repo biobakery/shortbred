@@ -86,9 +86,11 @@ grpInput = parser.add_argument_group('Input')
 grpInput.add_argument('--goi', type=str, dest='sGOIProts',default= "", help='Enter the path and name of the proteins of interest file.')
 grpInput.add_argument('--ref', type=str, dest='sRefProts',default= "", help='Enter the path and name of the file containing reference protein sequences.')
 grpInput.add_argument('--refdb', type=str, dest='dirRefDB', default= "",help='Can be specified in place of reference proteins [--ref]. Enter the path and name for a blastdb of reference proteins.')
-grpInput.add_argument('--goiblast', type=str, default = "", dest='sGOIBlast', help='Used when modifying existing ShortBRED-Identify results. Enter the path and name of the blast results from the goi-to-goi search.')
+grpInput.add_argument('--goiblast', type=str, dest='sGOIBlast', default = "",help='Used when modifying existing ShortBRED-Identify results. Enter the path and name of the blast results from the goi-to-goi search.')
 grpInput.add_argument('--refblast', type=str, dest='sRefBlast', default= "", help='Used when modifying existing ShortBRED-Identify results. Enter the path and name of the blast results from the goi-to-ref search.')
-grpInput.add_argument('--goiclust', type=str, default ="", dest='sClust', help='Used when modifying existing ShortBRED-Identify results. Enter the path and name of the clustered genes of interest file.')
+grpInput.add_argument('--goidiamond', type=str, dest='sGOIDiamond', default = "",help='Used when modifying existing ShortBRED-Identify results. Enter the path and name of the blast results from the goi-to-goi search.')
+grpInput.add_argument('--refdiamond', type=str, dest='sRefDiamond', default= "", help='Used when modifying existing ShortBRED-Identify results. Enter the path and name of the blast results from the goi-to-ref search.')
+grpInput.add_argument('--goiclust', type=str, dest='sClust', default ="",help='Used when modifying existing ShortBRED-Identify results. Enter the path and name of the clustered genes of interest file.')
 grpInput.add_argument('--map_in', type=str, dest='sMapIn',default="", help='Used when modifying existing ShortBRED-Identify results. Enter the path and name of the two column file connecting proteins to families.')
 
 
@@ -111,8 +113,6 @@ grpParam.add_argument('--qclustid',default = .90, type=float, dest='dQClustID', 
 grpParam.add_argument('--consthresh',default = .95, type=float, dest='dConsThresh', help='Enter the consensus threshold for assigning AA\'s in the family alignments to the consensus sequences. The default is .70. Examples: .60, .70, .80,...')
 
 # BLAST Search
-grpParam.add_argument('--search_program', type=str, default="diamond", dest='strSearchProgram', help='"diamond" or "blastp". Choose the program you wish to use for identifying matching regions \
- between your proteins of interest and the reference database.')
 grpParam.add_argument('--threads', type=int, default=1, dest='iThreads', help='Enter the number of threads to use.')
 grpParam.add_argument('--id',default = .90, type=float, dest='dID', help='Enter the identity minimum for a short, high-identity region. Examples: .90, .85, .10,...')
 grpParam.add_argument('--len', default = .15, type=float, dest='dL', help='Enter the length maximum for a short, high-identity region. l=(length hit region)/(length query gene) Examples: .30, .20, .10,... ')
@@ -130,13 +130,13 @@ grpParam.add_argument('--tmpdir', default ="", type=str, dest='sTmp', help='Set 
 
 # Programs
 grpPrograms = parser.add_argument_group('Programs')
+grpPrograms.add_argument('--search_program', default ="blast", type=str, dest='strSearchProg', help='Choose program for wgs and unannotated genome search. Default is \"usearch\".')
 grpPrograms.add_argument('--usearch', default ="usearch", type=str, dest='strUSEARCH', help='Provide the path to usearch. Default call will be \"usearch\".')
 grpPrograms.add_argument('--muscle', default ="muscle", type=str, dest='strMUSCLE', help='Provide the path to muscle. Default call will be \"muscle\".')
 grpPrograms.add_argument('--cdhit', default ="cd-hit", type=str, dest='strCDHIT', help='Provide the path to usearch. Default call will be \"cd-hit\".')
-#grpPrograms.add_argument('--blastp', default ="blastp", type=str, dest='strBLASTP', help='Provide the path to blastp. Default call will be \"blastp\".')
-#grpPrograms.add_argument('--makeblastdb', default ="makeblastdb", type=str, dest='strMAKEBLASTDB', help='Provide the path to  makeblastdb. Default call will be to \"blastp\".')
-grpPrograms.add_argument('--diamond', default ="diamond", type=str, dest='strDIAMOND', help='Provide the path to  diamond. Default call will be \"diamond\".')
-
+grpPrograms.add_argument('--blastp', default ="blastp", type=str, dest='strBLASTP', help='Provide the path to blastp. Default call will be \"blastp\".')
+grpPrograms.add_argument('--makeblastdb', default ="makeblastdb", type=str, dest='strMAKEBLASTDB', help='Provide the path to  makeblastdb. Default call will be to \"blastp\".')
+grpPrograms.add_argument('--diamond', default ="diamond", type=str, dest='strDIAMOND', help='Provide the path to  makeblastdb. Default call will be to \"diamond\".')
 
 args = parser.parse_args()
 
@@ -157,18 +157,16 @@ if len(sys.argv)==1:
     #return iReturnCode
 
 print("Checking dependencies...")
-#src.CheckDependency(args.strUSEARCH,"","usearch")
+src.CheckDependency(args.strUSEARCH,"","usearch")    
 src.CheckDependency(args.strMUSCLE,"-h","muscle")
 src.CheckDependency(args.strCDHIT,"-h","cdhit")
 
-if args.strSearchProgram=="blastp":
+
+if (args.strSearchProg=="blast"):
     src.CheckDependency(args.strBLASTP,"-h","blastp")
-    src.CheckDependency(args.strMAKEBLASTDB,"-h","makeblastdb")  
-else:
-    src.CheckDependency(args.strDIAMOND,"-h","diamond")  
-    
-
-
+    src.CheckDependency(args.strMAKEBLASTDB,"-h","makeblastdb")
+elif (args.strSearchProg=="diamond"):
+    src.CheckDependency(args.strDIAMOND,"-h","diamond")
 
 print("Checking to make sure that installed version of usearch can make databases...")
 pCmd = subprocess.Popen([args.strUSEARCH,"-help","makeudb_usearch"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -182,13 +180,14 @@ c_strTIME	= "time"
 strCDHIT = args.strCDHIT
 strBLASTP = args.strBLASTP
 strMUSCLE = args.strMUSCLE
+strDIAMOND = args.strDIAMOND
 
 
 
 
 if args.iLenMin==0:
-	#If no minimum alignment length is given, use 80% of minimum marker length and round up.
-	iLenMin = math.ceil(args.iMLength*(.80))
+    #If no minimum alignment length is given, use 80% of minimum marker length and round up.
+    iLenMin = math.ceil(args.iMLength*(.80))
 else:
     iLenMin = args.iMLength
 
@@ -197,8 +196,8 @@ else:
 
 dirTmp = args.sTmp
 if(dirTmp==""):
-	# dirTmp gets a pid and timestamp. (This is to avoid overwriting files if
-	# someone launches multiple instances of the program.)
+    # dirTmp gets a pid and timestamp. (This is to avoid overwriting files if
+    # someone launches multiple instances of the program.)
     dirTmp = ("tmp" + str(os.getpid()) + '%.0f' % round((time.time()*1000), 1))
 
 dirTime = src.check_create_dir( dirTmp + os.sep + "time" )
@@ -219,30 +218,38 @@ iMode = 0
 
 
 if (args.sGOIProts!="" and args.sRefProts!=""):
-	log.write("Mode 1: Building everything..." + "\n")
-	iMode = 1
+    log.write("Mode 1: Building everything..." + "\n")
+    iMode = 1
 elif (args.sGOIProts!="" and args.dirRefDB!=""):
-	log.write("Mode 2: Using user-supplied ref db..." + "\n")
-	iMode = 2
+    log.write("Mode 2: Using user-supplied ref db..." + "\n")
+    iMode = 2
 elif (args.sClust !="" and args.sGOIBlast!="" and args.sRefBlast!="" and args.sMapIn!=""):
-	log.write("Mode 3: Using existing BLASTP/Diamond and Clustering results..." + "\n")
-	iMode = 3
+    log.write("Mode 3: Using existing BLAST and Clustering results..." + "\n")
+    iMode = 3
+elif (args.sClust !="" and args.sGOIDiamond!="" and args.sRefDiamond!="" and args.sMapIn!=""):
+    log.write("Mode 3: Using existing DIAMOND and Clustering results..." + "\n")
+    iMode = 4
 else:
-	parser.print_help( )
-	raise Exception( "Command line arguments incorrect, must provide either:\n" +
-		"\t--goi AND --ref, OR\n" +
-		"\t--goi AND --refdb, OR\n" +
-		"\t--goiclust AND --goiblast AND --refblast AND --map_in" )
+    parser.print_help( )
+    raise Exception( "Command line arguments incorrect, must provide either:\n" +
+                    "\t--goi AND --ref, OR\n" +
+                    "\t--goi AND --refdb, OR\n" +
+                    "\t--goiclust AND --goiblast AND --refblast AND --map_in" +
+                    "\t--goiclust AND --goidiamond AND --refdiamond AND --map_in")
 
 #Set default blastresults, clustfile and map from args if not creating the markers
 strClustFile = args.sClust
-strBlastRef = args.sRefBlast
-strBlastSelf = args.sGOIBlast
+if (args.strSearchProg=="blast"):
+    txtProtSearch_Ref = args.sRefBlast
+    txtProtSearch_Self = args.sGOIBlast
+elif (args.strSearchProg=="diamond"):
+    txtProtSearch_Ref = args.sRefDiamond
+    txtProtSearch_Self = args.sGOIDiamond 
 strMapFile = args.sMapIn
 
 
 ################################################################################
-# Step One: Cluster input genes and make into a blast database.
+# Step One: Cluster input genes and make into a blast/diamond database.
 #
 # Save centroids to							"tmp/clust/clust.faa"
 # Save blastdb of centroids file to			"tmp/clustdb/goidb"
@@ -250,71 +257,76 @@ strMapFile = args.sMapIn
 
 #Make directories for clustfile and database.
 if(iMode==1 or iMode==2):
-	pb.CheckFastaForBadProtNames(args.sGOIProts)    
-	dirClust = src.check_create_dir( dirTmp + os.sep + "clust" )
-	dirClustDB = src.check_create_dir( dirTmp + os.sep + "clustdb" )
-
-	strClustFile = dirClust + os.sep + "clust.faa"
-	strClustDB = dirClustDB + os.sep + "goidb"
-
-	#DB Note: clean up strMap
-	strMap = os.path.splitext(strClustFile)[0]
-
-	sys.stderr.write( "Clustering proteins of interest...\n")
-	src.check_file(str(args.sGOIProts))
-	#Cluster in cdhit
-	subprocess.check_call([
-#		c_strTIME, "-o", dirTime + os.sep + "goiclust.time",
-		  strCDHIT, "-i", str(args.sGOIProts),
-			"-o", strClustFile, "-d", "0",
-			"-c", str(args.dClustID), "-b", "10","-g", "1"])
-	strMapFile = dirClust + os.sep + "clust.map"
-	pb.GetCDHitMap( strClustFile + ".clstr", strMapFile )
-	sys.stderr.write( "Protein sequences clustered.")
-
-	sys.stderr.write( "Creating folders for each protein family...\n")
-	#Create a folder called "clust/fams", will hold a fasta file for each CD-HIT cluster
-	dirFams = src.check_create_dir( dirClust + os.sep + "fams" )
-	strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
-
-	sys.stderr.write( "Making a fasta file for each protein family...\n")
-	#Make a fasta file for each CD-HIT cluster
-	pb.MakeFamilyFastaFiles( strMapFile, str(args.sGOIProts), dirFams, log)
-
-	sys.stderr.write( "Aligning sequences in each family, producing consensus sequences...\n")
-	#Call MUSCLE + EMBOSS_CONS OR DUMB CONSENSUS to get consensus seq for each cluster,overwrite the CD-HIT cluster file
-	pb.ClusterFams(dirClust, args.dClustID,strClustFile,args.dConsThresh,args.strMUSCLE )
-
-	sys.stderr.write("Making BLAST database for the family consensus sequences...\n")
-	#Make database from goi centroids
-	subprocess.check_call([
-#		c_strTIME, "-o", dirTime + os.sep + "goidb.time",
-		args.strMAKEBLASTDB, "-in", strClustFile, "-out", strClustDB,
-		"-dbtype", "prot", "-logfile", dirTmp + os.sep + "goidb.log"])
+    pb.CheckFastaForBadProtNames(args.sGOIProts)    
+    dirClust = src.check_create_dir( dirTmp + os.sep + "clust" )
+    dirClustDB = src.check_create_dir( dirTmp + os.sep + "clustdb" )
+    
+    strClustFile = dirClust + os.sep + "clust.faa"
+    strClustDB = dirClustDB + os.sep + "goidb"
+    
+    #DB Note: clean up strMap
+    strMap = os.path.splitext(strClustFile)[0]
+    
+    sys.stderr.write( "Clustering proteins of interest...\n")
+    src.check_file(str(args.sGOIProts))
+    
+    #Cluster in cdhit
+    subprocess.check_call([
+#            c_strTIME, "-o", dirTime + os.sep + "goiclust.time",
+            strCDHIT, "-i", str(args.sGOIProts),
+            "-o", strClustFile, "-d", "0",
+            "-c", str(args.dClustID), "-b", "10","-g", "1"])
+    strMapFile = dirClust + os.sep + "clust.map"
+    pb.GetCDHitMap( strClustFile + ".clstr", strMapFile )
+    sys.stderr.write( "Protein sequences clustered.")
+    
+    sys.stderr.write( "Creating folders for each protein family...\n")
+    
+    #Create a folder called "clust/fams", will hold a fasta file for each CD-HIT cluster
+    dirFams = src.check_create_dir( dirClust + os.sep + "fams" )
+    strClutsDB = dirTmp + os.sep + "clustdb" + os.sep + "goi"
+    
+    sys.stderr.write( "Making a fasta file for each protein family...\n")
+    #Make a fasta file for each CD-HIT cluster
+    pb.MakeFamilyFastaFiles( strMapFile, str(args.sGOIProts), dirFams, log)
+    
+    sys.stderr.write( "Aligning sequences in each family, producing consensus sequences...\n")
+    #Call MUSCLE + EMBOSS_CONS OR DUMB CONSENSUS to get consensus seq for each cluster,overwrite the CD-HIT cluster file
+    pb.ClusterFams(dirClust, args.dClustID,strClustFile,args.dConsThresh,args.strMUSCLE )
+    
+    if (args.strSearchProg=="blast"):
+        pb.Create_BLAST_Database(args.strMAKEBLASTDB,strClustFile, strClustDB,dirTmp)
+    elif (args.strSearchProg=="diamond"):
+        pb.Create_DIAMOND_Database(cmdDIAMOND=args.strDIAMOND,fastaInput=strClustFile,pathDB=strClustDB,dirTmp=dirTmp)
+#	sys.stderr.write("Making BLAST database for the family consensus sequences...\n")
+#	#Make database from goi centroids
+#	subprocess.check_call([
+##		c_strTIME, "-o", dirTime + os.sep + "goidb.time",
+#		args.strMAKEBLASTDB, "-in", strClustFile, "-out", strClustDB,
+#		"-dbtype", "prot", "-logfile", dirTmp + os.sep + "goidb.log"])
 
 ################################################################################
 # Step Two: Create reference database, if not supplied by user.
 # (refblast and refdb are blank, ref exists)
 
 # Save blastdb of ref file to	 "tmp/refdb/refdb"
-if(iMode==1):
-	if(args.strSearchProgram=="diamond"):
-         print("Running diamond")
-         # Determine correct database filename here. diamond makedb --in /home/jim/shortbred/example/input_prots.faa -d input_prots
-        
-        
-	else:
-         if (args.sRefBlast == "" and args.dirRefDB == "" and args.sRefProts!=""):
-              dirRefDB = src.check_create_dir( dirTmp + os.sep + "refdb" )
-              strRefDBPath = dirRefDB + os.sep + "refdb"
-              
-              # Make BLAST database            
-              sys.stderr.write("Making BLAST database for the reference protein sequences...\n")
-              src.check_file(str(args.sRefProts))
-              subprocess.check_call([
-              #			c_strTIME, "-o", dirTime + os.sep + "refdb.time",
-			args.strMAKEBLASTDB, "-in", str(args.sRefProts),"-out", strRefDBPath,
-			"-dbtype", "prot", "-logfile", dirTmp + os.sep +  "refdb.log"])
+if(iMode==1): 
+    if (args.sRefBlast == "" and args.dirRefDB == "" and args.sRefProts!=""):
+        dirRefDB = src.check_create_dir( dirTmp + os.sep + "refdb" )
+        strRefDBPath = dirRefDB + os.sep + "refdb"
+        if (args.strSearchProg=="blast"):
+            sys.stderr.write("Making BLAST database for the reference protein sequences...\n")
+            pb.Create_BLAST_Database(args.strMAKEBLASTDB,str(args.sRefProts), strRefDBPath,dirTmp)
+        elif (args.strSearchProg=="diamond"):
+            sys.stderr.write("Making DIAMOND database for the reference protein sequences...\n")
+            pb.Create_DIAMOND_Database(cmdDIAMOND=args.strDIAMOND,fastaInput=str(args.sRefProts),pathDB=strRefDBPath,dirTmp=dirTmp)
+
+#		sys.stderr.write("Making BLAST database for the reference protein sequences...\n")
+#		src.check_file(str(args.sRefProts))
+#		subprocess.check_call([
+##			c_strTIME, "-o", dirTime + os.sep + "refdb.time",
+#			args.strMAKEBLASTDB, "-in", str(args.sRefProts),"-out", strRefDBPath,
+#			"-dbtype", "prot", "-logfile", dirTmp + os.sep +  "refdb.log"])
 
 ################################################################################
 # Step Three: Run Blast Searches
@@ -326,65 +338,55 @@ if(iMode==1):
 
 #If refdb supplied, use that name.
 if(iMode==1 or iMode==2):
-	if (args.dirRefDB!=""):
-		strRefDBPath = str(args.dirRefDB)
+    if (args.dirRefDB!=""):
+        strRefDBPath = str(args.dirRefDB)
+    
+    
+    dirProteinSearchResults = src.check_create_dir( dirTmp + os.sep + "prot_search_results" )
+    txtProtSearch_Ref = dirProteinSearchResults + os.sep + args.strSearchProg + "_search_against_refdb.txt"
+    txtProtSearch_Self =dirProteinSearchResults + os.sep + args.strSearchProg + "_search_against_selfdb.txt"
 
-	if(args.strSearchProgram=="diamond"):
-         """
-         Ideally, we can just add code here that is the equivalent of the 
-         BLAST code below. We will want to think about whether we should change
-         the var names that have blast in them (like dirBlastResults,strBlastRef,etc.)
-         """
-        
-         dirDiamondResults = src.check_create_dir( dirTmp + os.sep + "diamond_results" )
-         strDiamondRef = dirDiamondResults + os.sep + "ref_diamond.txt"
-         strDiamondSelf = dirDiamondResults + os.sep + "self_diamond.txt"
-         
-         # Will likely need to experiment a bit here.
-         # Do we want to set an id cutoff here? That may drop hits we don't want to count anyway.
-         # Need to figure out how to do ungapped alignemnts.  [--ungapped-score]
-         astrDiamondParams = ["--outfmt",
-         "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen",
-                              "--comp-based-stats","0","--evalue","1e-3","--matrix","PAM30", "--id", 90,"--threads",
-                              str(args.iThreads)]
-                              
-         #Diamond: Run clust file against goidb
-         sys.stderr.write( "Using DIAMOND to compare the consensus family to themselves...\n")
-         subprocess.check_call([
-         #		"time", "-o", dirTime + os.sep +"goisearch.time",
-         args.strDIAMOND, "blastp","-q", strClustFile, "-d", strClustDB,
-         "-out", strDiamondSelf] + astrDiamondParams)       
+    
+    if (args.strSearchProg=="blast"):
+        sys.stderr.write( "BLASTing the consensus family sequences against themselves...\n")
+        pb.Run_BLAST_Protein_Search(cmdBLASTP=strBLASTP,fastaInput=strClustFile,
+                                    pathDB=strClustDB,txtBlastOut=txtProtSearch_Self,iThreads=args.iThreads)
+        sys.stderr.write("BLASTing the consensus family sequences against the reference protein sequences...\n")
+        pb.Run_BLAST_Protein_Search(cmdBLASTP=strBLASTP,fastaInput=strClustFile,
+                                    pathDB=strRefDBPath,txtBlastOut=txtProtSearch_Ref,iThreads=args.iThreads)
+    
+    elif (args.strSearchProg=="diamond"):
+#        dirDiamondResults = src.check_create_dir( dirTmp + os.sep + "diamondresults" )
+#        strDiamondRef = dirDiamondResults + os.sep + "refdiamond.txt"
+#        strDiamondSelf = dirDiamondResults + os.sep + "selfdiamond.txt"
+        sys.stderr.write( "DIAMONDing the consensus family sequences against themselves...\n")
+        pb.Run_DIAMOND_Protein_Search(cmdDIAMOND=strDIAMOND,fastaInput=strClustFile,
+                                      pathDB=strClustDB,txtSearchOut=txtProtSearch_Self,iThreads=args.iThreads)
+        sys.stderr.write("DIAMONDing the consensus family sequences against the reference protein sequences...\n")
+        pb.Run_DIAMOND_Protein_Search(cmdDIAMOND=strDIAMOND,fastaInput=strClustFile,
+                                      pathDB=strRefDBPath,txtSearchOut=txtProtSearch_Ref,iThreads=args.iThreads)
+          
 
-        
-	else:
-    
-        	dirBlastResults = src.check_create_dir( dirTmp + os.sep + "blastresults" )
-        	strBlastRef = dirBlastResults + os.sep + "refblast.txt"
-        	strBlastSelf = dirBlastResults + os.sep + "selfblast.txt"
-    
-     
-        	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped",
-    		"-comp_based_stats","F","-window_size","0",
-    		"-xdrop_ungap","1","-evalue","1e-3",
-    		"-max_target_seqs", "1000000",
-    		"-num_threads",str(args.iThreads)]
-    
-    
-    	#Blast clust file against goidb
-        	sys.stderr.write( "BLASTing the consensus family sequences against themselves...\n")
-        	subprocess.check_call([
-    #		"time", "-o", dirTime + os.sep +"goisearch.time",
-    		strBLASTP, "-query", strClustFile, "-db", strClustDB,
-    		"-out", strBlastSelf] + astrBlastParams)
-    
-    	#Blast clust file against refdb
-        	sys.stderr.write("BLASTing the consensus family sequences against the reference protein sequences...\n")
-        	subprocess.check_call([
-    #		"time", "-o", dirTime + os.sep +"refsearch.time",
-    		strBLASTP, "-query", strClustFile, "-db",strRefDBPath,
-    		"-out", strBlastRef] + astrBlastParams)
-
-
+#	astrBlastParams = ["-outfmt", "6 std qlen", "-matrix", "PAM30", "-ungapped",
+#		"-comp_based_stats","F","-window_size","0",
+#		"-xdrop_ungap","1","-evalue","1e-3",
+#		"-max_target_seqs", "1000000",
+#		"-num_threads",str(args.iThreads)]
+#
+#
+#	#Blast clust file against goidb
+#	sys.stderr.write( "BLASTing the consensus family sequences against themselves...\n")
+#	subprocess.check_call([
+##		"time", "-o", dirTime + os.sep +"goisearch.time",
+#		strBLASTP, "-query", strClustFile, "-db", strClustDB,
+#		"-out", strBlastSelf] + astrBlastParams)
+#
+#	#Blast clust file against refdb
+#	sys.stderr.write("BLASTing the consensus family sequences against the reference protein sequences...\n")
+#	subprocess.check_call([
+##		"time", "-o", dirTime + os.sep +"refsearch.time",
+#		strBLASTP, "-query", strClustFile, "-db",strRefDBPath,
+#		"-out", strBlastRef] + astrBlastParams)
 
 ##################################################################################################
 #Step Four: Search BLAST output to find regions of overlap.
@@ -400,18 +402,18 @@ dictFams = {}
 
 
 for astrLine in csv.reader(open(strMapFile),delimiter='\t'):
-	dictFams[astrLine[1]]=astrLine[0]
+    dictFams[astrLine[1]]=astrLine[0]
 
 dictGOIGenes = pb.getGeneData(open(strClustFile))
 log.write("Initial Families:\t" + str(len(dictGOIGenes)) + "\n")
 
 #Get short, high-identity hits in reference proteins
 sys.stderr.write( "Finding overlap with reference database...\n")
-dictRefCounts, dictRefHits = pb.getOverlapCounts(strBlastRef, args.dID, iLenMin, args.dL, 0,bSaveHitInfo=True)
+dictRefCounts, dictRefHits = pb.getOverlapCounts(txtProtSearch_Ref, args.dID, iLenMin, args.dL, 0,bSaveHitInfo=True)
 
 #Get high-identity hits of *all lengths* in GOI database
 sys.stderr.write( "Finding overlap with family consensus database...\n")
-dictGOICounts, dictGOIHits  = pb.getOverlapCounts(strBlastSelf, args.dID, iLenMin, 1.0, 0,True)
+dictGOICounts, dictGOIHits  = pb.getOverlapCounts(txtProtSearch_Self, args.dID, iLenMin, 1.0, 0,True)
 dictGOICounts = pb.MarkX(dictGOIGenes,dictGOICounts)
 
 
@@ -425,22 +427,21 @@ dictBigGOICounts, dictBigGOIHits = pb.getOverlapCounts(strBlastSelf, args.dID, a
 #(length of the gene) so the program knows that nothing overlapped with the gene.
 
 for dictCounts in (dictRefCounts, dictGOICounts):
-	setNotInCounts = set(dictGOIGenes.keys()).difference(set(dictCounts.keys()))
-
-	if len(setNotInCounts)>0:
-		for sGene in setNotInCounts:
-			dictCounts[sGene] = [0]*len(dictGOIGenes[sGene])
+    setNotInCounts = set(dictGOIGenes.keys()).difference(set(dictCounts.keys()))
+    
+    if len(setNotInCounts)>0:
+        for sGene in setNotInCounts:
+            dictCounts[sGene] = [0]*len(dictGOIGenes[sGene])
 
 #Get dict of counts for (Ref+GOI)
 dictAllCounts = {}
 setRefGOI = set(dictGOICounts.keys()).union(set(dictRefCounts.keys()))
 
 for sGene in setRefGOI:
-	#Old, removed dictforGOICounts
-	#aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]),dictBigGOICounts.get(sGene,[0]))]
-	#New
-	aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]))]
-	dictAllCounts[sGene] = aiSum
+#    Old, removed dictforGOICounts
+#    aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]),dictBigGOICounts.get(sGene,[0]))]
+    aiSum =[sum(aiCounts) for aiCounts in zip(dictGOICounts.get(sGene,[0]),dictRefCounts.get(sGene,[0]))]
+    dictAllCounts[sGene] = aiSum
 
 
 
@@ -469,88 +470,88 @@ atupQuasiMarkers1 = pb.FindJMMarker(setLeftover, dictGOIGenes, dictGOIHits,dictR
 
 # This checks to see if any families need a JM or QM.
 if len(setLeftover)>0:
-	bHasQuasi = True
+    bHasQuasi = True
 
 else:
-	bHasQuasi = False
-	sys.stderr.write( "No Quasi Markers needed...\n")
+    bHasQuasi = False
+    sys.stderr.write( "No Quasi Markers needed...\n")
 
 if bHasQuasi:
-	sys.stderr.write( "Found "+str(len(atupQuasiMarkers1)) +" JM Markers...\n")
-	if len(atupQuasiMarkers1) >0:
-		for a in zip(*atupQuasiMarkers1):
-			setGotQM = a
-			break
-		setLeftover = setLeftover.difference(setGotQM)
+    sys.stderr.write( "Found "+str(len(atupQuasiMarkers1)) +" JM Markers...\n")
+    if len(atupQuasiMarkers1) >0:
+        for a in zip(*atupQuasiMarkers1):
+            setGotQM = a
+            break
+        setLeftover = setLeftover.difference(setGotQM)
 
 	# Change these lines to determine how QM's are made
-	atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iQMlength,args.iThresh, args.iTotLength)
-	atupQuasiMarkers = atupQuasiMarkers1 + atupQuasiMarkers2
-	sys.stderr.write("Found " +str(len(atupQuasiMarkers2)) + " QM-Minimals.\n")
+    atupQuasiMarkers2 = pb.CheckForQuasiMarkers(setLeftover, dictAllCounts, dictGOIGenes,args.iQMlength,args.iThresh, args.iTotLength)
+    atupQuasiMarkers = atupQuasiMarkers1 + atupQuasiMarkers2
+    sys.stderr.write("Found " +str(len(atupQuasiMarkers2)) + " QM-Minimals.\n")
 
 
 
 #Replace AA's with +'s in True Markers
 for key in setHasMarkers:
-	if key in dictAllCounts:
-		aiWindow = dictAllCounts[key]
-		astrGene = list(dictGOIGenes[key])
-
-		for i in range(len(aiWindow)):
-			if aiWindow[i] >= 1:
-				astrGene[i] = "+"
-		dictGOIGenes[key] = "".join(astrGene)
+    if key in dictAllCounts:
+        aiWindow = dictAllCounts[key]
+        astrGene = list(dictGOIGenes[key])
+        
+        for i in range(len(aiWindow)):
+            if aiWindow[i] >= 1:
+                astrGene[i] = "+"
+        
+        dictGOIGenes[key] = "".join(astrGene)
 
 #####################################################################################################
 #Step Six: Cluster the Quasi-Markers and Junction Markers. Remap the proteins they represent to the centroid marker for each cluster.
 
 if(bHasQuasi):
-	atupQM = atupQuasiMarkers
-	atupQM = sorted(atupQM, key=lambda tup: tup[0])
-
-	strQuasiFN = dirQuasi+ os.sep + "quasi.faa"
-	strQuasiClust = dirQuasi+ os.sep + "quasiclust.faa"
-	strQuasiMap = dirQuasi+ os.sep + "quasi.map"
-	fQuasi = open(strQuasiFN,'w')
-	pb.PrintQuasiMarkers(atupQM,fQuasi,bDetailed=False,bInitial=True)
-	fQuasi.close()
-
-	subprocess.check_call([args.strCDHIT, "-i", strQuasiFN,"-o",strQuasiClust,
-		"-d", "0", "-c", str(args.dQClustID), "-b", "8","-g", "1","-aL","1.0"])
-
-	pb.GetCDHitMap( strQuasiClust+".clstr", strQuasiMap)
-
-	dictQuasiClust = {}
-	for astrLine in csv.reader( open(strQuasiMap), csv.excel_tab ):
-
-				mtchMarker = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[1])
-				strMarker = mtchMarker.group(1)
-				mtchFam = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[0])
-				strFam = mtchFam.group(1)
-
-				dictQuasiClust[strMarker] = strFam
-	log.write("QM Families, before clustering:\t" +str(len(set(dictQuasiClust.keys()))) + "\n")
-	for qckey, qcvalue in dictQuasiClust.items():
-		for key in dictFams:
-			if (dictFams[key] == qckey):
-				dictFams[key] = qcvalue
-
-	with open(dirTmp + os.sep + "final.map",'w') as fFinalMap:
-		for prot, fam in sorted(dictFams.items(), key = lambda a: (a[1],a[0])):
-				fFinalMap.write(fam + "\t" + prot + "\n")
-
-	log.write("QM Families, after clustering:\t" +str(len(set(dictQuasiClust.values()))) + "\n")
+    atupQM = atupQuasiMarkers
+    atupQM = sorted(atupQM, key=lambda tup: tup[0])
+    
+    strQuasiFN = dirQuasi+ os.sep + "quasi.faa"
+    strQuasiClust = dirQuasi+ os.sep + "quasiclust.faa"
+    strQuasiMap = dirQuasi+ os.sep + "quasi.map"
+    fQuasi = open(strQuasiFN,'w')
+    pb.PrintQuasiMarkers(atupQM,fQuasi,bDetailed=False,bInitial=True)
+    fQuasi.close()
+    
+    subprocess.check_call([args.strCDHIT, "-i", strQuasiFN,"-o",strQuasiClust,
+                           "-d", "0", "-c", str(args.dQClustID), "-b", "8","-g", "1","-aL","1.0"])
+    
+    pb.GetCDHitMap( strQuasiClust+".clstr", strQuasiMap)
+    
+    dictQuasiClust = {}
+    for astrLine in csv.reader( open(strQuasiMap), csv.excel_tab ):
+        mtchMarker = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[1])
+        strMarker = mtchMarker.group(1)
+        mtchFam = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',astrLine[0])
+        strFam = mtchFam.group(1)
+        dictQuasiClust[strMarker] = strFam
+    
+    log.write("QM Families, before clustering:\t" +str(len(set(dictQuasiClust.keys()))) + "\n")
+    for qckey, qcvalue in dictQuasiClust.items():
+        for key in dictFams:
+            if (dictFams[key] == qckey):
+                dictFams[key] = qcvalue
+    
+    with open(dirTmp + os.sep + "final.map",'w') as fFinalMap:
+        for prot, fam in sorted(dictFams.items(), key = lambda a: (a[1],a[0])):
+            fFinalMap.write(fam + "\t" + prot + "\n")
+    
+    log.write("QM Families, after clustering:\t" +str(len(set(dictQuasiClust.values()))) + "\n")
 
 #Print AA with overlap area removed to premarkers.txt
 strGeneName = ""
 iCount = 0
 with open(dirTmp + os.sep + 'premarkers.txt', 'w') as premarkers:
-	for key in dictGOIGenes:
-		if key in setHasMarkers:
-			strGeneName = ">" + key + "_TM"
-			premarkers.write(strGeneName  + '\n')
-			premarkers.write(re.sub("(.{80})","\\1\n",dictGOIGenes[key],re.DOTALL)  + '\n')
-			iCount = iCount+1
+    for key in dictGOIGenes:
+        if key in setHasMarkers:
+            strGeneName = ">" + key + "_TM"
+            premarkers.write(strGeneName  + '\n')
+            premarkers.write(re.sub("(.{80})","\\1\n",dictGOIGenes[key],re.DOTALL)  + '\n')
+            iCount = iCount+1
 
 ##################################################################################
 #Step Seven: Print the TM's to a temp file, print information on JM's and QM's.
@@ -573,48 +574,45 @@ iMLength = args.iMLength
 iTotLength = args.iTotLength
 
 for gene in SeqIO.parse(open(dirTmp + os.sep + 'premarkers.txt'), "fasta"):
-	iCount = 1
-	iRemSeq = iTotLength
-
-	mtch = re.search('\+',str(gene.seq))
-	if not mtch:
-		strMarker = str(gene.seq)
-		geneMarker = SeqRecord(Seq(strMarker[0:min(iRemSeq,len(strMarker))]),id = gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
-		SeqIO.write(geneMarker, fOut,"fasta")
-		iRemSeq = iRemSeq - len(geneMarker.seq)
-
-	else:
-		for strMarker in (re.split('\++',str(gene.seq))):
-			if (iRemSeq>=iMLength and len(strMarker) >= iMLength ):
-				geneMarker = SeqRecord(Seq(strMarker[0:min(iRemSeq,len(strMarker))]),id = gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
-				SeqIO.write(geneMarker, fOut,"fasta")
-				iCount+=1
-				iRemSeq = iRemSeq - len(geneMarker)
+    iCount = 1
+    iRemSeq = iTotLength
+    
+    mtch = re.search('\+',str(gene.seq))
+    if not mtch:
+        strMarker = str(gene.seq)
+        geneMarker = SeqRecord(Seq(strMarker[0:min(iRemSeq,len(strMarker))]),id = gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
+        SeqIO.write(geneMarker, fOut,"fasta")
+        iRemSeq = iRemSeq - len(geneMarker.seq)
+        
+    else:
+        for strMarker in (re.split('\++',str(gene.seq))):
+            if (iRemSeq>=iMLength and len(strMarker) >= iMLength ):
+                geneMarker = SeqRecord(Seq(strMarker[0:min(iRemSeq,len(strMarker))]),id = gene.id +"_#" + str(iCount).zfill(2) + '\n', description = "")
+                SeqIO.write(geneMarker, fOut,"fasta")
+                iCount+=1
+                iRemSeq = iRemSeq - len(geneMarker)
 
 ################################################################################
 # Debugging - Print out information on QM's
 if(bHasQuasi):
-	# Reload Gene Sequences into dictionary
-	dictGOIGenes = pb.getGeneData(open(strClustFile))
-
-	# Output info to txt file
-	strQMOut = dirTmp+os.sep+"QMInformation.txt"
-
-	atupQM = pb.UpdateQMHeader(atupQM,dictGOIHits,dictRefHits, strQMOut,dictGOIGenes)
-
-
-
-	###############################################################################
-	atupQMFinal = []
-	# Gather the QM's that survived clustering.
-	for tup in atupQM:
-		if tup[0] in dictQuasiClust.values():
-			atupQMFinal.append(tup)
-
-
-	# Print the final set of Quasi Markers
-	with open(strTmpMarkers, 'a') as fOut:
-		pb.PrintQuasiMarkers(atupQMFinal,fOut,True,False)
+    #Reload Gene Sequences into dictionary
+    dictGOIGenes = pb.getGeneData(open(strClustFile))
+    #Output info to txt file
+    strQMOut = dirTmp+os.sep+"QMInformation.txt"
+    
+    atupQM = pb.UpdateQMHeader(atupQM,dictGOIHits,dictRefHits, strQMOut,dictGOIGenes)
+    
+    
+    ###############################################################################
+    atupQMFinal = []
+    # Gather the QM's that survived clustering.
+    for tup in atupQM:
+        if tup[0] in dictQuasiClust.values():
+            atupQMFinal.append(tup)
+    
+    # Print the final set of Quasi Markers
+    with open(strTmpMarkers, 'a') as fOut:
+        pb.PrintQuasiMarkers(atupQMFinal,fOut,True,False)
 
 sys.stderr.write( "\nTmp markers saved to " + strTmpMarkers + "\n")
 
@@ -702,18 +700,18 @@ setAllProtFamilies = set(dictFams.values())
 setProblemMarkers = set()
 
 with open(args.sMarkers,'w') as fOut:
-	for gene in SeqIO.parse(open(strTmpMarkers), "fasta"):
-		if gene.id not in setProblemMarkers:
-			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',gene.id)
-			strMarkerProt = mtchProtStub.group(1)
-			if (gene.id.find("_TM")>0):
-				iTM+=1
-			if (gene.id.find("_QM")>0):
-				iQM+=1
-			if (gene.id.find("_JM")>0):
-				iQMJunction+=1
-			setMarkerFamilies.add(strMarkerProt)
-			SeqIO.write(gene, fOut,"fasta")
+    for gene in SeqIO.parse(open(strTmpMarkers), "fasta"):
+        if gene.id not in setProblemMarkers:
+            mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',gene.id)
+            strMarkerProt = mtchProtStub.group(1)
+            if (gene.id.find("_TM")>0):
+                iTM+=1
+            if (gene.id.find("_QM")>0):
+                iQM+=1
+            if (gene.id.find("_JM")>0):
+                iQMJunction+=1
+            setMarkerFamilies.add(strMarkerProt)
+            SeqIO.write(gene, fOut,"fasta")
 
 sys.stderr.write( "\nProcessing complete! Final markers saved to " + args.sMarkers + "\n")
 sys.stderr.write( "\nNOTE: Please open and read the log file before using the markers\
