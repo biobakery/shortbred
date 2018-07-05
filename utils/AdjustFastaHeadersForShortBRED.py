@@ -27,7 +27,7 @@ ids for ShortBRED. It will do the following: \
 args = parser.parse_args()
 
 dictHeaderCounts = {}
-reBadChars=re.compile(r'[\\\/\*\=\:\'\[\]\.\;\,]')
+reBadChars=re.compile(r'[\\\/\*\=\:\'\[\]\.\;]')
 c_iMaxIDLength = 240
 
 
