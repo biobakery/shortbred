@@ -44,23 +44,15 @@ def CheckFastaForBadProtNames(fileFasta):
     return True
 
 
-def preprocessInput(inputfile, outputfile):
-    reBadChars=re.compile(r'[\\\/\*\=\:\'\[\]\.\;\,]')
-    reMarkerTypes = re.compile(r'_([TJQ]M)')
-    dictProtNames = {}
-    
+def preprocessInput(inputfile, outputfile):    
     fasta_sequences = SeqIO.parse(open(inputfile),'fasta')
+    dictProtNames = {}
     with open(outputfile, 'w') as ofile:
         for gene in fasta_sequences:
-            mtchBad = reBadChars.search(gene.id)
-            mtchMarkerType = reMarkerTypes.search(gene.id)
-        
-            if mtchBad != None:
-                gene.id = re.sub('[^0-9a-zA-Z]+', '_', gene.id)
-            if mtchMarkerType != None:
-                gene.id = re.sub('_TM', '_tm',gene.id)
-                gene.id = re.sub('_QM', '_qm',gene.id)
-                gene.id = re.sub('_JM', '_jm',gene.id)
+            gene.id = re.sub('[^0-9a-zA-Z]+', '_', gene.id)
+            gene.id = re.sub('_TM', '_tm',gene.id)
+            gene.id = re.sub('_QM', '_qm',gene.id)
+            gene.id = re.sub('_JM', '_jm',gene.id)
             if gene.id in dictProtNames.keys():
                 dictProtNames[gene.id] += 1
                 gene.id = gene.id + "_" + str(dictProtNames[gene.id])
@@ -84,6 +76,8 @@ else:
     filename = "Modified_" + pathlist[-1]
     dirTmp = "/".join(pathlist[:-1])
     outputfile = dirTmp + '/' + filename
+#    if os.path.isfile(outputfile):
+#        os.remove(outputfile)
     preprocessInput(args.inputfile, outputfile)
     sys.stderr.write( "Processing complete! The proteins of interest file cannot be used by ShortBRED directly\n")
     sys.stderr.write( "\nProcessing complete! New FASTA file saved to " + outputfile + "\n")
