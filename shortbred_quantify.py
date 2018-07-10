@@ -21,31 +21,25 @@
 #
 # This file is a component of ShortBRED (Short, Better REad Database)
 # authored by the Huttenhower lab at the Harvard School of Public Health
-# (contact Jim Kaminski, jjk451@mail.harvard.edu).
+# (contact Jim Kaminski, jjk451@mail.harvard.edu, Jingjing Tang, jatangne@gmail.com).
 #####################################################################################
+
 import sys
 import argparse
-import subprocess
-import csv
 import re
 import os
 import datetime
-import shutil
 import tarfile
 import gzip
 
 import time
 import math
-
-import src
-import src.quantify_functions
-sq = src.quantify_functions
-
-import numpy
 import bz2
 
-import Bio
-from Bio.Seq import Seq
+import src
+import src.modified_quantify_functions
+sq = src.modified_quantify_functions
+
 from Bio import SeqIO
 
 VERSION="0.9.5"
@@ -81,8 +75,8 @@ grpOutput.add_argument('--results', type=str, dest='strResults', default = "resu
 help='Enter a name for your results file.')
 grpOutput.add_argument('--SBhits', type=str, dest='strHits',
 help='ShortBRED will print the hits it considers positives to this file.', default="")
-grpOutput.add_argument('--blastout', type=str, dest='strBlast', default="",
-help='Enter the name of the blast-formatted output file from USEARCH.')
+grpOutput.add_argument('--searchout', type=str, dest='strSearch', default="",
+help='Enter the name of the blast/diamond-formatted output file from USEARCH/DIAMOND.')
 grpOutput.add_argument('--marker_results', type=str, dest='strMarkerResults', default="",
 help='Enter the name of the output for marker level results.')
 grpOutput.add_argument('--tmp', type=str, dest='strTmp', default ="",help='Enter the path and name of the tmp directory.')
@@ -217,52 +211,38 @@ else:
 
 ##############################################################################
 # Log the parameters
-
-strLog = str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log")
-with open(strLog, "w") as log:
-    log.write("ShortBRED log \n" + datetime.date.today().ctime() + "\n SEARCH PARAMETERS \n")
-    log.write("Match ID:" + str(args.dID) + "\n")
-    log.write("Pct Length for Match:" + str(args.dAlnLength) + "\n")
-    if args.strCentroids=="Y":
-        log.write("Sequences: Centroids\n")
-    else:
-        log.write("Sequences: Markers\n")
-    if strMethod=="annotated_genome":
-        log.write("Ran against the genome " + args.strGenome)
-
-
-
+log = open(dirTmp + os.sep + "quantify_log.txt", "w")
+log.write("ShortBRED_quantify log \n" + time.strftime("%Y-%m-%d %H:%M:%S") + "\n SEARCH PARAMETERS \n")
+log.write("Match ID:" + str(args.dID) + "\n")
+log.write("Pct Length for Match:" + str(args.dAlnLength) + "\n")
+if args.strCentroids=="Y":
+    log.write("Sequences: Centroids\n")
+else:
+    log.write("Sequences: Markers\n")
+if strMethod=="annotated_genome":
+    log.write("Ran against the genome " + args.strGenome + "\n")
 
 
 ##############################################################################
 #Initialize Dictionaries, Some Output Files
 
-dictBLAST = {}
 dictMarkerLen = {}
-dictMarkerLenAll = {}
+dictCountsForMarker = {}  # sum of read lengths in valid hits for each marker
 dictMarkerCount = {}
 dictHitsForMarker = {}
-dictHitsAlnLen = {}    # hits alignment length
-dictHitsRLen = {}    # hits read length
 dictQMPossibleOverlap = {}
 dictType = {}
 
 
-if (args.strBlast == ""):
-    strBlast = str(dirTmp) + os.sep + strMethod+ "full_results.tab"
+if (args.strSearch == ""):
+    strSearch = str(dirTmp) + os.sep + strMethod+ "full_results.tab"
 else:
-    strBlast = args.strBlast
+    strSearch = args.strSearch
 
 ###############################################################################
 #Step 1: Prepare markers.
 # Sum up the marker lengths by family, put them in a dictionary.
-# Make them into a USEARCH database.
-
-strQMOut = str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ "QM.log")
-if os.path.isfile(strQMOut):
-    os.remove(strQMOut)
-
-
+# Make them into a USEARCH/DIAMOND database.
 
 astrQMs = []
 for seq in SeqIO.parse(args.strMarkers, "fasta"):
@@ -276,11 +256,9 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
         strStub = mtchStub.group(1)
         strType = mtchStub.group(2)
     
-    dictMarkerLenAll[strStub] = len(seq) + dictMarkerLenAll.get(strStub,0)
     dictMarkerCount[strStub] = dictMarkerCount.get(strStub,0) + 1
     dictHitsForMarker[seq.id] = 0
-    dictHitsAlnLen[seq.id] = 0
-    dictHitsRLen[seq.id] = 0
+    dictCountsForMarker[seq.id] = 0
     dictMarkerLen[seq.id] = len(seq)    # record the length of each marker
     
     if args.strCentroids!="Y":
@@ -314,30 +292,6 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
                     astrFams.append(strID)
             
             dictQMPossibleOverlap[seq.id] = astrFams
-
-
-#If profiling WGS, make a database from the markers.
-if strMethod=="wgs" and args.strSearchProg=="usearch":
-    strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".udb"
-    strDBName = os.path.abspath(strDBName)
-    print("strDBName is",strDBName)
-    sq.MakedbUSEARCH (args.strMarkers, strDBName,args.strUSEARCH)
-
-
-elif strMethod=="wgs" and args.strSearchProg=="rapsearch2":
-    strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".rap2db"
-    strDBName = os.path.abspath(strDBName)
-    print("strDBName is",strDBName)
-    sq.MakedbRapsearch2 (args.strMarkers, strDBName,args.strPrerapPath)
-    
-elif strMethod=="wgs" and args.strSearchProg=="diamond":
-    strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".diamdb"
-    strDBName = os.path.abspath(strDBName)
-    print("strDBName is",strDBName)
-    sq.MakedbDIAMOND (args.strMarkers, strDBName,args.strDIAMOND)
-
-#(If profiling genome, make a database from the genome reads in Step 3.)
-
 
 ##################################################################################
 #Step 2: Get information on WGS file(s), put it into aaFileInfo.
@@ -388,11 +342,7 @@ if strMethod=="wgs":
         # Otherwise, get file details directly
         else:
             strFormat = sq.CheckFormat(strWGS)
-            dFileInMB = round(os.path.getsize(strWGS)/1048576.0,1)
-            if dFileInMB < c_iMaxSizeForDirectRun:
-                strSize = "small"
-            else:
-                strSize = "large"
+            strSize = sq.CheckSize(os.path.getsize(strWGS), c_iMaxSizeForDirectRun)
             astrFileInfo = [strWGS, strFormat, strSize,strExtractMethod, "no_tar" ]
             aaWGSInfo.append(astrFileInfo)
     
@@ -410,25 +360,37 @@ dAvgReadLength  = 0.0
 iMin = 999 #Can be any large integer. Just a value to initialize iMin before calculations begin.
 iWGSFileCount = 1
 
+
 if strMethod=="annotated_genome":
     
     # If running on an *annotated_genome*, use usearch.
     if args.strSearchProg=="usearch":  
-        strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strGenome)) + ".udb"
-        sq.MakedbUSEARCH (args.strGenome, strDBName,args.strUSEARCH)
-        sq.RunUSEARCHGenome(strMarkers=args.strMarkers, strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
+        strDBName = str(dirTmp) + os.sep + os.path.basename(os.path.splitext(str(args.strMarkers))[0]) + ".udb"
+        strDBName = os.path.abspath(strDBName)
+        log.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Making USEARCH database for the annotated_genome reads \n")
+        sq.MakedbUSEARCH (args.strMarkers, strDBName,args.strUSEARCH)
+        log.write( time.strftime("%Y-%m-%d %H:%M:%S") + " USEARCHing the markers against the annotated_genome reads \n")
+        sq.RunUSEARCHGenome(strGenome=args.strGenome, strDB=strDBName, strSearchOut = strSearch,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
                             iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
-        sq.StoreHitCountsUsearch(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-                                 dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-                                 iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strShortBREDMode=strMethod,strVersionUSEARCH = strVersionUSEARCH )
-    
+        sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
+                          dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
+                          strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
+                          iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                          strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg,
+                          version_control = strVersionUSEARCH)
+        
     elif args.strSearchProg=="diamond":
-        strDBName = str(dirTmp) + os.sep + "diamdb_"+os.path.basename(os.path.splitext(args.strGenome)[0])
-        sq.MakedbDIAMOND ( args.strGenome, strDBName, args.strDIAMOND)
-        sq.RunDIAMONDp (strDIAMOND = args.strDIAMOND, strDB=strDBName, strWGS=strWGS, strDiamondOut = strBlast,iThreads=args.iThreads)
-        sq.StoreHitCountsDiamond(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-                                 dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-                                 iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strShortBREDMode=strMethod)
+        strDBName = str(dirTmp) + os.sep + os.path.basename(os.path.splitext(str(args.strMarkers))[0]) + ".diamdb"
+        strDBName = os.path.abspath(strDBName)
+        log.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Making DIAMOND database for the annotated_genome reads \n")
+        sq.MakedbDIAMOND ( args.strMarkers, strDBName, args.strDIAMOND)
+        log.write( time.strftime("%Y-%m-%d %H:%M:%S") + " DIAMONDing the markers against the annotated_genome reads database \n")
+        sq.RunDIAMONDp (strDIAMOND = args.strDIAMOND, strDB=strDBName, strGenome=args.strGenome, strDiamondOut = strSearch,iThreads=args.iThreads)
+        sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
+                          dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
+                          strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
+                          iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                          strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg)
         
     
     iWGSReads = 0
@@ -441,40 +403,44 @@ if strMethod=="annotated_genome":
 elif strMethod=="unannotated_genome":
     # If running on *unannotated_genome*, use tblastn.
     
-    if args.strSearchProg=="usearch":    # default is usearch
-        strDBName = str(dirTmp) + os.sep + "blastdb_"+os.path.basename(os.path.splitext(args.strGenome)[0])
-        sq.MakedbBLASTnuc( args.strMakeBlastDB, strDBName,args.strGenome,dirTmp)
-        sq.RunTBLASTN (args.strTBLASTN, strDBName,args.strMarkers, strBlast, args.iThreads)
-        sq.StoreHitCountsUsearch(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-                                 dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-                                 iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strUSearchOut=False,strVersionUSEARCH = strVersionUSEARCH)
+    if args.strSearchProg=="usearch":    # default value is usearch, actually using tblastn instead
+        strDBName = str(dirTmp) + os.sep + os.path.basename(os.path.splitext(str(args.strMarkers))[0]) + ".blastdb"
+        strDBName = os.path.abspath(strDBName)
+        log.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Making BLAST database for the unannotated_genome reads \n")
+        sq.MakedbBLASTnuc( args.strMakeBlastDB, strDBName,args.strMarkers,dirTmp)
+        log.write( time.strftime("%Y-%m-%d %H:%M:%S") + " BLASTing the markers against the unannotated_genome reads database \n")
+        sq.RunTBLASTN (args.strTBLASTN, strDBName,args.strWGS, strSearch, args.iThreads)
     
     elif args.strSearchProg=="diamond":
-        strDBName = str(dirTmp) + os.sep + "diamdb_"+os.path.basename(os.path.splitext(args.strGenome)[0])
-        sq.MakedbDIAMOND ( args.strGenome, strDBName, args.strDIAMOND)
-        sq.RunDIAMONDx (strDIAMOND = args.strDIAMOND, strDB=strDBName, strWGS=strWGS, strDiamondOut = strBlast,iThreads=args.iThreads)
-        sq.StoreHitCountsDiamond(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-                                 dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-                                 iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strShortBREDMode=strMethod)
+        strDBName = str(dirTmp) + os.sep + os.path.basename(os.path.splitext(str(args.strMarkers))[0]) + ".diamdb"
+        strDBName = os.path.abspath(strDBName)
+        log.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Making DIAMOND database for the unannotated_genome reads \n")
+        sq.MakedbDIAMOND ( args.strMarkers, strDBName, args.strDIAMOND)
+        log.write( time.strftime("%Y-%m-%d %H:%M:%S") + " DIAMONDing the markers against the unannotated_genome reads database \n")
+        sq.RunDIAMONDx (strDIAMOND = args.strDIAMOND, strDB=strDBName, strWGS=args.strWGS, strDiamondOut = strSearch,iThreads=args.iThreads)
         
     
+    sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
+                      dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
+                      strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
+                      iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                      strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg)
+
     iWGSReads = 0
-    for seq in SeqIO.parse(args.strGenome, "fasta"):
+    for seq in SeqIO.parse(args.strMarkers, "fasta"):
         iWGSReads+=1
         iTotalReadCount+=1
         dAvgReadLength = ((dAvgReadLength * (iTotalReadCount-1)) + len(seq))/float(iTotalReadCount)
         iMin = min(iMin,len(seq))
 
-# Otherwise, profile wgs data with usearch or rapsearch2
+# Otherwise, profile wgs data with usearch or rapsearch2 or diamond
 else:
-    with open(strLog, "a") as log:
-        log.write('\t'.join(["# FileName","size","format","extract method","tar file (if part of one)"]) + '\n')
-        #log.write("Reads processed" + "\n")
+    log.write('\t'.join(["# FileName","size","format","extract method","tar file (if part of one)"]) + '\n')
+    #log.write("Reads processed" + "\n")
     
     for astrFileInfo in aaWGSInfo:
         strWGS,strFormat,strSize,strExtractMethod,strMainTar = astrFileInfo
-        with open(strLog, "a") as log:
-            log.write(str(iWGSFileCount) + ": " + '\t'.join(astrFileInfo) + '\n')
+        log.write(str(iWGSFileCount) + ": " + '\t'.join(astrFileInfo) + '\n')
         
         iWGSReads = 0
         sys.stderr.write( "Working on file " + str(iWGSFileCount) + " of " + str(len(aaWGSInfo)) + "\n")
@@ -482,11 +448,18 @@ else:
         #If it's a small fasta file, just give it to USEARCH or rapsearch or DIAMOND directly.
         
         if args.strSearchProg=="diamond":
-            sq.RunDIAMONDx(strDIAMOND = args.strDIAMOND, strDB=strDBName, strWGS=strWGS, strDiamondOut = strBlast,iThreads=args.iThreads)
-            sq.StoreHitCountsDiamond(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsAlnLen = dictHitsAlnLen, dictHitsRLen = dictHitsRLen, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-                                     dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-                                     iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strShortBREDMode=strMethod)
-            
+            strDBName = str(dirTmp) + os.sep + os.path.basename(os.path.splitext(str(args.strMarkers))[0]) + ".diamdb"
+            strDBName = os.path.abspath(strDBName)
+            log.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Making DIAMOND database for the wgs reads \n")
+            sq.MakedbDIAMOND ( args.strMarkers, strDBName, args.strDIAMOND)
+            log.write( time.strftime("%Y-%m-%d %H:%M:%S") + " DIAMONDing the markers against the wgs reads database \n")
+            sq.RunDIAMONDx(strDIAMOND = args.strDIAMOND, strDB=strDBName, strWGS=strWGS, strDiamondOut = strSearch,iThreads=args.iThreads)
+            sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
+                              dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
+                              strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
+                              iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                              strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg)
+           
             for seq in SeqIO.parse(strWGS, "fasta"):
                 iWGSReads+=1
                 iTotalReadCount+=1
@@ -495,20 +468,34 @@ else:
                 
         elif strFormat=="fasta" and strSize=="small":
             if args.strSearchProg=="rapsearch2":
-                sq.RunRAPSEARCH2(strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
+                strDBName = str(dirTmp) + os.sep + os.path.basename(os.path.splitext(str(args.strMarkers))[0]) + ".rap2db"
+                strDBName = os.path.abspath(strDBName)
+                log.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Making RAPSEARCH2 database for the small wgs reads \n")
+                sq.MakedbRapsearch2(args.strMarkers, strDBName,args.strPrerapPath)
+                log.write( time.strftime("%Y-%m-%d %H:%M:%S") + " RAPSEARCHing the markers against the wgs reads database \n")
+                sq.RunRAPSEARCH2(strWGS=strWGS,strDB=strDBName, strSearchOut  = strSearch,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
                                  iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strRAPSEARCH2=args.strRap2Path )
-                
-                sq.StoreHitCountsRapsearch2(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-                                            dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-                                            iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids)
-            
+                sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
+                                  dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
+                                  strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
+                                  iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                                  strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg)
+         
             elif args.strSearchProg=="usearch":
-                sq.RunUSEARCH(strWGS=strWGS, strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
+                strDBName = str(dirTmp) + os.sep + os.path.basename(os.path.splitext(str(args.strMarkers))[0]) + ".udb"
+                strDBName = os.path.abspath(strDBName)
+                log.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Making USEARCH database for the small wgs reads \n")
+                sq.MakedbUSEARCH(args.strMarkers, strDBName,args.strUSEARCH)
+                log.write( time.strftime("%Y-%m-%d %H:%M:%S") + " USEARCHing the markers against the wgs reads databse \n")
+                sq.RunUSEARCH(strWGS=strWGS, strDB=strDBName, strSearchOut  = strSearch,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
                               iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
-                sq.StoreHitCountsUsearch(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-                                  dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-                                  iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strShortBREDMode=strMethod,strVersionUSEARCH = strVersionUSEARCH)
-                        
+                sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
+                                  dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
+                                  strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
+                                  iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                                  strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg,
+                                  version_control = strVersionUSEARCH)
+                       
             for seq in SeqIO.parse(strWGS, "fasta"):
                 iWGSReads+=1
                 iTotalReadCount+=1
@@ -525,6 +512,11 @@ else:
         
         #Otherwise, convert the file as needed into small fasta files. Call USEARCH and store the counts for each small file.
         else:
+            strDBName = str(dirTmp) + os.sep + os.path.basename(os.path.splitext(str(args.strMarkers))[0]) + ".udb"
+            strDBName = os.path.abspath(strDBName)
+            log.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Making USEARCH database for the large wgs reads \n")
+            sq.MakedbUSEARCH(args.strMarkers, strDBName,args.strUSEARCH)
+            
             iReadsInSmallFile = 0
             iFileCount = 1
             
@@ -554,8 +546,7 @@ else:
             if strFormat=="unknown":
                 strFormat="fastq"
             if streamWGS==None:
-                with open(strLog, "a") as log:
-                    log.write("File was empty." + '\n')
+                log.write("File was empty." + '\n')
             """
             
             #Start the main loop to get everything in streamWGS -> small fasta file -> counted and stored
@@ -578,17 +569,14 @@ else:
                     strOutputName = str(dirTmp) + os.sep + "wgs_" + str(iWGSFileCount).zfill(2) + "out_" + str(iFileCount).zfill(2) + ".out"
                     #Run Usearch, store results
                     if args.strSearchProg=="usearch":
-                        sq.RunUSEARCH(strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,
+                        sq.RunUSEARCH(strWGS=strFASTAName,strDB=strDBName, strSearchOut  = strOutputName,dirTmp=dirTmp,
                                       iThreads=args.iThreads,dID=args.dID, iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH  )
-                        sq.StoreHitCountsUsearch(strBlastOut = strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker, dictMarkerLen=dictMarkerLen,
-                                          dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-                                          iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strShortBREDMode=strMethod,strVersionUSEARCH = strVersionUSEARCH)
-                    #Run Diamond, store results
-                    elif args.strSearchProg=="diamond":
-                        sq.RunDIAMONDp(strDIAMOND = args.strDIAMOND, strWGS=strWGS,strDB=strDBName, strDiamondOut = strOutputName,iThreads=args.iThreads)
-                        sq.StoreHitCountsDiamond(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-                                          dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-                                          iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strShortBREDMode=strMethod,strVersionUSEARCH = strVersionUSEARCH)
+                        sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
+                                          dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
+                                          strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
+                                          iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                                          strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = "usearch",
+                                          version_control = strVersionUSEARCH)
 
                     #Reset count, make new file
                     iReadsInSmallFile = 0
@@ -600,15 +588,17 @@ else:
                 
                 #Run Usearch, store results
                 strOutputName = str(dirTmp) + os.sep + "wgs_" + str(iWGSFileCount).zfill(2) + "out_" + str(iFileCount).zfill(2) + ".out"
-                sq.RunUSEARCH(strWGS=strFASTAName,strDB=strDBName, strBlastOut = strOutputName,dirTmp=dirTmp,
+                sq.RunUSEARCH(strWGS=strFASTAName,strDB=strDBName, strSearchOut  = strOutputName,dirTmp=dirTmp,
                               iThreads=args.iThreads,dID=args.dID,iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
-                sq.StoreHitCountsUsearch(strBlastOut = strOutputName,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-                                  dictHitCounts=dictBLAST,dID=args.dID,strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,iMinReadAA=int(math.floor(args.iMinReadBP/3)),
-                                  iAvgReadAA=int(math.floor(args.iAvgReadBP/3)),iAlnCentroids = args.iAlnCentroids,strShortBREDMode=strMethod,strVersionUSEARCH = strVersionUSEARCH)
+                sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
+                                  dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
+                                  strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
+                                  iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                                  strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = "usearch",
+                                  version_control = strVersionUSEARCH)
                 os.remove(strFASTAName)
             
-            with open(strLog, "a") as log:
-                log.write(str(iWGSReads) + '\n')
+            log.write(str(iWGSReads) + '\n')
         
             iWGSFileCount += 1
             if (strFormat != "fasta" or strSize != "small"):
@@ -617,6 +607,8 @@ else:
             #Close the tarfile if you had one open.
             if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
                 tarWGS.close()
+
+log.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Finish Searching \n \n")  
 ##################################################################################
 # Step 4: Calculate ShortBRED Counts, print results, print log info.
 if strMethod=="annotated_genome":
@@ -628,9 +620,10 @@ elif strMethod=="wgs":
 	
 
 if strMethod=="wgs":
-    atupCounts = sq.CalculateCounts(strResults = args.strResults, strMarkerResults=strMarkerResults,dictHitsAlnLen = dictHitsAlnLen, dictHitsRLen = dictHitsRLen, dictHitCounts=dictBLAST,
-                                    dictMarkerLenAll=dictMarkerLenAll,dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
-                                    dReadLength = float(args.iAvgReadBP), iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,strFile = strInputFile)
+    atupCounts = sq.CalculateCounts(strResults = args.strResults, strMarkerResults=strMarkerResults,
+                                    dictHitsForMarker = dictHitsForMarker, dictCountsForMarker=dictCountsForMarker,dictMarkerLen=dictMarkerLen, 
+                                    iWGSReads = iTotalReadCount, strCentCheck=args.strCentroids,
+                                    dAlnLength=args.dAlnLength,strFile = strInputFile)
 
 	# Row of atupCounts = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength,iPossibleHitSpace)
 
@@ -657,18 +650,18 @@ if strMethod=="annotated_genome" or strMethod=="unannotated_genome":
             fileBugCounts.write(strFam + "\t" + str(dictFinalCounts[strFam]) + "\n")
 
 # Add final details to log
-with open(str(dirTmp + os.sep + os.path.basename(args.strMarkers)+ ".log"), "a") as log:
-    log.write("Total Reads Processed: " + str(iTotalReadCount) + "\n")
-    log.write("Average Read Length Specified by User: " + str(args.iAvgReadBP) + "\n")
-    log.write("Average Read Length Calculated by ShortBRED: " + str(dAvgReadLength) + "\n")
-    log.write("Min Read Length: " + str(iMin) + "\n")
+log.write(time.strftime("%Y-%m-%d %H:%M:%S") +  "\nProcessing complete! \n\n")
+log.write("Total Reads Processed: " + str(iTotalReadCount) + "\n")
+log.write("Average Read Length Specified by User: " + str(args.iAvgReadBP) + "\n")
+log.write("Average Read Length Calculated by ShortBRED: " + str(dAvgReadLength) + "\n")
+log.write("Min Read Length: " + str(iMin) + "\n")
 
 
 sys.stderr.write("Processing complete. \n")
 ########################################################################################
 # This is part of a possible EM application that is not fully implemented yet.
 ########################################################################################
-if (args.strBayes != ""):
-    sq.BayesUpdate(atupCounts=atupCounts,strBayesResults=args.strBayes,strBayesLog=strQMOut,astrQMs=astrQMs,
-                   dictQMPossibleOverlap=dictQMPossibleOverlap,dictType=dictType)
+#if (args.strBayes != ""):
+#    sq.BayesUpdate(atupCounts=atupCounts,strBayesResults=args.strBayes,strBayesLog=strQMOut,astrQMs=astrQMs,
+#                   dictQMPossibleOverlap=dictQMPossibleOverlap,dictType=dictType)
 

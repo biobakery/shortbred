@@ -193,8 +193,8 @@ if(dirTmp==""):
 dirQuasi = src.check_create_dir( dirTmp + os.sep + "quasi" )
 
 #In the future, will use the logging module in Python.
-log = open(dirTmp + os.sep +"log.txt", "w")
-log.write("ShortBRED log \n" + time.strftime("%Y-%m-%d %H:%M:%S") + "\n \nMARKER PARAMETERS: \n")
+log = open(dirTmp + os.sep +"identify_log.txt", "w")
+log.write("ShortBRED_identify log \n" + time.strftime("%Y-%m-%d %H:%M:%S") + "\n \nMARKER PARAMETERS: \n")
 log.write("ClustID:" + str(args.dClustID) + "\n")
 log.write("MarkerLength:" + str(args.iMLength) + "\n")
 log.write("QM Thresh:" + str(args.iThresh) + "\n")
