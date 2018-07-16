@@ -21,8 +21,14 @@
 #
 # This file is a component of ShortBRED (Short, Better REad Database)
 # authored by the Huttenhower lab at the Harvard School of Public Health
-# (contact Jim Kaminski, jjk451@mail.harvard.edu).
+# (contact Jim Kaminski, jjk451@mail.harvard.edu, Jingjing Tang, jatangne@gmail.com).
 #####################################################################################
+
+"""
+ToDo:
+    * Add a function to count tblastn hits
+"""
+
 
 import subprocess
 from subprocess import Popen, PIPE,STDOUT
@@ -67,7 +73,7 @@ def CompareVersions(strVersion1,strVersion2):
 
 def MakedbUSEARCH ( strMarkers, strDBName,strUSEARCH):
     # This functions calls usearch to make a database of the ShortBRED markers.
-	p = subprocess.check_call([strUSEARCH, "--makeudb_usearch", strMarkers,"--output", strDBName])
+	p = subprocess.check_call([strUSEARCH, "--makeudb_usearch", strMarkers, "--output", strDBName])
 	return
 
 def MakedbRapsearch2 ( strMarkers, strDBName,strPrerapPath):
@@ -75,12 +81,18 @@ def MakedbRapsearch2 ( strMarkers, strDBName,strPrerapPath):
 	p = subprocess.check_call([strPrerapPath, "-d", strMarkers,"-n", strDBName])
 	return
 
-def MakedbBLASTnuc ( strMakeBlastDB, strDBName,strGenome,dirTmp):
+def MakedbBLASTnuc ( strMarkers, strDBName,strGenome,dirTmp):
 	print("Making blastdb in " + dirTmp)
 	# This functions calls usearch to make a database of the ShortBRED markers.
-	p = subprocess.check_call([strMakeBlastDB, "-in", strGenome, "-out", strDBName,
+	p = subprocess.check_call([strMarkers, "-in", strGenome, "-out", strDBName,
 		"-dbtype", "nucl", "-logfile", dirTmp + os.sep + "blast_nuc_db.log"])
 	return
+
+def MakedbDIAMOND (strMarkers, strDBName, strDIAMOND):
+    # This function calls diamond to make a database of the ShortBRED markers.
+    p = subprocess.check_call([strDIAMOND, "makedb", "--in", strMarkers, "--db", strDBName])
+    return
+    
 
 def CheckFormat ( strFile):
 	if strFile.find("fastq") > -1:
@@ -244,35 +256,35 @@ def NormalizeGenomeCounts (strValidHits,dictFamCounts,bUnannotated,dPctORFScoreT
 	return dictFinalCounts
 
 
-def RunUSEARCH ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects,strUSEARCH):
+def RunUSEARCH (strWGS,strSearchOut , strDB,iThreads,dID, dirTmp, iAccepts, iRejects,strUSEARCH):
     # Calls usearch, strFields specifies the output format from usearch.
 
-	strFields = "query+target+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql+tl+qs+ts"
+	strFields = "query+target+id+alnlen+ql+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql"
 
 	subprocess.check_call([
-#		"time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
+#		"time","-o", str(dirTmp) + os.sep + os.path.basename(strWGS) + ".time",
 		strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
-		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,"--maxaccepts",str(iAccepts),
+		"--id", str(dID),"--userout", strSearchOut ,"--userfields", strFields,"--maxaccepts",str(iAccepts),
 		"--maxrejects",str(iRejects),"--threads", str(iThreads)])
   
-def RunRAPSEARCH2 ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects,strRAPSEARCH2):
+def RunRAPSEARCH2 (strWGS,strSearchOut , strDB,iThreads,dID, dirTmp, iAccepts, iRejects,strRAPSEARCH2):
     # Calls rapsearch2. It currently does not output the length of the wgs reads, which we use use to 1) filter low reads and .
 
     with open(strWGS,"r") as streamSeq:
-        p = Popen([strRAPSEARCH2,"-q","stdin","-d", strDB,"-o",strBlastOut],stdin=streamSeq,stdout=PIPE)
+        p = Popen([strRAPSEARCH2,"-q","stdin","-d", strDB,"-o",strSearchOut ],stdin=streamSeq,stdout=PIPE)
         p.communicate()
         return
     
 
     """
-    with open(strBlastOut,'w') as fileBlastOut:
+    with open(strSearchOut ,'w') as fileBlastOut:
         #p = Popen([strRAPSEARCH2,"-q","stdin","-d", strDB,"-v",str(iAccepts),"-z", str(iThreads),"-b", "0","-u","1"],stdin=PIPE,stdout=PIPE)
-        sys.stderr.write("Running rapsearch2, writing output to " + strBlastOut + "\n")
+        sys.stderr.write("Running rapsearch2, writing output to " + strSearchOut  + "\n")
         with open(strWGS,"r") as streamSeq:
-            p = Popen([strRAPSEARCH2,"-q","stdin","-d", strDB,"-o",strBlastOut],stdin=PIPE,stdout=fileBlastOut)
+            p = Popen([strRAPSEARCH2,"-q","stdin","-d", strDB,"-o",strSearchOut ],stdin=PIPE,stdout=fileBlastOut)
             for seq in SeqIO.parse(streamSeq, "fasta")	:        
                 #p = Popen([strRAPSEARCH2,"-q","stdin","-d", strDB,"-v",str(iAccepts),"-z", str(iThreads),"-b", "0","-u","1"],stdin=streamSeq,stdout=PIPE)
-                #p = Popen([strRAPSEARCH2,"-q","stdin","-d", strDB,"-o",strBlastOut],stdin=streamSeq,stdout=PIPE)
+                #p = Popen([strRAPSEARCH2,"-q","stdin","-d", strDB,"-o",strSearchOut ],stdin=streamSeq,stdout=PIPE)
  
                  print seq.format("fasta")
  
@@ -288,22 +300,22 @@ def RunRAPSEARCH2 ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, 
 	
 
 
-def RunUSEARCHGenome ( strMarkers, strWGS,strBlastOut, strDB,iThreads,dID, dirTmp, iAccepts, iRejects,strUSEARCH):
+def RunUSEARCHGenome ( strGenome, strSearchOut , strDB,iThreads,dID, dirTmp, iAccepts, iRejects,strUSEARCH):
 
-	strFields = "target+query+id+alnlen+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql+tl+qs+ts"
+	strFields ="query+target+id+alnlen+ql+mism+opens+qlo+qhi+tlo+thi+evalue+bits+ql"
 
 	subprocess.check_call([
-#		"time","-o", str(dirTmp) + os.sep + os.path.basename(strMarkers) + ".time",
-		strUSEARCH, "--usearch_local", strWGS, "--db", strDB,
-		"--id", str(dID),"--userout", strBlastOut,"--userfields", strFields,"--maxaccepts",str(iAccepts),
+#		"time","-o", str(dirTmp) + os.sep + os.path.basename(strWGS) + ".time",
+		strUSEARCH, "--usearch_local", strGenome, "--db", strDB,
+		"--id", str(dID),"--userout", strSearchOut ,"--userfields", strFields,"--maxaccepts",str(iAccepts),
 		"--maxrejects",str(iRejects),"--threads", str(iThreads)])
 
-def RunTBLASTN ( strTBLASTN, strDB,strMarkers, strBlastOut, iThreads):
+def RunTBLASTN ( strTBLASTN, strDB,strGenome, strSearchOut , iThreads):
 
 
 
-	astrBlastParams = ["-outfmt", "6 sseqid qseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",
-	"-matrix", "PAM30", "-ungapped",
+	astrBlastParams = ["-outfmt", "6 sseqid qseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore slen qlen",
+	"-matrix", "BLOSUM62", "-ungapped",
 		"-comp_based_stats","F","-window_size","0",
 		"-xdrop_ungap","1","-evalue","1e-3",
 		"-max_target_seqs", "1000000",
@@ -311,7 +323,43 @@ def RunTBLASTN ( strTBLASTN, strDB,strMarkers, strBlastOut, iThreads):
 
 
 	subprocess.check_call(
-		[strTBLASTN, "-db", strDB,"-query", strMarkers,"-out",strBlastOut] +  astrBlastParams)
+		[strTBLASTN, "-db", strDB,"-query", strGenome,"-out",strSearchOut ] +  astrBlastParams)
+
+def RunDIAMONDx (strDIAMOND, strDB, strWGS, strDiamondOut, iThreads):
+    astrDIAMONDParams = ["--outfmt", "6","qseqid","sseqid","pident","length","qlen","mismatch","gaps","qstart","qend","sstart","send",
+                         "evalue","bitscore","qlen", "--matrix", "BLOSUM62",
+                       "--comp-based-stats","0","--window","0","--ungapped-score","20",
+                       "--evalue","1e-8","--rank-ratio","0","--shapes","0",
+                       "--max-target-seqs", "0", 
+                       "--threads",str(iThreads)]
+    # "--shape-mask","11111" this param is removed temporarily, otherwise, some of self-hits would disappear
+    
+    cmdRun = [
+#        "time", "-o", dirTime + os.sep +"goisearch.time",
+        strDIAMOND,"blastx", "--query", strWGS, "--db", strDB,
+        "--out", strDiamondOut] + astrDIAMONDParams
+            
+    #sys.stderr.write(" ".join(cmdRun))
+    subprocess.check_call(cmdRun)    
+    return
+
+def RunDIAMONDp (strDIAMOND, strDB, strGenome, strDiamondOut, iThreads):
+    astrDIAMONDParams = ["--outfmt", "6","qseqid","sseqid","pident","length","mismatch","gaps","qstart","qend","sstart","send",
+                         "evalue","bitscore","qlen", "--matrix", "BLOSUM62",
+                       "--comp-based-stats","0","--window","0","--ungapped-score","20",
+                       "--evalue","1e-8","--rank-ratio","0","--shapes","0",
+                       "--max-target-seqs", "0",
+                       "--threads",str(iThreads)]
+    # "--shape-mask","11111" this param is removed temporarily, otherwise, some of self-hits would disappear
+    
+    cmdRun = [
+#        "time", "-o", dirTime + os.sep +"goisearch.time",
+        strDIAMOND,"blastp", "--query", strWGS, "--db", strDB,
+        "--out", strDiamondOut] + astrDIAMONDParams
+            
+    #sys.stderr.write(" ".join(cmdRun))
+    subprocess.check_call(cmdRun)    
+    return
 
 def Median(adValues):
 	adValues.sort()
@@ -323,135 +371,84 @@ def Median(adValues):
 		dMedian = adValues[int(math.floor(iLen/2))]
 	return dMedian
 
-def StoreHitCountsRapsearch2(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA,iAlnCentroids=30,strUSearchOut=False):
-# Reads in the RAPSEARCH2 output (strBlastOut), marks which hits are valid (id>=dID &
+def StoreHitCounts(strSearchOut ,strValidHits,dictHitsForMarker,dictMarkerLen,dictCountsForMarker, dID,strCentCheck,dAlnLength,iMinReadBP,iAvgMarkerAA,strSearchMethod, strShortBREDMode="wgs",iAlnCentroids=30,version_control = 1):
+# Reads in the USEARCH output (strSearchOut ), marks which hits are valid (id>=dID &
 # len >= min(95% of read,dictMarkerLen[Marker]) and adds to count in dictHitsForMarker[strMarker].
 # Valid hits are also copied to the file in strValidHits. strCentCheck is used to flag centroids,
 # and handle their counting
+    
+    
 
-# Some small changes are made for Rapsearch2 output in this function.
-# *add ".m8", to the filename 
-# *skip the first 5 lines
-#* rearrange columns.
-
-    strBlastOut = strBlastOut + ".m8"
-    iSkip = 5
-
+    if strSearchMethod == "usearch":
+        len_control = CompareVersions(version_control,c_vstrUsearchForAAValue)
+    else:
+        len_control = version_control
+    
+    # If the version in use is newer than 6.0.307,     
     with open(strValidHits, 'a') as csvfileHits:
         csvwHits = csv.writer( csvfileHits, csv.excel_tab )
-        sys.stderr.write("Processing RAPSEARCH2 results... \n")
-        #Go through the Rapsearch2 output, for each prot family, record the number of valid hits
-
-        with open(strBlastOut, 'r') as csvfileBlast:
-            csvReader = csv.reader( csvfileBlast, delimiter='\t' )
-            for i in range(iSkip):
-                next(csvReader)
-            for aLine in csvReader:
-                strMarker       = aLine[1]
-                dHitID          = aLine[2]
-                iAlnLen     = int(aLine[3])
-                if (strUSearchOut):
-                    iReadLenAA  = int(aLine[12])
-                else:
-                    iReadLenAA = abs(int(aLine[7]) - int(aLine[6]))/3.0
-    
-                # A valid match must be as long as 95% of the read or the full marker.
+        sys.stderr.write("Processing %s results... \n" % strSearchMethod.upper())
+        #Go through the usearch output, for each prot family, record the number of valid
+        with open(strSearchOut , 'r') as csvfileSearch:
+            for aLine in csv.reader( csvfileSearch, delimiter='\t' ):
+                strMarker 	= aLine[1]
+                dHitID		= aLine[2]      # percentage of alignment
+                iAlnLen     = int(aLine[3])   # alignment length
+                RLen        = int(aLine[4])          # read length
+                if RLen == 0:
+                    continue
+#                iReadLenAA = int(aLine[8]) - int(aLine[7]) + 1
+                
+                # USearch versions past 6.0.307 report query length in AA space, 6.0.307 and prior versions report in nuc space.
+                # This is not an issue in AA to AA comparisons, so seraching "annnotated_genomes" is fine. 
+#                if strShortBREDMode!="wgs" or len_control != 1:
+#                    iReadLenAA = iReadLenAA 
+#                else:
+#                    iReadLenAA = int(round(iReadLenAA/3))                    
+                
+                # A valid match must be as long as 95% of the read or the full marker. Should be changed'
                 # (Note that this in AA's.)
-    
                 #If using centroids (Typically only used for evaluation purposes.)....
                 if strCentCheck=="Y":
                     strProtFamily = strMarker
                     
                     if ( (int(iAlnLen)>= iAlnCentroids) and ( float(dHitID)/100) >= dID):
-                                    dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) + 1
-                                    dictHitsForMarker[strProtFamily] = dictHitsForMarker.setdefault(strProtFamily,0) + 1
-                                    csvwHits.writerow( aLine )
-    
+                        dictHitsForMarker[strProtFamily] = dictHitsForMarker.setdefault(strProtFamily,0) + 1
+                        csvwHits.writerow( aLine )
+                    
+                
                 #If using ShortBRED Markers (and not centroids)...
                 else:
-                    iAlnMin = min(dictMarkerLen[strMarker] ,math.floor((iAvgReadAA)*dAlnLength))
+                    iAlnMin = min(dictMarkerLen[strMarker],math.floor(RLen*dAlnLength/3)) # marker length
                     #Get the Family Name
                     mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
                     strProtFamily = mtchProtStub.group(1)
+                    """
+                    if(float(dHitID)>.9):
+                        sys.stderr.write( " ".join([str(iAlnLen),str(iAlnMin),str(dHitID),str(dID),str(iReadLenAA),str(iMinMarkerAA)] ) +"\n")
+                    """
                     #If hit satisfies criteria, add it to counts, write out data to Hits file
-                    # NOTE: Rapsearch2 does not currently output the original query read length, so we do *NOT* filter based on read length.
-                    if (int(iAlnLen)>= iAlnMin and (float(dHitID)/100) >= dID):
-    
+                    if (int(iAlnLen)>= iAlnMin and (RLen>=iMinReadBP) and (float(dHitID)/100) >= dID):
+                        # criteria (iReadLenAA >= iMinMarkerAA) is changed to RLen > args.iMinReadBP (both of them are read lengths)
+                        # iReadLenAA is the length of read alignment, is it right to compare it with 
+                        # iMinmarkerAA = =int(math.floor(args.iMinReadBP/3)) where iMinReadBP is the lower bound for read lengths 
+                        # that shortbred will process
+                        
                         #Add 1 to count of hits for that marker, and family
+                        iMarkerNucs = dictMarkerLen[strMarker]*3
+                        dPctAdditionalTargetSeq = ((1.0 - dAlnLength)*2.0)*RLen
+                        
+                        if (iMarkerNucs > (RLen*dAlnLength)):
+                            iPossibleHitSpace = iMarkerNucs + dPctAdditionalTargetSeq -RLen+1
+                        
+                        else:
+                            iPossibleHitSpace = RLen-iMarkerNucs -1
+
                         dictHitsForMarker[aLine[1]] = dictHitsForMarker.setdefault(aLine[1],0) + 1
-                        dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) +1
-    
+                        dictCountsForMarker[aLine[1]] += float(1/iPossibleHitSpace)
                         csvwHits.writerow( aLine )
-        return
+    return
 
-
-def StoreHitCounts(strBlastOut,strValidHits,dictHitsForMarker,dictMarkerLen,dictHitCounts,dID,strCentCheck,dAlnLength,iMinReadAA,iAvgReadAA,strVersionUSEARCH,strShortBREDMode="wgs",iAlnCentroids=30,strUSearchOut=True):
-# Reads in the USEARCH output (strBlastOut), marks which hits are valid (id>=dID &
-# len >= min(95% of read,dictMarkerLen[Marker]) and adds to count in dictHitsForMarker[strMarker].
-# Valid hits are also copied to the file in strValidHits. strCentCheck is used to flag centroids,
-# and handle their counting
-    
-	# If the version in use is newer than 6.0.307,     
-	CompareVersions(strVersionUSEARCH,c_vstrUsearchForAAValue)
-
-
-	with open(strValidHits, 'a') as csvfileHits:
-		csvwHits = csv.writer( csvfileHits, csv.excel_tab )
-		sys.stderr.write("Processing USEARCH results... \n")
-		#Go through the usearch output, for each prot family, record the number of valid
-
-		with open(strBlastOut, 'r') as csvfileBlast:
-			for aLine in csv.reader( csvfileBlast, delimiter='\t' ):
-				strMarker 	= aLine[1]
-				dHitID		= aLine[2]
-				iAlnLen     = int(aLine[3])
-				if (strUSearchOut):
-					iReadLenAA  = int(round(int(aLine[12])))
-				else:
-					iReadLenAA = int(aLine[7]) - int(aLine[6])
-				
-				# USearch versions past 6.0.307 report query length in AA space, 6.0.307 and prior versions report in nuc space.
-				# This is not an issue in AA to AA comparisons, so seraching "annnotated_genomes" is fine. 
-				if (strShortBREDMode!="wgs" or CompareVersions(strVersionUSEARCH,c_vstrUsearchForAAValue) != 1):
-					iReadLenAA = iReadLenAA 
-				else:
-					iReadLenAA = int(round(iReadLenAA/3))                    
-                    
-
-				# A valid match must be as long as 95% of the read or the full marker.
-		        # (Note that this in AA's.)
-				#If using centroids (Typically only used for evaluation purposes.)....
-				if strCentCheck=="Y":
-					strProtFamily = strMarker
-
-					if ( (int(iAlnLen)>= iAlnCentroids) and ( float(dHitID)/100) >= dID):
-							dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) + 1
-							dictHitsForMarker[strProtFamily] = dictHitsForMarker.setdefault(strProtFamily,0) + 1
-							csvwHits.writerow( aLine )
-
-				#If using ShortBRED Markers (and not centroids)...
-				else:
-					iAlnMin = min(dictMarkerLen[strMarker] ,math.floor((iAvgReadAA)*dAlnLength))
-					#Get the Family Name
-					mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
-					strProtFamily = mtchProtStub.group(1)
-
-					#If hit satisfies criteria, add it to counts, write out data to Hits file
-					if (int(iAlnLen)>= iAlnMin and (iReadLenAA >= iMinReadAA) and (float(dHitID)/100) >= dID):
-
-						#Add 1 to count of hits for that marker, and family
-						dictHitsForMarker[aLine[1]] = dictHitsForMarker.setdefault(aLine[1],0) + 1
-						dictHitCounts[strProtFamily] = dictHitCounts.setdefault(strProtFamily,0) +1
-
-						csvwHits.writerow( aLine )
-	return
-
-
-"""
-CalculateCounts - Calculates the ShortBRED counts for each marker.
-ProcessHitData - Opens the marker and family results files for writing, calls
-PrintStats for each family.
-"""
 
 
 def ProcessHitData(atupHits,strMarkerResults,strFamFile):
@@ -523,67 +520,49 @@ def PrintStats(atupCurFamData, strMarkerFile, strFamFile):
 
 	return
 
-def CalculateCounts(strResults,strMarkerResults, dictHitCounts, dictHitsForMarker, dictMarkerLenAll,dictMarkerLen,dReadLength,iWGSReads,strCentCheck,
+def CalculateCounts(strResults,strMarkerResults, dictHitsForMarker, dictCountsForMarker,dictMarkerLen,iWGSReads,strCentCheck,
 dAlnLength,strFile):
-	#strResults - Name of text file with final ShortBRED Counts
-	#strBlastOut - BLAST-formatted output from USEARCH
-	#strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
-	#dictMarkerLenAll - Contains the sum of marker lengths for all markers in a family
-	#dictMarkerLen - Contains each marker/centroid length
-
-	atupMarkerCounts = []
-
-	#Print Name, Normalized Count, Hit Count, Marker Length to std out
-	#csvwResults = csv.writer( open(strResults,'w'), csv.excel_tab )
-	#csvwResults.writerow(["Marker","Normalized Count","Hits","MarkerLength","ReadLength"])
-
-	sys.stderr.write("Tabulating results for each marker... \n")
-	for strMarker in dictHitsForMarker.keys():
-		iHits = dictHitsForMarker.get(strMarker,0)
-		iMarkerNucs = dictMarkerLen[strMarker]*3
-		if strCentCheck=="Y":
-			strProtFamily = strMarker
-			dCount = iHits / (float(iMarkerNucs)/1000)
-			iPossibleHitSpace = float(iMarkerNucs)
-		else:
-			# Correction factor, since we only require dAlnLength of the reads to align. This results in (1-p)*2 Extra Read len on each side
-			dPctAdditionalTargetSeq = ((1.0 - dAlnLength)*2.0)*dReadLength
-
-			#Possible Hit Space = Think of this as the "effective" length of our marker.
-			#Any reads starting in the possible hit space should get a valid hit on the marker, anything else will not.
-			# Hits/Possible Hit Space ~ Hits/Nucleotide. We can't do just nucleotides because we have special rules for matching markers,
-			# depending on their length.
-
-			if (iMarkerNucs > (dReadLength*dAlnLength)):
-				iPossibleHitSpace = iMarkerNucs + dPctAdditionalTargetSeq -(dReadLength-1)
-				#iPossibleHitSpace = [start-dPctAdditionalTargetSeq,end- (trusted read length -1)]
-				#  Any reads dPctAdditionalTargetSeq to the left of the marker will have just enough of the marker to be valid hit.
-				#  Same for anything after that, until you get to (end-(readlength-1). Anything after that has some overlap, but not enough to be a valid hit.
-			else:
-				iPossibleHitSpace = dReadLength-iMarkerNucs -1
-				#iPossibleHitSpace = [start-(dReadlength-iMarkerNucs),end- (trusted read length -1)]
-				#  Any reads after (start-(dReadlength-iMarkerNucs)) will completely overlap the marker, and be a valid hit.
-				#  Same for anything after that, until you get to (start). Anything after that has some overlap, but not enough to be a valid hit.
-				#  Try this out as  [iMarkerNucs + 2*(dReadLength-iMarkerNucs) -(dReadLength-1)]
-				#
-				# Just in case, this one worked well.... iPossibleHitSpace = iMarkerNucs + 2*(dReadLength-iMarkerNucs) -(dReadLength-1)
-
-			dCount = iHits/(float(iPossibleHitSpace)/1000)
-
-			mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
-			strProtFamily = mtchProtStub.group(1)
-
-		if iWGSReads >0:
-			dCount =  dCount /  (iWGSReads / 1e6 )
-		else:
-			dCount = 0
-			sys.stderr.write("WARNING: 0 Reads found in file:" + strFile )
-		tupCount = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker],dReadLength,iPossibleHitSpace)
-		atupMarkerCounts.append(tupCount)
-
-	ProcessHitData(atupMarkerCounts, strMarkerResults=strMarkerResults,strFamFile = strResults)
-
-	return atupMarkerCounts
+    #strResults - Name of text file with final ShortBRED Counts
+    #strSearchOut - BLAST-formatted output from USEARCH/RAPSEARCH2/DIAMOND
+    #strValidHits - File of BLAST hits that meet ShortBRED's ID and Length criteria. Mainly used for evaluation/debugging.
+    #dictMarkerLenAll - Contains the sum of marker lengths for all markers in a family
+    #dictMarkerLen - Contains each marker/centroid length
+    
+    atupMarkerCounts = []
+    
+    #Print Name, Normalized Count, Hit Count, Marker Length to std out
+    #csvwResults = csv.writer( open(strResults,'w'), csv.excel_tab )
+    #csvwResults.writerow(["Marker","Normalized Count","Hits","MarkerLength","ReadLength"])
+    
+    sys.stderr.write("Tabulating results for each marker... \n")
+    for strMarker in dictHitsForMarker.keys():
+        iHits = dictHitsForMarker.get(strMarker,0)        
+        iMarkerNucs = dictMarkerLen[strMarker]*3
+        if strCentCheck=="Y":
+            strProtFamily = strMarker
+            dCount = iHits / (float(iMarkerNucs)/1000)
+            iPossibleHitSpace = float(iMarkerNucs)
+            dCount = iHits/(float(iPossibleHitSpace)/1000)
+        else:
+            dCount = dictCountsForMarker[strMarker]
+            
+        mtchProtStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',strMarker)
+        strProtFamily = mtchProtStub.group(1)
+        
+        if iWGSReads >0:
+            dCount =  dCount /  (iWGSReads / 1e9 )
+        
+        else:
+            dCount = 0
+            sys.stderr.write(str(strFile))            
+            sys.stderr.write("WARNING: 0 Reads found in file:" + strFile )
+        
+        tupCount = (strProtFamily,strMarker, dCount,dictHitsForMarker[strMarker],dictMarkerLen[strMarker])
+        atupMarkerCounts.append(tupCount)
+    
+    ProcessHitData(atupMarkerCounts, strMarkerResults=strMarkerResults,strFamFile = strResults)
+    
+    return atupMarkerCounts
 
 ####################################################################################################
 def BayesUpdate(atupCounts,strBayesResults,strBayesLog,astrQMs,dictQMPossibleOverlap,dictType):
