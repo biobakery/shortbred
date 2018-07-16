@@ -628,10 +628,6 @@ def CheckForQuasiMarkers(setGenes, dictKnockOut, dictSBFamilies, iN, iThresh, iT
 	for key in setGenes:
 		aiWindow = dictKnockOut[key]
 
-
-
-		import math
-
 		#Take some function of each overlap count, reduce influence of outliers
 		adAdjWindow = [math.pow(x,(1/4.0)) for x in aiWindow]
 
@@ -793,11 +789,11 @@ def GetQMOverlap(tupQM,atupHitInfo,fileOut,dictSBFamilies):
 				# The overlapping data from the hit
 				astrOverlap = dictSBFamilies[strName].strConsensusSeq[(iOLMarkerStart-iShift-1):(iOLMarkerEnd-iShift)]
 
-				astrOverlap = str("*"*(iOLMarkerStart - iMarkerStart)) + astrOverlap + str("*"*(iMarkerEnd- iOLMarkerEnd))
+				astrOverlap = str("*"*(iOLMarkerStart - iMarkerStart)) + str(astrOverlap) + str("*"*(iMarkerEnd- iOLMarkerEnd))
 
 
 				# fileOut.write(astrOverlap + ' ' + strName + ' ' + str(iOLMarkerStart) +' '+str(iOLMarkerEnd) + ' '+str(iOLHitStart) + ' ' + str(iOLHitEnd) +' '+  str(tupHit[5]).zfill(3) + '\n')
-				fileOut.write(astrOverlap + ' ' + strName + '\n')
+				fileOut.write(str(astrOverlap) + ' ' + str(strName) + '\n')
 
 			iSeqOverlap = iOLMarkerEnd-(iOLMarkerStart-1)
 			iTotalOverlap+= iSeqOverlap
