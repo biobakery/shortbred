@@ -37,8 +37,8 @@ import math
 import bz2
 
 import src
-import src.modified_quantify_functions
-sq = src.modified_quantify_functions
+import src.quantify_functions
+sq = src.quantify_functions
 
 from Bio import SeqIO
 
@@ -375,7 +375,7 @@ if strMethod=="annotated_genome":
         sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
                           dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
                           strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
-                          iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                          iMinReadBP=args.iMinReadBP,iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
                           strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg,
                           version_control = strVersionUSEARCH)
         
@@ -389,7 +389,7 @@ if strMethod=="annotated_genome":
         sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
                           dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
                           strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
-                          iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                          iMinReadBP=iMinReadBP,iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
                           strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg)
         
     
@@ -423,7 +423,7 @@ elif strMethod=="unannotated_genome":
     sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
                       dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
                       strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
-                      iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                      iMinReadBP=args.iMinReadBP,iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
                       strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg)
 
     iWGSReads = 0
@@ -457,7 +457,7 @@ else:
             sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
                               dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
                               strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
-                              iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                              iMinReadBP=args.iMinReadBP,iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
                               strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg)
            
             for seq in SeqIO.parse(strWGS, "fasta"):
@@ -478,7 +478,7 @@ else:
                 sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
                                   dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
                                   strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
-                                  iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                                  iMinReadBP=args.iMinReadBP,iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
                                   strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg)
          
             elif args.strSearchProg=="usearch":
@@ -492,7 +492,7 @@ else:
                 sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
                                   dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
                                   strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
-                                  iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                                  iMinReadBP=args.iMinReadBP,iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
                                   strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg,
                                   version_control = strVersionUSEARCH)
                        
@@ -571,10 +571,10 @@ else:
                     if args.strSearchProg=="usearch":
                         sq.RunUSEARCH(strWGS=strFASTAName,strDB=strDBName, strSearchOut  = strOutputName,dirTmp=dirTmp,
                                       iThreads=args.iThreads,dID=args.dID, iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH  )
-                        sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
+                        sq.StoreHitCounts(strSearchOut=strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
                                           dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
                                           strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
-                                          iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                                          iMinReadBP=args.iMinReadBP,iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
                                           strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = "usearch",
                                           version_control = strVersionUSEARCH)
 
@@ -590,10 +590,10 @@ else:
                 strOutputName = str(dirTmp) + os.sep + "wgs_" + str(iWGSFileCount).zfill(2) + "out_" + str(iFileCount).zfill(2) + ".out"
                 sq.RunUSEARCH(strWGS=strFASTAName,strDB=strDBName, strSearchOut  = strOutputName,dirTmp=dirTmp,
                               iThreads=args.iThreads,dID=args.dID,iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
-                sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
+                sq.StoreHitCounts(strSearchOut=strOutputName,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
                                   dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
                                   strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
-                                  iMinMarkerAA=int(math.floor(args.iMinReadBP/3)),iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                                  iMinReadBP=args.iMinReadBP,iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
                                   strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = "usearch",
                                   version_control = strVersionUSEARCH)
                 os.remove(strFASTAName)
