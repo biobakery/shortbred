@@ -96,7 +96,7 @@ grpParam.add_argument('--id', type=float, dest='dID', help='Enter the percent id
 grpParam.add_argument('--pctlength', type=float, dest='dAlnLength', help='Enter the minimum alignment length. The default is .95', default = 0.95)
 grpParam.add_argument('--minreadBP', type=float, dest='iMinReadBP', help='Enter the lower bound for read lengths that shortbred will process', default = 90)
 grpParam.add_argument('--avgreadBP', type=float, dest='iAvgReadBP', help='Enter the average read length.', default = 100)
-grpParam.add_argument('--maxhits', type=float, dest='iMaxHits', help='Enter the number of markers allowed to hit read.', default = 1)
+grpParam.add_argument('--maxhits', type=float, dest='iMaxHits', help='Enter the number of markers allowed to hit read.', default = 0)
 grpParam.add_argument('--maxrejects', type=float, dest='iMaxRejects', help='Enter the number of markers allowed to hit read.', default = 32)
 grpParam.add_argument('--unannotated', action='store_const',dest='bUnannotated', help='Indicates genome is unannotated. ShortBRED will use tblastn to \
 search AA markers against the db of six possible translations of your genome data. ', const=True, default = False)
