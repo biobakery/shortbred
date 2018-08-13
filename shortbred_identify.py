@@ -149,12 +149,13 @@ if len(sys.argv)==1:
 
 # Check dependencies
 print("Checking dependencies...")
-src.CheckDependency(args.strUSEARCH,"","usearch")    
-src.CheckDependency(args.strMUSCLE,"-h","muscle")
-src.CheckDependency(args.strCDHIT,"-h","cdhit")
 
+if (args.strSearchProg=="usearch"):
+    src.CheckDependency(args.strUSEARCH,"","usearch")    
+    src.CheckDependency(args.strMUSCLE,"-h","muscle")
+    src.CheckDependency(args.strCDHIT,"-h","cdhit")
 
-if (args.strSearchProg=="blast"):
+elif (args.strSearchProg=="blast"):
     src.CheckDependency(args.strBLASTP,"-h","blastp")
     src.CheckDependency(args.strMAKEBLASTDB,"-h","makeblastdb")
 elif (args.strSearchProg=="diamond"):
