@@ -126,7 +126,7 @@ grpParam.add_argument('--tmpdir', default ="", type=str, dest='sTmp', help='Set 
 
 # Programs
 grpPrograms = parser.add_argument_group('Programs')
-grpPrograms.add_argument('--search_program', default ="blast", type=str, dest='strSearchProg', help='Choose program for wgs and unannotated genome search. Default is \"usearch\".')
+grpPrograms.add_argument('--search_program', default ="diamond", type=str, dest='strSearchProg', help='Choose program for wgs and unannotated genome search. Default is \"usearch\".')
 grpPrograms.add_argument('--usearch', default ="usearch", type=str, dest='strUSEARCH', help='Provide the path to usearch. Default call will be \"usearch\".')
 grpPrograms.add_argument('--muscle', default ="muscle", type=str, dest='strMUSCLE', help='Provide the path to muscle. Default call will be \"muscle\".')
 grpPrograms.add_argument('--cdhit', default ="cd-hit", type=str, dest='strCDHIT', help='Provide the path to cd-hit. Default call will be \"cd-hit\".')

@@ -82,7 +82,7 @@ help='Enter the name of the output for marker level results.')
 grpOutput.add_argument('--tmp', type=str, dest='strTmp', default ="",help='Enter the path and name of the tmp directory.')
 
 grpPrograms = parser.add_argument_group('Programs:')
-grpPrograms.add_argument('--search_program', default ="usearch", type=str, dest='strSearchProg', help='Choose program for wgs and unannotated genome search. Default is \"usearch\".')
+grpPrograms.add_argument('--search_program', default ="diamond", type=str, dest='strSearchProg', help='Choose program for wgs and unannotated genome search. Default is \"usearch\".')
 grpPrograms.add_argument('--usearch', default ="usearch", type=str, dest='strUSEARCH', help='Provide the path to usearch. Default call will be \"usearch\".')
 grpPrograms.add_argument('--tblastn', default ="tblastn", type=str, dest='strTBLASTN', help='Provide the path to tblastn. Default call will be \"tblastn\".')
 grpPrograms.add_argument('--makeblastdb', default ="makeblastdb", type=str, dest='strMakeBlastDB', help='Provide the path to makeblastdb. Default call will be \"makeblastdb\".')
@@ -403,7 +403,7 @@ if strMethod=="annotated_genome":
 elif strMethod=="unannotated_genome":
     # If running on *unannotated_genome*, use tblastn.
     
-    if args.strSearchProg=="usearch":    # default value is usearch, actually using tblastn instead
+    if args.strSearchProg=="tblastn":    
         strDBName = str(dirTmp) + os.sep + os.path.basename(os.path.splitext(str(args.strMarkers))[0]) + ".blastdb"
         strDBName = os.path.abspath(strDBName)
         log.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Making BLAST database for the unannotated_genome reads \n")
