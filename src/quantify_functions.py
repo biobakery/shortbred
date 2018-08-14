@@ -354,7 +354,7 @@ def RunDIAMONDp (strDIAMOND, strDB, strGenome, strDiamondOut, iThreads):
     
     cmdRun = [
 #        "time", "-o", dirTime + os.sep +"goisearch.time",
-        strDIAMOND,"blastp", "--query", strWGS, "--db", strDB,
+        strDIAMOND,"blastp", "--query", strGenome, "--db", strDB,
         "--out", strDiamondOut] + astrDIAMONDParams
             
     #sys.stderr.write(" ".join(cmdRun))

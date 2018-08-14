@@ -389,7 +389,7 @@ if strMethod=="annotated_genome":
         sq.StoreHitCounts(strSearchOut=strSearch,strValidHits=strHitsFile,dictHitsForMarker=dictHitsForMarker,
                           dictMarkerLen=dictMarkerLen,dictCountsForMarker=dictCountsForMarker,dID=args.dID,
                           strCentCheck=args.strCentroids,dAlnLength=args.dAlnLength,
-                          iMinReadBP=iMinReadBP,iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
+                          iMinReadBP=args.iMinReadBP,iAvgMarkerAA=int(math.floor(args.iAvgReadBP/3)),
                           strShortBREDMode=strMethod,iAlnCentroids=args.iAlnCentroids,strSearchMethod = args.strSearchProg)
         
     
