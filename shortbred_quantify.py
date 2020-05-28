@@ -37,9 +37,9 @@ import gzip
 import time
 import math
 
-import src
-import src.quantify_functions
-sq = src.quantify_functions
+import shortbred_src as src
+from shortbred_src import quantify_functions
+sq = quantify_functions
 
 import numpy
 import bz2
