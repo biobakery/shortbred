@@ -103,33 +103,29 @@ sWindowNames = set(astrWindowNames)
 
 print("VF," + str(len(agWindowSeqs)) + "," + str(iTM) +  "," + str(iQM) + "," + str(len(setHasTM)) + "," + str(len(setHasQM))  +  "," + str(len(sClustNames.difference(sWindowNames))))
 
+print("Total number of windows:")
+print(len(agWindowSeqs))
 
-print "Total number of windows:"
-print len(agWindowSeqs)
-
-print "Breakdown of windows:"
-print "(N, Number of genes with N windows)"
+print("Breakdown of windows:")
+print("(N, Number of genes with N windows)")
 for x in Counter(aCounts).items():
-    print x
+    print(x)
 
 #######################################################
 #Check for missing genes
 
+print("Unique genes in clustered file:")
+print(len(sClustNames))
+
+print("Unique genes in windows file:")
+print(len(sWindowNames))
 
 
-
-print "Unique genes in clustered file:"
-print len(sClustNames)
-
-print "Unique genes in windows file:"
-print len(sWindowNames)
-
-
-print "Number of genes in original clustered file that have 0 windows:"
-print len(sClustNames.difference(sWindowNames))
+print("Number of genes in original clustered file that have 0 windows:")
+print(len(sClustNames.difference(sWindowNames)))
 
 if(args.bList):
-    print "List of genes that have 0 windows:"
+    print("List of genes that have 0 windows:")
     for x in sClustNames.difference(sWindowNames):
-        print x
+        print(x)
 
