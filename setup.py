@@ -31,6 +31,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.4",
         "Topic :: Scientific/Engineering :: Bio-Informatics"
         ],
+    install_requires=["biopython"],
     packages=setuptools.find_packages(),
     scripts=['shortbred_identify.py','shortbred_quantify.py'],
     zip_safe = False
