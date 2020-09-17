@@ -298,7 +298,10 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 
 				if strID == strStub:
 					dMainFamProp = dProp
-				dLenOverlap = (dProp/dMainFamProp) * len(seq)
+                                try:
+				    dLenOverlap = (dProp/dMainFamProp) * len(seq)
+                                except ZeroDivisionError:
+                                    continue
 
 				# Reads from current family can map to the QM if overlap is as long
 				# as the minimum accepted read length. Or if it nearly overlaps
