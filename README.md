@@ -205,3 +205,6 @@ This presents the results from ShortBRED-Quantify at the level of each individua
 * **ReadLength** - The average read length in the WGS data.
 * **HitSpace** - This is the adjusted marker length L’ listed in the [ShortBRED paper](http://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1004557) in the section “Profiling protein family metagenomic abundance with ShortBRED-Quantify”. Please note that this value is in nucleotides, so we convert MarkerLength (in amino acids) to nucleotides by multiplying by 3. For example, using a marker with a MarkerLength of 31 (amino acids) and average WMS read length of 100 (bp), we get: 100-(31*3)-1= 6.
 
+## Contributions ##
+Thanks go to these wonderful people:
+
